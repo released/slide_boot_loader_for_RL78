@@ -39,6 +39,7 @@
 <ul>
 <li>How to set up boot code and app project<br>
 <a href="https://www.renesas.com/en/document/man/rl78-family-c-compiler-package-cc-rl-how-divide-boot-and-flash-areas?srsltid=AfmBOoopybLnK6nMIfwPclpX1SYJL0OfZ1ZD5o9odBLUk4F70ckFtVWd">How to Divide Boot and Flash Areas</a><br>
+document no. : R20UT3475EJ0300<br>
 <br></li>
 </ul>
 <p><a id="target_MCU_flash_type" href=""></a></p>
@@ -47,7 +48,7 @@
 <p>How to know the MCU need use which flash library type (code flash)<br>
 <a href="https://www.renesas.com/en/document/oth/rl78-family-flash-memory-reprogramming-software-introduction?r=488891">RL78 FAMILY FLASH MEMORY REPROGRAMMING SOFTWARE INTRODUCTION</a></p>
 <ul>
-<li>RL78 F23/F24 : Renesas Flash Driver RL78 Type 02</li>
+<li>RL78 F23/F24 : Renesas Flash Driver RL78 Type 02 (document no. : R20UT5009EJ0110)</li>
 <li>RL78 G22/G23/G24 : Renesas Flash Driver RL78 Type 01</li>
 <li>RL78 G15/G16 : Renesas Flash Sample Program Type 01</li>
 <li>RL78 x1x : Flash Self Programming Library Type01<br>
@@ -289,6 +290,11 @@ CRC in app code last 4 bytes will be added after compile at <b><u>app code proje
 <img src="img/boot_smc_04.jpg" alt=""><br>
 <img src="img/boot_smc_05.jpg" alt=""></p>
 <hr>
+<ul>
+<li>smart configurator system setting as below</li>
+</ul>
+<p><img src="img/smc_system.jpg" alt=""></p>
+<hr>
 <h1 id="project--boot-code-modifictaion---boot_mainc">Project : boot code modifictaion - boot_main.c </h1>
 <ul>
 <li>for boot_hdwinit() , will be initialized by <a href="#boot_hdwinit">cstart.asm</a>
@@ -412,7 +418,7 @@ CRC in app code last 4 bytes will be added after compile at <b><u>app code proje
 <ul>
 <li><strong>[Device] &gt; [Option byte values for OCD]</strong>
 <ul>
-<li>set to <code>A5</code></li>
+<li>set to <code>A4</code></li>
 <li>default will be 0xFF<br>
 <img src="img/boot_property_link_02.jpg" alt=""><br>
 <br></li>
@@ -541,6 +547,40 @@ SMP_CF_f=SMP_CF_fR
 <img src="img/boot_property_link_07.jpg" alt=""><br>
 <br></li>
 </ul>
+<hr>
+<ul>
+<li>how do we know section address meaning</li>
+</ul>
+<p><img src="img/boot_debug_monitor.jpg" alt=""></p>
+<ul>
+<li><mark>flash assignment after debug area</mark>
+<ul>
+<li>0x000F0 (RL78 F24 , F23)</li>
+</ul>
+</li>
+</ul>
+<hr>
+<p><img src="img/boot_map_SRAM_address_1.jpg" alt=""></p>
+<ul>
+<li><mark>ram assignment</mark>
+<ul>
+<li>0xF9F00 (RL78 F24)</li>
+<li>0xFCF00 (RL78 F23)</li>
+</ul>
+</li>
+</ul>
+<p><img src="img/boot_map_SRAM_address_2.jpg" alt=""><br>
+<img src="img/boot_map_SRAM_address_3.jpg" alt=""></p>
+<hr>
+<p><img src="img/CCRL_Section_allocation.jpg" alt=""></p>
+<ul>
+<li><mark>short direction address (.saddr) assignment</mark>
+<ul>
+<li>0xFFE20 (RL78 F24 , F23)</li>
+</ul>
+</li>
+</ul>
+<p><img src="img/boot_map_saddr_address_1.jpg" alt=""></p>
 <hr>
 <ul>
 <li>in case of need to modify from RL78 F24 to RL78 F23 (code flash , data flash , extra area)
@@ -794,6 +834,11 @@ INTERRUPT_OFFSET  .EQU  0x100
 </ul>
 <p><img src="img/app_smc_01.jpg" alt=""></p>
 <hr>
+<ul>
+<li>smart configurator system setting as below</li>
+</ul>
+<p><img src="img/smc_system.jpg" alt=""></p>
+<hr>
 <h1 id="project--app-code-modifictaion----remove-static-and-vect-define">Project : app code modifictaion -  remove static and vect define </h1>
 <p>refer to How to Divide Boot and Flash Areas :<br>
 <strong>Do not specify the vector address (vect) with the #pragma interrupt directive in the flash area.</strong></p>
@@ -912,7 +957,7 @@ volatile uint32_t reset_to_bootloader;
 <ul>
 <li><strong>[Device] &gt; [Option byte values for OCD]</strong>
 <ul>
-<li>set to <code>A5</code></li>
+<li>set to <code>A4</code></li>
 <li>default will be 0xFF</li>
 </ul>
 </li>
