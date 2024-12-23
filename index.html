@@ -1,0 +1,1057 @@
+<!DOCTYPE html><html><head>
+      <title>index</title>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      
+      <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+      
+      
+      
+      
+      
+      <style>
+      code[class*=language-],pre[class*=language-]{color:#333;background:0 0;font-family:Consolas,"Liberation Mono",Menlo,Courier,monospace;text-align:left;white-space:pre;word-spacing:normal;word-break:normal;word-wrap:normal;line-height:1.4;-moz-tab-size:8;-o-tab-size:8;tab-size:8;-webkit-hyphens:none;-moz-hyphens:none;-ms-hyphens:none;hyphens:none}pre[class*=language-]{padding:.8em;overflow:auto;border-radius:3px;background:#f5f5f5}:not(pre)>code[class*=language-]{padding:.1em;border-radius:.3em;white-space:normal;background:#f5f5f5}.token.blockquote,.token.comment{color:#969896}.token.cdata{color:#183691}.token.doctype,.token.macro.property,.token.punctuation,.token.variable{color:#333}.token.builtin,.token.important,.token.keyword,.token.operator,.token.rule{color:#a71d5d}.token.attr-value,.token.regex,.token.string,.token.url{color:#183691}.token.atrule,.token.boolean,.token.code,.token.command,.token.constant,.token.entity,.token.number,.token.property,.token.symbol{color:#0086b3}.token.prolog,.token.selector,.token.tag{color:#63a35c}.token.attr-name,.token.class,.token.class-name,.token.function,.token.id,.token.namespace,.token.pseudo-class,.token.pseudo-element,.token.url-reference .token.variable{color:#795da3}.token.entity{cursor:help}.token.title,.token.title .token.punctuation{font-weight:700;color:#1d3e81}.token.list{color:#ed6a43}.token.inserted{background-color:#eaffea;color:#55a532}.token.deleted{background-color:#ffecec;color:#bd2c00}.token.bold{font-weight:700}.token.italic{font-style:italic}.language-json .token.property{color:#183691}.language-markup .token.tag .token.punctuation{color:#333}.language-css .token.function,code.language-css{color:#0086b3}.language-yaml .token.atrule{color:#63a35c}code.language-yaml{color:#183691}.language-ruby .token.function{color:#333}.language-markdown .token.url{color:#795da3}.language-makefile .token.symbol{color:#795da3}.language-makefile .token.variable{color:#183691}.language-makefile .token.builtin{color:#0086b3}.language-bash .token.keyword{color:#0086b3}pre[data-line]{position:relative;padding:1em 0 1em 3em}pre[data-line] .line-highlight-wrapper{position:absolute;top:0;left:0;background-color:transparent;display:block;width:100%}pre[data-line] .line-highlight{position:absolute;left:0;right:0;padding:inherit 0;margin-top:1em;background:hsla(24,20%,50%,.08);background:linear-gradient(to right,hsla(24,20%,50%,.1) 70%,hsla(24,20%,50%,0));pointer-events:none;line-height:inherit;white-space:pre}pre[data-line] .line-highlight:before,pre[data-line] .line-highlight[data-end]:after{content:attr(data-start);position:absolute;top:.4em;left:.6em;min-width:1em;padding:0 .5em;background-color:hsla(24,20%,50%,.4);color:#f4f1ef;font:bold 65%/1.5 sans-serif;text-align:center;vertical-align:.3em;border-radius:999px;text-shadow:none;box-shadow:0 1px #fff}pre[data-line] .line-highlight[data-end]:after{content:attr(data-end);top:auto;bottom:.4em}html body{font-family:'Helvetica Neue',Helvetica,'Segoe UI',Arial,freesans,sans-serif;font-size:16px;line-height:1.6;color:#333;background-color:#fff;overflow:initial;box-sizing:border-box;word-wrap:break-word}html body>:first-child{margin-top:0}html body h1,html body h2,html body h3,html body h4,html body h5,html body h6{line-height:1.2;margin-top:1em;margin-bottom:16px;color:#000}html body h1{font-size:2.25em;font-weight:300;padding-bottom:.3em}html body h2{font-size:1.75em;font-weight:400;padding-bottom:.3em}html body h3{font-size:1.5em;font-weight:500}html body h4{font-size:1.25em;font-weight:600}html body h5{font-size:1.1em;font-weight:600}html body h6{font-size:1em;font-weight:600}html body h1,html body h2,html body h3,html body h4,html body h5{font-weight:600}html body h5{font-size:1em}html body h6{color:#5c5c5c}html body strong{color:#000}html body del{color:#5c5c5c}html body a:not([href]){color:inherit;text-decoration:none}html body a{color:#08c;text-decoration:none}html body a:hover{color:#00a3f5;text-decoration:none}html body img{max-width:100%}html body>p{margin-top:0;margin-bottom:16px;word-wrap:break-word}html body>ol,html body>ul{margin-bottom:16px}html body ol,html body ul{padding-left:2em}html body ol.no-list,html body ul.no-list{padding:0;list-style-type:none}html body ol ol,html body ol ul,html body ul ol,html body ul ul{margin-top:0;margin-bottom:0}html body li{margin-bottom:0}html body li.task-list-item{list-style:none}html body li>p{margin-top:0;margin-bottom:0}html body .task-list-item-checkbox{margin:0 .2em .25em -1.8em;vertical-align:middle}html body .task-list-item-checkbox:hover{cursor:pointer}html body blockquote{margin:16px 0;font-size:inherit;padding:0 15px;color:#5c5c5c;background-color:#f0f0f0;border-left:4px solid #d6d6d6}html body blockquote>:first-child{margin-top:0}html body blockquote>:last-child{margin-bottom:0}html body hr{height:4px;margin:32px 0;background-color:#d6d6d6;border:0 none}html body table{margin:10px 0 15px 0;border-collapse:collapse;border-spacing:0;display:block;width:100%;overflow:auto;word-break:normal;word-break:keep-all}html body table th{font-weight:700;color:#000}html body table td,html body table th{border:1px solid #d6d6d6;padding:6px 13px}html body dl{padding:0}html body dl dt{padding:0;margin-top:16px;font-size:1em;font-style:italic;font-weight:700}html body dl dd{padding:0 16px;margin-bottom:16px}html body code{font-family:Menlo,Monaco,Consolas,'Courier New',monospace;font-size:.85em;color:#000;background-color:#f0f0f0;border-radius:3px;padding:.2em 0}html body code::after,html body code::before{letter-spacing:-.2em;content:'\00a0'}html body pre>code{padding:0;margin:0;word-break:normal;white-space:pre;background:0 0;border:0}html body .highlight{margin-bottom:16px}html body .highlight pre,html body pre{padding:1em;overflow:auto;line-height:1.45;border:#d6d6d6;border-radius:3px}html body .highlight pre{margin-bottom:0;word-break:normal}html body pre code,html body pre tt{display:inline;max-width:initial;padding:0;margin:0;overflow:initial;line-height:inherit;word-wrap:normal;background-color:transparent;border:0}html body pre code:after,html body pre code:before,html body pre tt:after,html body pre tt:before{content:normal}html body blockquote,html body dl,html body ol,html body p,html body pre,html body ul{margin-top:0;margin-bottom:16px}html body kbd{color:#000;border:1px solid #d6d6d6;border-bottom:2px solid #c7c7c7;padding:2px 4px;background-color:#f0f0f0;border-radius:3px}@media print{html body{background-color:#fff}html body h1,html body h2,html body h3,html body h4,html body h5,html body h6{color:#000;page-break-after:avoid}html body blockquote{color:#5c5c5c}html body pre{page-break-inside:avoid}html body table{display:table}html body img{display:block;max-width:100%;max-height:100%}html body code,html body pre{word-wrap:break-word;white-space:pre}}.markdown-preview{width:100%;height:100%;box-sizing:border-box}.markdown-preview ul{list-style:disc}.markdown-preview ul ul{list-style:circle}.markdown-preview ul ul ul{list-style:square}.markdown-preview ol{list-style:decimal}.markdown-preview ol ol,.markdown-preview ul ol{list-style-type:lower-roman}.markdown-preview ol ol ol,.markdown-preview ol ul ol,.markdown-preview ul ol ol,.markdown-preview ul ul ol{list-style-type:lower-alpha}.markdown-preview .newpage,.markdown-preview .pagebreak{page-break-before:always}.markdown-preview pre.line-numbers{position:relative;padding-left:3.8em;counter-reset:linenumber}.markdown-preview pre.line-numbers>code{position:relative}.markdown-preview pre.line-numbers .line-numbers-rows{position:absolute;pointer-events:none;top:1em;font-size:100%;left:0;width:3em;letter-spacing:-1px;border-right:1px solid #999;-webkit-user-select:none;-moz-user-select:none;-ms-user-select:none;user-select:none}.markdown-preview pre.line-numbers .line-numbers-rows>span{pointer-events:none;display:block;counter-increment:linenumber}.markdown-preview pre.line-numbers .line-numbers-rows>span:before{content:counter(linenumber);color:#999;display:block;padding-right:.8em;text-align:right}.markdown-preview .mathjax-exps .MathJax_Display{text-align:center!important}.markdown-preview:not([data-for=preview]) .code-chunk .code-chunk-btn-group{display:none}.markdown-preview:not([data-for=preview]) .code-chunk .status{display:none}.markdown-preview:not([data-for=preview]) .code-chunk .output-div{margin-bottom:16px}.markdown-preview .md-toc{padding:0}.markdown-preview .md-toc .md-toc-link-wrapper .md-toc-link{display:inline;padding:.25rem 0}.markdown-preview .md-toc .md-toc-link-wrapper .md-toc-link div,.markdown-preview .md-toc .md-toc-link-wrapper .md-toc-link p{display:inline}.markdown-preview .md-toc .md-toc-link-wrapper.highlighted .md-toc-link{font-weight:800}.scrollbar-style::-webkit-scrollbar{width:8px}.scrollbar-style::-webkit-scrollbar-track{border-radius:10px;background-color:transparent}.scrollbar-style::-webkit-scrollbar-thumb{border-radius:5px;background-color:rgba(150,150,150,.66);border:4px solid rgba(150,150,150,.66);background-clip:content-box}html body[for=html-export]:not([data-presentation-mode]){position:relative;width:100%;height:100%;top:0;left:0;margin:0;padding:0;overflow:auto}html body[for=html-export]:not([data-presentation-mode]) .markdown-preview{position:relative;top:0;min-height:100vh}@media screen and (min-width:914px){html body[for=html-export]:not([data-presentation-mode]) .markdown-preview{padding:2em calc(50% - 457px + 2em)}}@media screen and (max-width:914px){html body[for=html-export]:not([data-presentation-mode]) .markdown-preview{padding:2em}}@media screen and (max-width:450px){html body[for=html-export]:not([data-presentation-mode]) .markdown-preview{font-size:14px!important;padding:1em}}@media print{html body[for=html-export]:not([data-presentation-mode]) #sidebar-toc-btn{display:none}}html body[for=html-export]:not([data-presentation-mode]) #sidebar-toc-btn{position:fixed;bottom:8px;left:8px;font-size:28px;cursor:pointer;color:inherit;z-index:99;width:32px;text-align:center;opacity:.4}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] #sidebar-toc-btn{opacity:1}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc{position:fixed;top:0;left:0;width:300px;height:100%;padding:32px 0 48px 0;font-size:14px;box-shadow:0 0 4px rgba(150,150,150,.33);box-sizing:border-box;overflow:auto;background-color:inherit}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc::-webkit-scrollbar{width:8px}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc::-webkit-scrollbar-track{border-radius:10px;background-color:transparent}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc::-webkit-scrollbar-thumb{border-radius:5px;background-color:rgba(150,150,150,.66);border:4px solid rgba(150,150,150,.66);background-clip:content-box}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc a{text-decoration:none}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc .md-toc{padding:0 16px}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc .md-toc .md-toc-link-wrapper .md-toc-link{display:inline;padding:.25rem 0}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc .md-toc .md-toc-link-wrapper .md-toc-link div,html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc .md-toc .md-toc-link-wrapper .md-toc-link p{display:inline}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc .md-toc .md-toc-link-wrapper.highlighted .md-toc-link{font-weight:800}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .markdown-preview{left:300px;width:calc(100% - 300px);padding:2em calc(50% - 457px - 300px / 2);margin:0;box-sizing:border-box}@media screen and (max-width:1274px){html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .markdown-preview{padding:2em}}@media screen and (max-width:450px){html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .markdown-preview{width:100%}}html body[for=html-export]:not([data-presentation-mode]):not([html-show-sidebar-toc]) .markdown-preview{left:50%;transform:translateX(-50%)}html body[for=html-export]:not([data-presentation-mode]):not([html-show-sidebar-toc]) .md-sidebar-toc{display:none}
+/* Please visit the URL below for more information: */
+/*   https://shd101wyy.github.io/markdown-preview-enhanced/#/customize-css */
+
+      </style>
+      <!-- The content below will be included at the end of the <head> element. --><script type="text/javascript">
+  document.addEventListener("DOMContentLoaded", function () {
+    // your code here
+  });
+</script></head><body for="html-export">
+    
+    
+      <div class="crossnote markdown-preview  ">
+      
+<p><a id="article_top" href=""></a></p>
+<h1 id="agenda">Agenda </h1>
+<ul>
+<li>
+<p>Introduce boot code and app code modification for RL78</p>
+<ul>
+<li>In this section , use RL78 F24 as example<br>
+<br></li>
+</ul>
+</li>
+<li>
+<p>reference document</p>
+<ul>
+<li>How to set up boot code and app project<br>
+<a href="https://www.renesas.com/en/document/man/rl78-family-c-compiler-package-cc-rl-how-divide-boot-and-flash-areas?srsltid=AfmBOoopybLnK6nMIfwPclpX1SYJL0OfZ1ZD5o9odBLUk4F70ckFtVWd">How to Divide Boot and Flash Areas</a><br>
+<br></li>
+</ul>
+<p><a id="target_MCU_flash_type" href=""></a></p>
+<ul>
+<li>
+<p>How to know the MCU need use which flash library type (code flash)<br>
+<a href="https://www.renesas.com/en/document/oth/rl78-family-flash-memory-reprogramming-software-introduction?r=488891">RL78 FAMILY FLASH MEMORY REPROGRAMMING SOFTWARE INTRODUCTION</a></p>
+<ul>
+<li>RL78 F23/F24 : Renesas Flash Driver RL78 Type 02</li>
+<li>RL78 G22/G23/G24 : Renesas Flash Driver RL78 Type 01</li>
+<li>RL78 G15/G16 : Renesas Flash Sample Program Type 01</li>
+<li>RL78 x1x : Flash Self Programming Library Type01<br>
+<br></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p><img src="img/flash_library_01.jpg" alt=""><br>
+<img src="img/flash_library_02.jpg" alt=""><br>
+<img src="img/flash_library_03.jpg" alt=""><br>
+<img src="img/flash_library_04.jpg" alt=""></p>
+<ul>
+<li>
+<p>reference code base : boot code (RL78 F24)<br>
+<a href="https://github.com/released/RL78_F24_Boot_loader_UART">RL78_F24_Boot_loader_UART</a><br>
+<br></p>
+</li>
+<li>
+<p>reference code base : app code (RL78 F24)<br>
+<a href="https://github.com/released/RL78_F24_Boot_loader_app">RL78_F24_Boot_loader_app</a><br>
+<br></p>
+</li>
+</ul>
+<hr>
+<h1 id="flash-architecture">Flash architecture </h1>
+<p>MCU flash will split to Boot area (boot code) and Flash area (app code)</p>
+<p><img src="img/flash_arch.jpg" alt=""></p>
+<p><u>How to Divide Boot and Flash Areas</u></p>
+<hr>
+<h1 id="scenario--boot-area-boot-code">Scenario : Boot area (boot code) </h1>
+<ul>
+<li><strong>condition_check</strong> : detect <mark>flag</mark> store in ram specific area (ex : 0xFFE10) ,
+<ul>
+<li>to determine if re-boot from Flash area (app code)</li>
+<li>if no app code in app section</li>
+<li>CRC check error when power on</li>
+<li>any other custom user defined condition</li>
+</ul>
+</li>
+<li>at Flash area (app code) last 4 bytes , will store <mark>CRC data</mark> , read the CRC byte and compare to the CRC of Flash area (app code) , if comapare error , stay in Boot area (boot code)</li>
+<li>base on the <mark>flag</mark> or <mark>BUTTON presssed (active LOW)</mark> , to determine if going to receive data flow from interface (ex : I2C , UART , ...) or ready to jump into Flash area (app code)</li>
+<li><strong>programming Flash area (app code) flow</strong>
+<ul>
+<li>after Flash area (app code) update finish , read the CRC byte and compare to the CRC of Flash area (app code) , then leave update flow</li>
+<li>if CRC compare OK and no detect update inquiry , jump to Flash area (app code)</li>
+</ul>
+</li>
+<li><mark>NO INTERRUPT , use POLLING</mark> to receive interface data</li>
+</ul>
+<p><img src="img/boot_flag_check.jpg" alt=""></p>
+<hr>
+<p><a id="ram_flag" href=""></a></p>
+<h1 id="scenario--flash-area-app-code">Scenario : Flash area (app code) </h1>
+<ul>
+<li>set <mark>ram flag</mark> store in ram specific area (ex : 0xFFE10)
+<ul>
+<li>change flag data and execute reset , when
+<ul>
+<li>receive interface boot command (ex : I2C , UART , ...)</li>
+<li>any other custom user defined condition (ex : ADC , GPIO etc)</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>at Flash area (app code) last 2 bytes , will add <mark>CRC data</mark> after project compile finish</li>
+</ul>
+<p><img src="img/app_flag_set.jpg" alt=""></p>
+<hr>
+<h1 id="project--boot-codeapp-code-modifictaion---ftableinc">Project : boot code/app code modifictaion - ftable.inc </h1>
+<p><a id="FALSH_TABLE" href=""></a><br>
+<a id="ftable_inc" href=""></a></p>
+<ul>
+<li>
+<p><mark>create and register</mark> below file in <strong>Boot area (boot code)</strong> and <strong>Flash area (app code)</strong> project</p>
+</li>
+<li>
+<p>ftable.inc</p>
+</li>
+</ul>
+<pre data-role="codeBlock" data-info="" class="language-text"><code>FLASH_TABLE       .EQU  0x5000 
+INTERRUPT_OFFSET  .EQU  0x100 
+</code></pre><br>
+<p><a id="map_const" href=""></a></p>
+<ul>
+<li>the vaule will be <mark>boot code size (app code start address)</mark></li>
+<li>Due to mirror memory limitations, constant data cannot exist before mirror address - 0xF0000 (ex : 0xF5000 - 0xF0000 = 0x5000)</li>
+<li>below is each RL78 platform minimum boot code code size definition , FLASH_TABLE <mark>MUST set bigger or equal to</mark> definition</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th style="text-align:center">RL78</th>
+<th style="text-align:center">const size</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:center">F24</td>
+<td style="text-align:center">0x5000</td>
+</tr>
+<tr>
+<td style="text-align:center">F23</td>
+<td style="text-align:center">0x3000</td>
+</tr>
+<tr>
+<td style="text-align:center">F13</td>
+<td style="text-align:center">0x2000</td>
+</tr>
+<tr>
+<td style="text-align:center">G15</td>
+<td style="text-align:center">0x800</td>
+</tr>
+<tr>
+<td style="text-align:center">G16</td>
+<td style="text-align:center">0x800</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li>below is default project map file after compile</li>
+</ul>
+<p><strong>RL78 F24</strong><br>
+<img src="img/map_const_F24.jpg" alt=""><br>
+<strong>RL78 F23</strong><br>
+<img src="img/map_const_F23.jpg" alt=""><br>
+<strong>RL78 F13</strong><br>
+<img src="img/map_const_F13.jpg" alt=""><br>
+<strong>RL78 G15</strong><br>
+<img src="img/map_const_G15.jpg" alt=""><br>
+<strong>RL78 G16</strong><br>
+<img src="img/map_const_G16.jpg" alt=""></p>
+<p><u>How to Divide Boot and Flash Areas</u></p>
+<hr>
+<h1 id="project--boot-code-modifictaion---cstartasm">Project : boot code modifictaion - cstart.asm </h1>
+<p>refer to How to Divide Boot and Flash Areas :<br>
+<strong>3.1.1  Modifying the startup routine (cstart.asm)</strong></p>
+<ul>
+<li>use smart config generate code</li>
+<li><mark>copy</mark> cstart.asm to boot code project root folder</li>
+<li><mark>register</mark> to Boot area (boot code) project , then start to <mark>modify</mark></li>
+</ul>
+<p>(1)<br>
+include <a href="#ftable_inc">ftable.inc</a></p>
+<p><img src="img/cstart_01.jpg" alt=""></p>
+<p>(2)<br>
+comment out conditional check</p>
+<p><img src="img/cstart_02.jpg" alt=""></p>
+<p>(3)<br>
+modify the section name</p>
+<p><img src="img/cstart_03.jpg" alt=""></p>
+<p>(4)<br>
+comment out conditional check and assembly instructions</p>
+<p><img src="img/cstart_04.jpg" alt=""></p>
+<p>(5)<br>
+modify main function name (<strong>boot_main</strong>) <a id="boot_main" href=""></a><br>
+add branch instructions : <a href="#FALSH_TABLE">FALSH_TABLE</a></p>
+<p><img src="img/cstart_05.jpg" alt=""></p>
+<p>(6)<br>
+comment out .const section</p>
+<p><img src="img/cstart_06.jpg" alt=""></p>
+<p>(7)<br>
+comment out bsp_init_system</p>
+<p><img src="img/cstart_07.jpg" alt=""></p>
+<p>(8)<br>
+modify hardware init function name (<strong>boot_hdwinit</strong>) <a id="boot_hdwinit" href=""></a></p>
+<p><img src="img/cstart_08.jpg" alt=""></p>
+<p><u>How to Divide Boot and Flash Areas</u></p>
+<hr>
+<h1 id="project--boot-code-modifictaion---stkinitasm">Project : boot code modifictaion - stkinit.asm </h1>
+<p>refer to How to Divide Boot and Flash Areas :<br>
+<strong>3.1.2  Modifying hdwinit.asm and stkinit.asm</strong></p>
+<ul>
+<li>use smart config generate code</li>
+<li><mark>copy</mark> stkinit.asm to boot code project root folder</li>
+<li><mark>register</mark> to Boot area (boot code) project , then start to <mark>modify</mark></li>
+</ul>
+<ul>
+<li>modify the section name</li>
+</ul>
+<p><img src="img/stkinit_01.jpg" alt=""></p>
+<p><u>How to Divide Boot and Flash Areas</u></p>
+<hr>
+<h1 id="project--boot-code-modifictaion---project-tree">Project : boot code modifictaion - project tree </h1>
+<ul>
+<li>after modification , <mark>Boot area (boot code) project</mark> will increse 3 files as below</li>
+</ul>
+<p><img src="img/boot_project_tree_01.jpg" alt=""></p>
+<ul>
+<li>make sure manual register <mark>cstart.asm , stkinit.asm</mark> if file <mark>missing</mark> after <mark>generate code</mark></li>
+</ul>
+<p><img src="img/boot_project_tree_02.jpg" alt=""></p>
+<p><u>How to Divide Boot and Flash Areas</u></p>
+<hr>
+<h1 id="project--boot-code-modifictaion---add-code-flash-library">Project : boot code modifictaion - add CODE FLASH library </h1>
+<ul>
+<li>base on <a href="#target_MCU_flash_type">RL78 MCU</a>  , register correspond <mark>CODE FLASH library</mark> into Boot area (boot code) project and exclude uncessary file (data flash , extra area)</li>
+</ul>
+<p><img src="img/RFD_tree_file.jpg" alt=""></p>
+<p><u>Renesas Flash Driver RL78 Type 02 User’s  Manual</u></p>
+<hr>
+<h1 id="project--boot-code-modifictaion---add-crc-compare-1">Project : boot code modifictaion - add CRC compare (1) </h1>
+<ul>
+<li>register CRC compare into Boot area (boot code) project</li>
+<li>purpose:
+<ul>
+<li>condition check (check and compare app code CRC , prevent jump into corrupted app code)</li>
+<li>after update flash , check CRC and prepare jump into app code</li>
+</ul>
+</li>
+</ul>
+<p><img src="img/crc_01.jpg" alt=""><br>
+<img src="img/crc_02.jpg" alt=""></p>
+<hr>
+<h1 id="project--boot-code-modifictaion---add-crc-compare-2">Project : boot code modifictaion - add CRC compare (2) </h1>
+<br>
+<span style="color:#FF0000">
+CRC in app code last 4 bytes will be added after compile at <b><u>app code project</u></b> by setting CS+<br><br>
+</span>
+<p><img src="img/app_hex_output_CRC.jpg" alt=""></p>
+<hr>
+<h1 id="project--boot-code-modifictaion---use-smart-config-tool-to-generate-driver">Project : boot code modifictaion - use smart config tool to generate driver </h1>
+<ul>
+<li>use smart config to generate target interface drvier , to use in boot code project
+<ul>
+<li>make sure manual register <mark>cstart.asm , stkinit.asm</mark> if file <mark>missing</mark> after <mark>generate code</mark></li>
+</ul>
+</li>
+</ul>
+<p><img src="img/boot_project_tree_02.jpg" alt=""></p>
+<ul>
+<li>move those driver function into boot_main.c (to reduce boot code size and prevent duplicate function call in app code)</li>
+<li>exclude the driver code (c code , asm code)</li>
+</ul>
+<p><img src="img/boot_smc_01.jpg" alt=""><br>
+<img src="img/boot_smc_02.jpg" alt=""><br>
+<img src="img/boot_smc_03.jpg" alt=""><br>
+<img src="img/boot_smc_04.jpg" alt=""><br>
+<img src="img/boot_smc_05.jpg" alt=""></p>
+<hr>
+<h1 id="project--boot-code-modifictaion---boot_mainc">Project : boot code modifictaion - boot_main.c </h1>
+<ul>
+<li>for boot_hdwinit() , will be initialized by <a href="#boot_hdwinit">cstart.asm</a>
+<ul>
+<li><mark>copy</mark> below function from driver and <mark>rename</mark> in boot_main.c for boot_hdwinit
+<ul>
+<li>bsp_init_system()
+<ul>
+<li>copy mcu_clock_setup()</li>
+</ul>
+</li>
+<li>R_Config_PORT_Create</li>
+<li>if use UART for debug or download
+<ul>
+<li>R_SAU0_Create()</li>
+<li>R_Config_UART0_Start()</li>
+<li>R_SAU1_Create()</li>
+<li>R_Config_UART1_Start()</li>
+</ul>
+</li>
+<li>R_Config_IICA0_Create()</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>for boot_main() , will start with condition check and judge if need to start programming</li>
+</ul>
+<hr>
+<h1 id="project--boot-code-modifictaion---i2c-command-flow">Project : boot code modifictaion - I2C command flow </h1>
+<ul>
+<li>No READ operation</li>
+<li>No Authentication operation</li>
+</ul>
+<p><img src="img/boot_i2c_command_packet.jpg" alt=""><br>
+<img src="img/boot_i2c_data_packet.jpg" alt=""></p>
+<p><img src="img/boot_i2c_01.jpg" alt=""><br>
+<img src="img/boot_i2c_02.jpg" alt=""><br>
+<img src="img/boot_i2c_03.jpg" alt=""></p>
+<hr>
+<h1 id="project--boot-code-property-modifictaion---e2-lite-setting">Project : boot code property modifictaion - E2 lite setting </h1>
+<p><img src="img/boot_e2_lite_property_flash.jpg" alt=""></p>
+<p><u>CC-RL Compiler User's Manual</u><br>
+<u>CS+ User’s Manual: CC-RL Build Tool Operation</u></p>
+<hr>
+<h1 id="project--boot-code-property-modifictaion---cc-rl-build-tool-setting">Project : boot code property modifictaion - CC-RL Build Tool setting </h1>
+<p><strong>Common Options</strong></p>
+<p>refer to How to Divide Boot and Flash Areas :<br>
+<strong>3.2.5  Specifying hex file output only to the boot area address range</strong></p>
+<p><img src="img/boot_property_common_01.jpg" alt=""></p>
+<ul>
+<li><strong>[Frequently Used Options (for Hex Output)] &gt; [Division output file]</strong>
+<ul>
+<li>base on MCU (ex : RL78F24) , to set boot code <mark>start address and end address</mark> as file name</li>
+</ul>
+</li>
+<li>file size will be different if use other platform (ex : RL78 F13 , RL78 G16 , etc)
+<ul>
+<li><a href="#map_const">map const define ?</a></li>
+</ul>
+</li>
+</ul>
+<pre data-role="codeBlock" data-info="" class="language-text"><code>%BuildModeName%\boot0000_4FFF.hex=0000-4FFF
+</code></pre><table>
+<thead>
+<tr>
+<th style="text-align:center">RL78</th>
+<th style="text-align:center">const size</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:center">F24</td>
+<td style="text-align:center">0x5000</td>
+</tr>
+<tr>
+<td style="text-align:center">F23</td>
+<td style="text-align:center">0x3000</td>
+</tr>
+<tr>
+<td style="text-align:center">F13</td>
+<td style="text-align:center">0x2000</td>
+</tr>
+<tr>
+<td style="text-align:center">G15</td>
+<td style="text-align:center">0x800</td>
+</tr>
+<tr>
+<td style="text-align:center">G16</td>
+<td style="text-align:center">0x800</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<p><img src="img/boot_property_common_02.jpg" alt=""></p>
+<p><a id="fsy_file" href=""></a></p>
+<ul>
+<li><strong>[Other] &gt; [Commands executed after build processing]</strong>
+<ul>
+<li>add : copy_fsy.bat</li>
+<li>copy <mark>boot code project fsy</mark> file to app code project root folder</li>
+</ul>
+</li>
+</ul>
+<pre data-role="codeBlock" data-info="" class="language-text"><code>copy /y/v .\DefaultBuild\RL78_F24_Boot_loader_UART.fsy ..\RL78_F24_Boot_loader_app\
+</code></pre><p><img src="img/boot_foloder_DefaultBuild.jpg" alt=""></p>
+<p><u>How to Divide Boot and Flash Areas</u><br>
+<u>CC-RL Compiler User's Manual</u><br>
+<u>CS+ User’s Manual: CC-RL Build Tool Operation</u></p>
+<hr>
+<h1 id="project--boot-code-property-modifictaion---cc-rl-build-tool-setting-1">Project : boot code property modifictaion - CC-RL Build Tool setting </h1>
+<p><strong>Compile Options</strong></p>
+<p><img src="img/boot_property_compile_01.jpg" alt=""></p>
+<p><img src="img/boot_property_compile_02.jpg" alt=""></p>
+<p><u>How to Divide Boot and Flash Areas</u><br>
+<u>CC-RL Compiler User's Manual</u><br>
+<u>CS+ User’s Manual: CC-RL Build Tool Operation</u></p>
+<hr>
+<h1 id="project--boot-code-property-modifictaion---cc-rl-build-tool-setting-2">Project : boot code property modifictaion - CC-RL Build Tool setting </h1>
+<p><strong>Link Options</strong></p>
+<p><img src="img/boot_property_link_01.jpg" alt=""></p>
+<ul>
+<li><strong>[Device] &gt; [Option byte values for OCD]</strong>
+<ul>
+<li>set to <code>A5</code></li>
+<li>default will be 0xFF<br>
+<img src="img/boot_property_link_02.jpg" alt=""><br>
+<br></li>
+</ul>
+</li>
+</ul>
+<p><img src="img/boot_property_link_03.jpg" alt=""></p>
+<ul>
+<li><strong>[Output Code] &gt; [Execute start address]</strong>
+<ul>
+<li>will be called by cstart.asm<br>
+<br></li>
+</ul>
+</li>
+</ul>
+<hr>
+<ul>
+<li><strong>[Output Code] &gt; [Address setting for specified area for vector table]</strong>
+<ul>
+<li>
+<p>use vect_address.xlsx under boot code project , to copy shift address<br>
+<img src="img/boot_property_link_03_1.jpg" alt=""></p>
+</li>
+<li>
+<p>entry editor and paste the shift address<br>
+<img src="img/boot_property_link_03_2.jpg" alt=""></p>
+</li>
+<li>
+<p>the final result :<br>
+<img src="img/boot_property_link_04.jpg" alt=""><br>
+<br></p>
+</li>
+</ul>
+</li>
+</ul>
+<hr>
+<p><img src="img/boot_property_link_05.jpg" alt=""></p>
+<ul>
+<li>
+<p><strong>[List] &gt; [Ooutput link map file]</strong></p>
+<ul>
+<li>select -SHow=ALL , will display the compile result (function , address) in map file for debug</li>
+<li>map file under /DefaultBuild<br>
+<img src="img/boot_property_link_05_1.jpg" alt=""></li>
+</ul>
+</li>
+<li>
+<p>refer to document :</p>
+<ul>
+<li>How to Divide Boot and Flash Areas (R20UT3475EJ0300)
+<ul>
+<li><strong>3.2.2  Specifying the section allocation</strong></li>
+</ul>
+</li>
+<li>Renesas Flash Driver RL78 Type 02 User’s  Manual (R20UT5009EJ0110)
+<ul>
+<li><strong>6.1.3.3  Section Item Settings</strong><br>
+<br></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<hr>
+<p><img src="img/boot_property_link_06.jpg" alt=""></p>
+<ul>
+<li>
+<p><strong>[Section] &gt; [Section start address]</strong></p>
+<ul>
+<li>entry editor and modify as below :</li>
+<li>flash area</li>
+</ul>
+<pre data-role="codeBlock" data-info="" class="language-text"><code>RFD_DATA_n 
+RFD_CMN_f 
+RFD_CF_f 
+SMP_CMN_f 
+SMP_CF_f 
+</code></pre><ul>
+<li>ram area</li>
+</ul>
+<pre data-role="codeBlock" data-info="" class="language-text"><code>RFD_DATA_nR 
+RFD_CMN_fR 
+RFD_CF_fR 
+SMP_CMN_fR 
+SMP_CF_fR   
+</code></pre><p><img src="img/boot_property_link_06_1.jpg" alt=""><br>
+<br></p>
+</li>
+<li>
+<p><strong>[Section] &gt; [Section that outputs external symbols to the file]</strong></p>
+<ul>
+<li>entry editor and modify as below :</li>
+</ul>
+<pre data-role="codeBlock" data-info="" class="language-text"><code>.constf
+.text
+.textf
+.bss
+.sbss
+.data
+.sdata
+.RLIB
+.SLIB  
+</code></pre></li>
+</ul>
+<p><img src="img/boot_property_link_08.jpg" alt=""><br>
+<br></p>
+<ul>
+<li>
+<p><strong>[Section] &gt; [ROM to RAM mapped section]</strong></p>
+<ul>
+<li>entry editor and modify as below :</li>
+</ul>
+<pre data-role="codeBlock" data-info="" class="language-text"><code>.data=.dataR
+.sdata=.sdataR
+RFD_DATA_n=RFD_DATA_nR 
+RFD_CMN_f=RFD_CMN_fR 
+RFD_CF_f=RFD_CF_fR 
+SMP_CMN_f=SMP_CMN_fR 
+SMP_CF_f=SMP_CF_fR  
+</code></pre></li>
+</ul>
+<p><img src="img/boot_property_link_09.jpg" alt=""><br>
+<img src="img/boot_property_link_09_1.jpg" alt=""></p>
+<ul>
+<li>the final result :<br>
+<img src="img/boot_property_link_07.jpg" alt=""><br>
+<br></li>
+</ul>
+<hr>
+<ul>
+<li>in case of need to modify from RL78 F24 to RL78 F23 (code flash , data flash , extra area)
+<ul>
+<li>code flash<br>
+<img src="img/boot_property_link_06_2.jpg" alt=""></li>
+<li>data flash<br>
+<img src="img/boot_property_link_06_3.jpg" alt=""></li>
+<li>extra area<br>
+<img src="img/boot_property_link_06_4.jpg" alt=""></li>
+<li>RAM<br>
+<img src="img/boot_property_link_06_5.jpg" alt=""><br>
+<br></li>
+</ul>
+</li>
+</ul>
+<hr>
+<p><img src="img/boot_property_link_10.jpg" alt=""></p>
+<ul>
+<li><strong>[Others] &gt; [Display total size sections]</strong>
+<ul>
+<li>select -Total_size , will display the section size in output window</li>
+<li>display build code size in Output window<br>
+<img src="img/boot_property_link_10_1.jpg" alt=""></li>
+</ul>
+</li>
+</ul>
+<p><u>How to Divide Boot and Flash Areas</u><br>
+<u>CC-RL Compiler User's Manual</u><br>
+<u>CS+ User’s Manual: CC-RL Build Tool Operation</u><br>
+<u>Renesas Flash Driver RL78 Type 02 User’s  Manual</u></p>
+<hr>
+<h1 id="project--boot-code-property-modifictaion---cc-rl-build-tool-setting-3">Project : boot code property modifictaion - CC-RL Build Tool setting </h1>
+<p><strong>Hex Output Options</strong></p>
+<p>refer to How to Divide Boot and Flash Areas :<br>
+<strong>3.2.5  Specifying hex file output only to the boot area address range</strong></p>
+<p><img src="img/boot_hex_output_01.jpg" alt=""></p>
+<ul>
+<li><strong>[Output File] &gt; [Division output file]</strong>
+<ul>
+<li>base on MCU (ex : RL78F24) , to set boot code <mark>start address and end address</mark> as file name</li>
+</ul>
+</li>
+<li>file size will be different if use other platform (ex : RL78 F13 , RL78 G16 , etc)
+<ul>
+<li><a href="#map_const">map const define ?</a></li>
+</ul>
+</li>
+</ul>
+<pre data-role="codeBlock" data-info="" class="language-text"><code>%BuildModeName%\boot0000_4FFF.hex=0000-4FFF
+</code></pre><table>
+<thead>
+<tr>
+<th style="text-align:center">RL78</th>
+<th style="text-align:center">const size</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:center">F24</td>
+<td style="text-align:center">0x5000</td>
+</tr>
+<tr>
+<td style="text-align:center">F23</td>
+<td style="text-align:center">0x3000</td>
+</tr>
+<tr>
+<td style="text-align:center">F13</td>
+<td style="text-align:center">0x2000</td>
+</tr>
+<tr>
+<td style="text-align:center">G15</td>
+<td style="text-align:center">0x800</td>
+</tr>
+<tr>
+<td style="text-align:center">G16</td>
+<td style="text-align:center">0x800</td>
+</tr>
+</tbody>
+</table>
+<br>
+<hr>
+<p><img src="img/boot_hex_output_02.jpg" alt=""></p>
+<ul>
+<li><strong>[Hex Format]</strong>
+<ul>
+<li>follow the setting of the picture</li>
+</ul>
+</li>
+</ul>
+<p><u>How to Divide Boot and Flash Areas</u><br>
+<u>CC-RL Compiler User's Manual</u><br>
+<u>CS+ User’s Manual: CC-RL Build Tool Operation</u><br>
+<u>Renesas Flash Driver RL78 Type 02 User’s  Manual</u></p>
+<hr>
+<h1 id="reference---rl78f23-f24-users-manual-hardware---input-source-list">Reference - RL78/F23, F24 User’s Manual: Hardware - Input Source List </h1>
+<p><img src="img/interrupt_source_list_01.jpg" alt=""><br>
+<img src="img/interrupt_source_list_02.jpg" alt=""><br>
+<img src="img/interrupt_source_list_03.jpg" alt=""><br>
+<img src="img/interrupt_source_list_04.jpg" alt=""></p>
+<hr>
+<p><a id="vector_table" href=""></a></p>
+<h1 id="project--rl78f23-f24-users-manual-hardware---vector-table">Project : RL78/F23, F24 User’s Manual: Hardware - Vector Table </h1>
+<p><img src="img/vector_table_01.jpg" alt=""><br>
+<img src="img/vector_table_02.jpg" alt=""></p>
+<hr>
+<h1 id="project--boot-codeapp-code-modifictaion---ftableinc-1">Project : boot code/app code modifictaion - ftable.inc </h1>
+<p><a id="FALSH_TABLE" href=""></a><br>
+<a id="ftable_inc" href=""></a></p>
+<ul>
+<li>
+<p><mark>create and register</mark> below file in <strong>Boot area (boot code)</strong> and <strong>Flash area (app code)</strong> project</p>
+</li>
+<li>
+<p>ftable.inc</p>
+</li>
+</ul>
+<pre data-role="codeBlock" data-info="" class="language-text"><code>FLASH_TABLE       .EQU  0x5000 
+INTERRUPT_OFFSET  .EQU  0x100 
+</code></pre><br>
+<p><a id="map_const" href=""></a></p>
+<ul>
+<li>the vaule will be <mark>boot code size (app code start address)</mark></li>
+<li>Due to mirror memory limitations, constant data cannot exist before mirror address - 0xF0000 (ex : 0xF5000 - 0xF0000 = 0x5000)</li>
+<li>below is each RL78 platform minimum boot code code size definition , FLASH_TABLE <mark>MUST set bigger or equal to</mark> definition</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th style="text-align:center">RL78</th>
+<th style="text-align:center">const size</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:center">F24</td>
+<td style="text-align:center">0x5000</td>
+</tr>
+<tr>
+<td style="text-align:center">F23</td>
+<td style="text-align:center">0x3000</td>
+</tr>
+<tr>
+<td style="text-align:center">F13</td>
+<td style="text-align:center">0x2000</td>
+</tr>
+<tr>
+<td style="text-align:center">G15</td>
+<td style="text-align:center">0x800</td>
+</tr>
+<tr>
+<td style="text-align:center">G16</td>
+<td style="text-align:center">0x800</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li>below is default project map file after compile</li>
+</ul>
+<p><strong>RL78 F24</strong><br>
+<img src="img/map_const_F24.jpg" alt=""><br>
+<strong>RL78 F23</strong><br>
+<img src="img/map_const_F23.jpg" alt=""><br>
+<strong>RL78 F13</strong><br>
+<img src="img/map_const_F13.jpg" alt=""><br>
+<strong>RL78 G15</strong><br>
+<img src="img/map_const_G15.jpg" alt=""><br>
+<strong>RL78 G16</strong><br>
+<img src="img/map_const_G16.jpg" alt=""></p>
+<p><u>How to Divide Boot and Flash Areas</u></p>
+<hr>
+<h1 id="project--app-code-modifictaion---cstartasm">Project : app code modifictaion - cstart.asm </h1>
+<p>refer to How to Divide Boot and Flash Areas :<br>
+<strong>4.1.1  Modifying the startup routine (cstart.asm)</strong></p>
+<ul>
+<li>use smart config generate code</li>
+<li><mark>copy</mark> cstart.asm to app code project root folder</li>
+<li><mark>register</mark> to Flash area (app code) project , then start to <mark>modify</mark></li>
+</ul>
+<ul>
+<li>comment out conditional check</li>
+</ul>
+<p><img src="img/app_cstart_01.jpg" alt=""></p>
+<p><u>How to Divide Boot and Flash Areas</u></p>
+<hr>
+<h1 id="project--app-code-modifictaion---ftableasm">Project : app code modifictaion - ftable.asm </h1>
+<p>refer to How to Divide Boot and Flash Areas :<br>
+<strong>4.1.2  Creating a branch table program (ftable.asm)</strong></p>
+<ul>
+<li>create ftable and register interrupt (used in app code) in proper sequence
+<ul>
+<li><a href="#vector_table">vector table ?</a></li>
+</ul>
+</li>
+</ul>
+<p><img src="img/app_ftable_01.jpg" alt=""></p>
+<ul>
+<li><mark>register</mark> ftable to Flash area (app code) project</li>
+</ul>
+<p><img src="img/app_ftable_02.jpg" alt=""></p>
+<ul>
+<li>example
+<ul>
+<li>in app code , use UART0 TX/RX , UART1 TX/RX , TAU0_1 , IICA0 interrupt</li>
+<li>register these interrupt name with prefix !!_</li>
+</ul>
+</li>
+</ul>
+<pre data-role="codeBlock" data-info="" class="language-text"><code>		.DB4    0xffffffff                      ; INTP13/INTCL	             	;0x0014
+		 BR     !!_r_Config_UART0_interrupt_send	; INTST0/INTCSI00/INTIIC00  ;0x0016
+		 BR     !!_r_Config_UART0_interrupt_receive	; INTSR0/INTCSI01/INTIIC01 	;0x0018
+		.DB4    0xffffffff						; INTTRD0                       ;0x001A
+    ...
+		.DB4    0xffffffff					    ; INTLIN0STA/INTLIN0	        ;0x0026
+		 BR     !!_r_Config_IICA0_interrupt	    ; INTIICA0 		                ;0x0028
+		.DB4    0xffffffff                      ; INTP8/INTRTC                  ;0x002A
+		.DB4    0xffffffff      				; INTTM00                     	;0x002C
+		 BR     !!_r_Config_TAU0_1_interrupt    ; INTTM01                       ;0x002E
+		.DB4    0xffffffff                	    ; INTTM02                       ;0x0030
+    ...
+		.DB4    0xffffffff                      ; INTP10/INTTM03H               ;0x003C
+		 BR     !!_r_Config_UART1_interrupt_send	; INTST1/INTCSI10/INTIIC10      ;0x003E
+		 BR     !!_r_Config_UART1_interrupt_receive	; INTSR1/INTCSI11/INTIIC11      ;0x0040
+		.DB4    0xffffffff					    ; INTTM04                       ;0x0042
+
+</code></pre><p><u>How to Divide Boot and Flash Areas</u></p>
+<hr>
+<h1 id="project--app-code-modifictaion---fsy-file">Project : app code modifictaion - fsy file </h1>
+<p>refer to How to Divide Boot and Flash Areas :<br>
+<strong>4.2.1  Registering the externally defined symbol file with the project</strong></p>
+<ul>
+<li>when boot code build finish , will copy fsy file into app code project
+<ul>
+<li><a href="#fsy_file">fsy file ?</a></li>
+</ul>
+</li>
+<li><mark>register</mark> fsy file to Flash area (app code) project</li>
+</ul>
+<p><img src="img/app_fsy_file_01.jpg" alt=""></p>
+<p><u>How to Divide Boot and Flash Areas</u></p>
+<hr>
+<h1 id="project--app-code-modifictaion---project-tree">Project : app code modifictaion - project tree </h1>
+<ul>
+<li>after modification , <mark>Flash area (app code) project</mark> will increse 4 files as below</li>
+</ul>
+<p><img src="img/app_project_tree_01.jpg" alt=""></p>
+<hr>
+<h1 id="project--app-code-modifictaion---use-smart-config-tool-to-generate-driver">Project : app code modifictaion - use smart config tool to generate driver </h1>
+<ul>
+<li>exclude the driver code (c code , asm code)</li>
+</ul>
+<p><img src="img/app_smc_01.jpg" alt=""></p>
+<hr>
+<h1 id="project--app-code-modifictaion----remove-static-and-vect-define">Project : app code modifictaion -  remove static and vect define </h1>
+<p>refer to How to Divide Boot and Flash Areas :<br>
+<strong>Do not specify the vector address (vect) with the #pragma interrupt directive in the flash area.</strong></p>
+<ul>
+<li><mark>EVERY TIME</mark> when use smart config tool to re-generate driver ,</li>
+<li>need to <mark>remove static declaration</mark> and <mark>comment on vect definition</mark> in earch drvier <mark>Config_xxx_user.c</mark></li>
+</ul>
+<p><img src="img/app_user_interrupt_01.jpg" alt=""><br>
+<img src="img/app_user_interrupt_02.jpg" alt=""><br>
+<img src="img/app_user_interrupt_03.jpg" alt=""><br>
+<img src="img/app_user_interrupt_04.jpg" alt=""></p>
+<p><u>How to Divide Boot and Flash Areas</u></p>
+<hr>
+<h1 id="project--app-code-modifictaion---mainc">Project : app code modifictaion - main.c </h1>
+<ul>
+<li>add <a href="#ram_flag">ram flag</a> declaration</li>
+</ul>
+<pre data-role="codeBlock" data-info="" class="language-text"><code>#define RESET_TO_BOOT_SIGN 0xAA55AA55
+#pragma address (reset_to_bootloader = 0x000ffe10)
+volatile uint32_t reset_to_bootloader;
+
+</code></pre><ul>
+<li>
+<p>add change flag data <mark>condition check</mark> and execute reset</p>
+<ul>
+<li>example : when receive change to boot mode command , modify the flag and reset MCU</li>
+</ul>
+</li>
+</ul>
+<pre data-role="codeBlock" data-info="" class="language-text"><code>    if(g_i2c_receive_complete)
+    {
+        if(0 == memcmp(&amp;iic_buf[0], switch_device_to_boot_mode_cmd, 6))
+        {
+            R_Config_IICA0_Slave_Send((uint8_t *)response_status_ok, 7);
+            while(!g_i2c_transmit_complete);
+
+            reset_to_bootloader = RESET_TO_BOOT_SIGN;
+            _reset_by_illegal_memory_access();
+        }
+
+        g_i2c_receive_complete = false;
+    }
+
+
+</code></pre><hr>
+<h1 id="project--app-code-property-modifictaion---e2-lite-setting">Project : app code property modifictaion - E2 lite setting </h1>
+<p><img src="img/app_e2_lite_property_flash.jpg" alt=""></p>
+<p><u>CC-RL Compiler User's Manual</u><br>
+<u>CS+ User’s Manual: CC-RL Build Tool Operation</u></p>
+<hr>
+<h1 id="project--app-code-property-modifictaion---cc-rl-build-tool-setting">Project : app code property modifictaion - CC-RL Build Tool setting </h1>
+<p><strong>Common Options</strong></p>
+<p>refer to How to Divide Boot and Flash Areas :<br>
+<strong>4.2.3  Specifying hex file output only to the flash area address range</strong></p>
+<p><img src="img/app_property_common_01.jpg" alt=""></p>
+<ul>
+<li><strong>[Frequently Used Options (for Hex Output)] &gt; [Division output file]</strong>
+<ul>
+<li>base on MCU (ex : RL78F24 , 256K flash) , to <mark>app code start address and end address</mark> as file name</li>
+</ul>
+</li>
+<li>file size will be different if use other platform (ex : RL78 F13 , RL78 G16 , etc)
+<ul>
+<li><a href="#map_const">map const define ?</a></li>
+</ul>
+</li>
+</ul>
+<pre data-role="codeBlock" data-info="" class="language-text"><code>%BuildModeName%\flash5000_3FFFF.hex=5000-3FFFF
+</code></pre><hr>
+<p><img src="img/app_property_common_02.jpg" alt=""></p>
+<ul>
+<li><strong>[Other] &gt; [Commands executed after build processing]</strong>
+<ul>
+<li>add : boot_flash.bat</li>
+<li>use srecord tool ,
+<ul>
+<li>create combine boot code/app code hex file : create1_boot_app_hex.cmd</li>
+<li>create combine boot code/app code bin file : create2_boot_app_binary.cmd</li>
+<li>create app code bin file : create3_app_binary.cmd</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p><strong>create1_boot_app_hex.cmd</strong></p>
+<pre data-role="codeBlock" data-info="" class="language-text"><code>..\RL78_F24_Boot_loader_UART\DefaultBuild\boot0000_4FFF.hex -Intel .\DefaultBuild\flash5000_3FFFF.hex -Intel -o .\boot_app.hex -Intel -Output_Block_Size=16
+</code></pre><p><strong>create2_boot_app_binary.cmd</strong></p>
+<pre data-role="codeBlock" data-info="" class="language-text"><code># input file
+.\boot_app.hex -Intel
+
+# produce the output file
+-Output
+.\boot_app.bin -binary
+
+</code></pre><p><strong>create3_app_binary.cmd</strong></p>
+<pre data-role="codeBlock" data-info="" class="language-text"><code># input file
+.\DefaultBuild\flash5000_3FFFF.hex -Intel
+
+-crop 0x005000 0x03FFFF -offset -0x005000
+
+# produce the output file
+-Output
+.\flash5000_3FFFF.bin -binary
+
+</code></pre><hr>
+<h1 id="project--app-code-property-modifictaion---cc-rl-build-tool-setting-1">Project : app code property modifictaion - CC-RL Build Tool setting </h1>
+<p><strong>Compile Options</strong></p>
+<p><img src="img/app_property_compile_01.jpg" alt=""></p>
+<p><u>How to Divide Boot and Flash Areas</u><br>
+<u>CC-RL Compiler User's Manual</u><br>
+<u>CS+ User’s Manual: CC-RL Build Tool Operation</u></p>
+<hr>
+<h1 id="project--app-code-property-modifictaion---cc-rl-build-tool-setting-2">Project : app code property modifictaion - CC-RL Build Tool setting </h1>
+<p><strong>Link Options</strong></p>
+<p><img src="img/app_property_link_01.jpg" alt=""></p>
+<ul>
+<li><strong>[Device] &gt; [Option byte values for OCD]</strong>
+<ul>
+<li>set to <code>A5</code></li>
+<li>default will be 0xFF</li>
+</ul>
+</li>
+</ul>
+<br>
+<p><img src="img/app_property_link_02.jpg" alt=""></p>
+<ul>
+<li><strong>[Output Code] &gt; [Execute start address]</strong>
+<ul>
+<li>will be called by cstart.asm<br>
+<br></li>
+</ul>
+</li>
+</ul>
+<hr>
+<p><img src="img/app_property_link_03.jpg" alt=""></p>
+<ul>
+<li>
+<p><strong>[List] &gt; [Ooutput link map file]</strong></p>
+<ul>
+<li>select -SHow=ALL , will display the compile result (function , address) in map file for debug</li>
+<li>map file under /DefaultBuild</li>
+</ul>
+</li>
+<li>
+<p>refer to document :</p>
+<ul>
+<li>How to Divide Boot and Flash Areas (R20UT3475EJ0300)
+<ul>
+<li><strong>3.2.2  Specifying the section allocation</strong></li>
+</ul>
+</li>
+<li>Renesas Flash Driver RL78 Type 02 User’s  Manual (R20UT5009EJ0110)
+<ul>
+<li><strong>6.1.3.3  Section Item Settings</strong><br>
+<br></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<hr>
+<p><img src="img/app_property_link_04.jpg" alt=""></p>
+<ul>
+<li><strong>[Section] &gt; [Section start address]</strong></li>
+</ul>
+<p>refer to How to Divide Boot and Flash Areas :<br>
+<strong>4.2.2  Specifying the section allocation</strong></p>
+<ul>
+<li>app code will start from 0x5000 (RL78 F24) , and reserved branch table area (0x5200)</li>
+<li>reserve SRAM flag 0xFFE10 area <a href="#ram_flag">(ram flag)</a> , to prevent initial when power on</li>
+</ul>
+<p><img src="img/app_property_link_04_1.jpg" alt=""><br>
+<br></p>
+<hr>
+<p><img src="img/app_property_link_05.jpg" alt=""></p>
+<ul>
+<li><strong>[Others] &gt; [Display total size sections]</strong>
+<ul>
+<li>select -Total_size , will display the section size in output window</li>
+<li>display build code size in Output window</li>
+</ul>
+</li>
+</ul>
+<p><u>How to Divide Boot and Flash Areas</u><br>
+<u>CC-RL Compiler User's Manual</u><br>
+<u>CS+ User’s Manual: CC-RL Build Tool Operation</u><br>
+<u>Renesas Flash Driver RL78 Type 02 User’s  Manual</u></p>
+<hr>
+<h1 id="project--app-code-property-modifictaion---cc-rl-build-tool-setting-3">Project : app code property modifictaion - CC-RL Build Tool setting </h1>
+<p><strong>Hex Output Options</strong></p>
+<p>refer to How to Divide Boot and Flash Areas :<br>
+<strong>4.2.3  Specifying hex file output only to the flash area address range</strong></p>
+<p><img src="img/app_hex_output_01.jpg" alt=""></p>
+<ul>
+<li><strong>[Output File] &gt; [Division output file]</strong>
+<ul>
+<li>base on MCU (ex : RL78F24) , to set <mark>app code start address and end address</mark> as file name</li>
+</ul>
+</li>
+<li>file size will be different if use other platform (ex : RL78 F13 , RL78 G16 , etc)
+<ul>
+<li><a href="#map_const">map const define ?</a></li>
+</ul>
+</li>
+</ul>
+<pre data-role="codeBlock" data-info="" class="language-text"><code>%BuildModeName%\flash5000_3FFFF.hex=5000-3FFFF
+</code></pre><hr>
+<p><img src="img/app_hex_output_02.jpg" alt=""></p>
+<ul>
+<li><strong>[Hex Format]</strong>
+<ul>
+<li>follow the setting of the picture</li>
+</ul>
+</li>
+</ul>
+<p><u>How to Divide Boot and Flash Areas</u><br>
+<u>CC-RL Compiler User's Manual</u><br>
+<u>CS+ User’s Manual: CC-RL Build Tool Operation</u><br>
+<u>Renesas Flash Driver RL78 Type 02 User’s  Manual</u></p>
+<hr>
+<p><img src="img/app_hex_output_03.jpg" alt=""></p>
+<ul>
+<li><strong>[CRC Operation] &gt; [CRC Operations]</strong>
+<ul>
+<li>CRC calcuation range will be
+<ul>
+<li>START : app code start address
+<ul>
+<li>ex : RL78 F24 will be 0x5000</li>
+</ul>
+</li>
+<li>END : app code end address - 4
+<ul>
+<li>ex : RL78 F24 will be 0x3FFFB</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>CRC calcuation address will be the last 4 bytes
+<ul>
+<li>ex : RL78 F24 will be 0x3FFFC</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p><img src="img/app_hex_output_03_1.jpg" alt=""><br>
+<img src="img/app_hex_output_03_2.jpg" alt=""></p>
+<hr>
+
+      </div>
+      
+      
+    
+    
+    
+    
+    
+    
+  
+    </body></html>
