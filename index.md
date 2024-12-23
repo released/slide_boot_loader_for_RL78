@@ -11,13 +11,14 @@
 * reference document 
   * How to set up boot code and app project
   [How to Divide Boot and Flash Areas](https://www.renesas.com/en/document/man/rl78-family-c-compiler-package-cc-rl-how-divide-boot-and-flash-areas?srsltid=AfmBOoopybLnK6nMIfwPclpX1SYJL0OfZ1ZD5o9odBLUk4F70ckFtVWd)
+  document no. : R20UT3475EJ0300
   <br/>
 
   <a id="target_MCU_flash_type"></a>
   * How to know the MCU need use which flash library type (code flash)
   [RL78 FAMILY FLASH MEMORY REPROGRAMMING SOFTWARE INTRODUCTION](https://www.renesas.com/en/document/oth/rl78-family-flash-memory-reprogramming-software-introduction?r=488891)
 
-    * RL78 F23/F24 : Renesas Flash Driver RL78 Type 02
+    * RL78 F23/F24 : Renesas Flash Driver RL78 Type 02 (document no. : R20UT5009EJ0110)
     * RL78 G22/G23/G24 : Renesas Flash Driver RL78 Type 01
     * RL78 G15/G16 : Renesas Flash Sample Program Type 01
     * RL78 x1x : Flash Self Programming Library Type01
