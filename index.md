@@ -272,6 +272,12 @@ CRC in app code last 4 bytes will be added after compile at <b><u>app code proje
 
 ---
 
+* smart configurator system setting as below
+
+![](img/smc_system.jpg)
+
+---
+
 # Project : boot code modifictaion - boot_main.c
 
 * for boot_hdwinit() , will be initialized by [cstart.asm](#boot_hdwinit)
@@ -302,7 +308,6 @@ CRC in app code last 4 bytes will be added after compile at <b><u>app code proje
 ![](img/boot_i2c_03.jpg)
 
 ---
-
 
 # Project : boot code property modifictaion - E2 lite setting
 
@@ -387,7 +392,7 @@ copy /y/v .\DefaultBuild\RL78_F24_Boot_loader_UART.fsy ..\RL78_F24_Boot_loader_a
 
 ![](img/boot_property_link_01.jpg)
 * __[Device] > [Option byte values for OCD]__
-  * set to ```A5```
+  * set to ```A4```
   * default will be 0xFF
 ![](img/boot_property_link_02.jpg)
 <br>
@@ -491,6 +496,35 @@ copy /y/v .\DefaultBuild\RL78_F24_Boot_loader_UART.fsy ..\RL78_F24_Boot_loader_a
   * the final result : 
 ![](img/boot_property_link_07.jpg)
 <br>
+
+---
+
+* how do we know section address meaning
+
+![](img/boot_debug_monitor.jpg)
+
+  * ==flash assignment after debug area==
+    * 0x000F0 (RL78 F24 , F23)
+
+---
+
+![](img/boot_map_SRAM_address_1.jpg)
+  * ==ram assignment==
+    * 0xF9F00 (RL78 F24)
+    * 0xFCF00 (RL78 F23)
+
+![](img/boot_map_SRAM_address_2.jpg)
+![](img/boot_map_SRAM_address_3.jpg)
+
+
+---
+
+![](img/CCRL_Section_allocation.jpg)
+  * ==short direction address (.saddr) assignment==
+    * 0xFFE20 (RL78 F24 , F23)
+
+![](img/boot_map_saddr_address_1.jpg)
+
 
 ---
 
@@ -718,6 +752,14 @@ __4.2.1  Registering the externally defined symbol file with the project__
 
 
 ---
+
+* smart configurator system setting as below
+
+![](img/smc_system.jpg)
+
+---
+
+
 # Project : app code modifictaion -  remove static and vect define
 
 refer to How to Divide Boot and Flash Areas :
@@ -862,7 +904,7 @@ __create3_app_binary.cmd__
 
 ![](img/app_property_link_01.jpg)
 * __[Device] > [Option byte values for OCD]__
-  * set to ```A5```
+  * set to ```A4```
   * default will be 0xFF
 
 <br>
