@@ -115,7 +115,7 @@ document no. : R20UT3475EJ0300<br>
 </li>
 </ul>
 </li>
-<li>at Flash area (app code) last 2 bytes , will add <mark>CRC data</mark> after project compile finish</li>
+<li>at Flash area (app code) last 4 bytes , will add <mark>CRC data</mark> after project compile finish</li>
 </ul>
 <p><img src="img/app_flag_set.jpg" alt=""></p>
 <hr>
@@ -267,7 +267,7 @@ modify hardware init function name (<strong>boot_hdwinit</strong>) <a id="boot_h
 <h1 id="project--boot-code-modifictaion---add-crc-compare-2">Project : boot code modifictaion - add CRC compare (2) </h1>
 <br>
 <span style="color:#FF0000">
-CRC in app code last 4 bytes will be added after compile at <b><u>app code project</u></b> by setting CS+<br><br>
+CRC in app code last 4 bytes will be added after compile at <b><u>app code project</u></b> by use SRecord tool<br><br>
 </span>
 <p><img src="img/app_hex_output_CRC.jpg" alt=""></p>
 <hr>
@@ -912,38 +912,126 @@ volatile uint32_t reset_to_bootloader;
 <ul>
 <li><strong>[Other] &gt; [Commands executed after build processing]</strong>
 <ul>
-<li>add : boot_flash.bat</li>
-<li>use srecord tool ,
+<li>add : boot_flash.bat , for RL78 F24 (256K)</li>
+<li>use srecord tool , do action as below
 <ul>
-<li>create combine boot code/app code hex file : create1_boot_app_hex.cmd</li>
-<li>create combine boot code/app code bin file : create2_boot_app_binary.cmd</li>
-<li>create app code bin file : create3_app_binary.cmd</li>
+<li>save app code hex to back hex file
+<ul>
+<li>1backupHex.cmd</li>
+</ul>
+</li>
+<li>base on app code hex , generate CRC
+<ul>
+<li>2generateChecksum.cmd</li>
+</ul>
+</li>
+<li>base on app code hex (w/ CRC) , generate CRC into hex
+<ul>
+<li>3generateCRCHex.cmd</li>
+</ul>
+</li>
+<li>covert app code hex (w/ CRC) to app code bin
+<ul>
+<li>4generateCRCBin.cmd</li>
+</ul>
+</li>
+<li>base on app code hex (w/ CRC) , to over lap original hex
+<ul>
+<li>5generateCRCHexOverlap.cmd</li>
+</ul>
+</li>
+<li>combine boot code and app code
+<ul>
+<li>6generateBootAppHex.cmd</li>
+</ul>
+</li>
+<li>covert boot/app code hex (w/ CRC) to boot/app code bin
+<ul>
+<li>7generateBootAppBin.cmd</li>
 </ul>
 </li>
 </ul>
 </li>
 </ul>
-<p><strong>create1_boot_app_hex.cmd</strong></p>
+</li>
+</ul>
+<br>
+<p><strong>1backupHex.cmd</strong></p>
+<pre data-role="codeBlock" data-info="" class="language-text"><code># input file
+.\DefaultBuild\flash5000_3FFFF.hex -Intel
+
+-crop 0x005000 0x40000
+
+# produce the output file
+-Output
+.\DefaultBuild\flash5000_3FFFF_backup.hex -Intel
+
+</code></pre><br>
+<p><strong>2generateChecksum.cmd</strong></p>
+<pre data-role="codeBlock" data-info="" class="language-text"><code># input file
+.\DefaultBuild\flash5000_3FFFF.hex -Intel
+
+-crop 0x5000 0x3FFFC
+
+-crc32-l-e 0x3FFFC		
+
+-crop 0x3FFFC 0x40000
+											
+-Output 
+- 
+-HEX_Dump
+
+</code></pre><br>
+<p><strong>3generateCRCHex.cmd</strong></p>
+<pre data-role="codeBlock" data-info="" class="language-text"><code># input file
+.\DefaultBuild\flash5000_3FFFF.hex -Intel
+
+-crop 0x5000 0x3FFFC
+
+-crc32-l-e 0x3FFFC
+
+-Output
+.\DefaultBuild\flash5000_3FFFF_CRC.hex -Intel
+
+</code></pre><br>
+<p><strong>4generateCRCBin.cmd</strong></p>
+<pre data-role="codeBlock" data-info="" class="language-text"><code># input file
+.\DefaultBuild\flash5000_3FFFF_CRC.hex -Intel
+
+-crop 0x005000 0x40000 -offset -0x005000
+
+# produce the output file
+-Output
+.\DefaultBuild\flash5000_3FFFF.bin -binary
+
+</code></pre><br>
+<p><strong>5generateCRCHexOverlap.cmd</strong></p>
+<pre data-role="codeBlock" data-info="" class="language-text"><code># input file
+.\DefaultBuild\flash5000_3FFFF_CRC.hex -Intel
+
+-crop 0x005000 0x40000
+
+# produce the output file
+-Output
+.\DefaultBuild\flash5000_3FFFF.hex -intel
+
+</code></pre><br>
+<p><strong>6generateBootAppHex.cmd</strong></p>
 <pre data-role="codeBlock" data-info="" class="language-text"><code>..\RL78_F24_Boot_loader_UART\DefaultBuild\boot0000_4FFF.hex -Intel .\DefaultBuild\flash5000_3FFFF.hex -Intel -o .\boot_app.hex -Intel -Output_Block_Size=16
-</code></pre><p><strong>create2_boot_app_binary.cmd</strong></p>
+
+</code></pre><br>
+<p><strong>7generateBootAppBin.cmd</strong></p>
 <pre data-role="codeBlock" data-info="" class="language-text"><code># input file
 .\boot_app.hex -Intel
+
+-crop 0x00000 0x40000
 
 # produce the output file
 -Output
 .\boot_app.bin -binary
 
-</code></pre><p><strong>create3_app_binary.cmd</strong></p>
-<pre data-role="codeBlock" data-info="" class="language-text"><code># input file
-.\DefaultBuild\flash5000_3FFFF.hex -Intel
-
--crop 0x005000 0x03FFFF -offset -0x005000
-
-# produce the output file
--Output
-.\flash5000_3FFFF.bin -binary
-
-</code></pre><hr>
+</code></pre><p><img src="img/app_property_common_02_1.jpg" alt=""></p>
+<hr>
 <h1 id="project--app-code-property-modifictaion---cc-rl-build-tool-setting-1">Project : app code property modifictaion - CC-RL Build Tool setting </h1>
 <p><strong>Compile Options</strong></p>
 <p><img src="img/app_property_compile_01.jpg" alt=""></p>
@@ -1058,35 +1146,6 @@ volatile uint32_t reset_to_bootloader;
 <u>CC-RL Compiler User's Manual</u><br>
 <u>CS+ User’s Manual: CC-RL Build Tool Operation</u><br>
 <u>Renesas Flash Driver RL78 Type 02 User’s  Manual</u></p>
-<hr>
-<p><img src="img/app_hex_output_03.jpg" alt=""></p>
-<ul>
-<li><strong>[CRC Operation] &gt; [CRC Operations]</strong>
-<ul>
-<li>CRC calcuation range will be
-<ul>
-<li>START : app code start address
-<ul>
-<li>ex : RL78 F24 will be 0x5000</li>
-</ul>
-</li>
-<li>END : app code end address - 4
-<ul>
-<li>ex : RL78 F24 will be 0x3FFFB</li>
-</ul>
-</li>
-</ul>
-</li>
-<li>CRC calcuation address will be the last 4 bytes
-<ul>
-<li>ex : RL78 F24 will be 0x3FFFC</li>
-</ul>
-</li>
-</ul>
-</li>
-</ul>
-<p><img src="img/app_hex_output_03_1.jpg" alt=""><br>
-<img src="img/app_hex_output_03_2.jpg" alt=""></p>
 <hr>
 
       </div>

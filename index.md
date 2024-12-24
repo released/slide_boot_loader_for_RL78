@@ -77,7 +77,7 @@ MCU flash will split to Boot area (boot code) and Flash area (app code)
   * change flag data and execute reset , when
     * receive interface boot command (ex : I2C , UART , ...) 
     * any other custom user defined condition (ex : ADC , GPIO etc)
-* at Flash area (app code) last 2 bytes , will add ==CRC data== after project compile finish
+* at Flash area (app code) last 4 bytes , will add ==CRC data== after project compile finish
 
 ![](img/app_flag_set.jpg)
 
@@ -245,7 +245,7 @@ __3.1.2  Modifying hdwinit.asm and stkinit.asm__
 
 <br/>
 <span style="color:#FF0000">
-CRC in app code last 4 bytes will be added after compile at <b><u>app code project</u></b> by setting CS+<br/><br/>
+CRC in app code last 4 bytes will be added after compile at <b><u>app code project</u></b> by use SRecord tool<br/><br/>
 </span>
 
 
@@ -847,21 +847,123 @@ __4.2.3  Specifying hex file output only to the flash area address range__
 ![](img/app_property_common_02.jpg)
 
 * __[Other] > [Commands executed after build processing]__
-  * add : boot_flash.bat
-  * use srecord tool , 
-    * create combine boot code/app code hex file : create1_boot_app_hex.cmd
-    * create combine boot code/app code bin file : create2_boot_app_binary.cmd
-    * create app code bin file : create3_app_binary.cmd
+  * add : boot_flash.bat , for RL78 F24 (256K)
+  * use srecord tool , do action as below
+    * save app code hex to back hex file
+      * 1backupHex.cmd
+    * base on app code hex , generate CRC
+      * 2generateChecksum.cmd
+    * base on app code hex (w/ CRC) , generate CRC into hex
+      * 3generateCRCHex.cmd
+    * covert app code hex (w/ CRC) to app code bin
+      * 4generateCRCBin.cmd
+    * base on app code hex (w/ CRC) , to over lap original hex
+      * 5generateCRCHexOverlap.cmd
+    * combine boot code and app code
+      * 6generateBootAppHex.cmd
+    * covert boot/app code hex (w/ CRC) to boot/app code bin
+      * 7generateBootAppBin.cmd
 
-__create1_boot_app_hex.cmd__
-```
-..\RL78_F24_Boot_loader_UART\DefaultBuild\boot0000_4FFF.hex -Intel .\DefaultBuild\flash5000_3FFFF.hex -Intel -o .\boot_app.hex -Intel -Output_Block_Size=16
-```
+<br>
 
-__create2_boot_app_binary.cmd__
+__1backupHex.cmd__
 ```
 # input file
+.\DefaultBuild\flash5000_3FFFF.hex -Intel
+
+-crop 0x005000 0x40000
+
+# produce the output file
+-Output
+.\DefaultBuild\flash5000_3FFFF_backup.hex -Intel
+
+```
+
+<br>
+
+__2generateChecksum.cmd__
+```
+# input file
+.\DefaultBuild\flash5000_3FFFF.hex -Intel
+
+-crop 0x5000 0x3FFFC
+
+-crc32-l-e 0x3FFFC		
+
+-crop 0x3FFFC 0x40000
+											
+-Output 
+- 
+-HEX_Dump
+
+```
+
+<br>
+
+__3generateCRCHex.cmd__
+```
+
+# input file
+.\DefaultBuild\flash5000_3FFFF.hex -Intel
+
+-crop 0x5000 0x3FFFC
+
+-crc32-l-e 0x3FFFC
+
+-Output
+.\DefaultBuild\flash5000_3FFFF_CRC.hex -Intel
+
+```
+
+<br>
+
+__4generateCRCBin.cmd__
+```
+
+# input file
+.\DefaultBuild\flash5000_3FFFF_CRC.hex -Intel
+
+-crop 0x005000 0x40000 -offset -0x005000
+
+# produce the output file
+-Output
+.\DefaultBuild\flash5000_3FFFF.bin -binary
+
+```
+
+<br>
+
+__5generateCRCHexOverlap.cmd__
+```
+
+# input file
+.\DefaultBuild\flash5000_3FFFF_CRC.hex -Intel
+
+-crop 0x005000 0x40000
+
+# produce the output file
+-Output
+.\DefaultBuild\flash5000_3FFFF.hex -intel
+
+```
+
+<br>
+
+__6generateBootAppHex.cmd__
+```
+..\RL78_F24_Boot_loader_UART\DefaultBuild\boot0000_4FFF.hex -Intel .\DefaultBuild\flash5000_3FFFF.hex -Intel -o .\boot_app.hex -Intel -Output_Block_Size=16
+
+```
+
+<br>
+
+__7generateBootAppBin.cmd__
+```
+
+# input file
 .\boot_app.hex -Intel
+
+-crop 0x00000 0x40000
 
 # produce the output file
 -Output
@@ -869,18 +971,7 @@ __create2_boot_app_binary.cmd__
 
 ```
 
-__create3_app_binary.cmd__
-```
-# input file
-.\DefaultBuild\flash5000_3FFFF.hex -Intel
-
--crop 0x005000 0x03FFFF -offset -0x005000
-
-# produce the output file
--Output
-.\flash5000_3FFFF.bin -binary
-
-```
+![](img/app_property_common_02_1.jpg)
 
 ---
 
@@ -991,24 +1082,4 @@ __4.2.3  Specifying hex file output only to the flash area address range__
 <u>Renesas Flash Driver RL78 Type 02 User’s  Manual</u>
 
 ---
-
-
-![](img/app_hex_output_03.jpg)
-
-* __[CRC Operation] > [CRC Operations]__  
-  * CRC calcuation range will be 
-    * START : app code start address 
-      * ex : RL78 F24 will be 0x5000
-    * END : app code end address - 4 
-      * ex : RL78 F24 will be 0x3FFFB
-  * CRC calcuation address will be the last 4 bytes 
-    * ex : RL78 F24 will be 0x3FFFC
-
-
-![](img/app_hex_output_03_1.jpg)
-![](img/app_hex_output_03_2.jpg)
-
----
-
-
 
