@@ -1,4 +1,6 @@
 
+[return to index](https://released.github.io/)
+
 <a id="article_top"></a>
 
 # Agenda
@@ -37,6 +39,15 @@
 [RL78_F24_Boot_loader_app](https://github.com/released/RL78_F24_Boot_loader_app)
 <br/>
 
+
+<span style="color:#FF0000">
+<b><u>Key point</b></u><br><br>
+</span> 
+
+* project setting for boot code and app code 
+* target MCU platform flash library usage and setting
+* target interface initial and receive data 
+
 ---
 
 # Flash architecture
@@ -52,16 +63,37 @@ MCU flash will split to Boot area (boot code) and Flash area (app code)
 
 # Scenario : Boot area (boot code)
 
-* __condition_check__ : detect ==flag== store in ram specific area (ex : 0xFFE10) , 
-  * to determine if re-boot from Flash area (app code) 
+* use UART0 : P15/TX , P16/RX , to check terminal log meesgae
+* __condition_check__ : 
+  * detect ==flag== store in ram specific area (ex : 0xFF700) , to determine if re-boot from Flash area (app code) 
   * if no app code in app section
-  * CRC check error when power on
-  * any other custom user defined condition
-* at Flash area (app code) last 4 bytes , will store ==CRC data== , read the CRC byte and compare to the CRC of Flash area (app code) , if comapare error , stay in Boot area (boot code) 
-* base on the ==flag== or ==BUTTON presssed (active LOW)== , to determine if going to receive data flow from interface (ex : I2C , UART , ...) or ready to jump into Flash area (app code)
+
+![](img/boot_check_app_empty.jpg)
+
+
+  * base on the ==flag== or ==BUTTON presssed (active LOW)== , to determine 
+    * need to stay in boot code , to receive data flow from interface (ex : I2C , UART , ...) 
+    * ready to jump into Flash area (app code)
+
+* __verify_application_chksum__ : 
+  * compare CRC checksum when power on 
+  * at Flash area (app code) last 4 bytes , will store ==CRC data==
+  * calculate the Flash area (app code) CRC byte (==caculate_crc32_checksum==) and compare to the CRC data store in last 4 bytes of Flash area (app code)
+  * if comapare error , stay in Boot area (boot code) 
+
+![](img/boot_compare_check_err.jpg)
+
+* any other custom user defined condition
+
 * __programming Flash area (app code) flow__
-  * after Flash area (app code) update finish , read the CRC byte and compare to the CRC of Flash area (app code) , then leave update flow
-  * if CRC compare OK and no detect update inquiry , jump to Flash area (app code)
+  * refer the code flash sample function : Sample_CodeFlashControl and modify as : 
+    * ==Sample_CodeFlashControl_Erase==
+    * ==Sample_CodeFlashControl_SingleWrite==
+    * __KEY POINT : SAMPLE_START_SECTION_SMP_CF__
+  * after Flash area (app code) update finish , 
+    * UART (xmodem , UART1 : P74/TX , P75/RX) : reboot MCU 
+    * I2C (IICA0 , P62/SCL , P63/SDA): read the CRC byte and compare to the CRC of Flash area (app code) , then leave update flow
+      * if CRC compare OK and no detect update inquiry , jump to Flash area (app code)
 * ==NO INTERRUPT , use POLLING== to receive interface data 
 
 
@@ -73,13 +105,17 @@ MCU flash will split to Boot area (boot code) and Flash area (app code)
 
 # Scenario : Flash area (app code)
 
-* set ==ram flag== store in ram specific area (ex : 0xFFE10) 
+* set ==ram flag== store in ram specific area (ex : 0xFF700) 
   * change flag data and execute reset , when
     * receive interface boot command (ex : I2C , UART , ...) 
     * any other custom user defined condition (ex : ADC , GPIO etc)
-* at Flash area (app code) last 4 bytes , will add ==CRC data== after project compile finish
+  * use terminal (UART0 : P15/TX , P16/RX) , by press ==digit 3== ,to set ram flag and reset
+* by press ==digit 1== to write data flash 
+* by press ==digit 2== to read data flash
+* at Flash area (app code) last 4 bytes , will add ==CRC data== after ==project compile finish==
 
 ![](img/app_flag_set.jpg)
+![](img/app_flag_set_2.jpg)
 
 ---
 
@@ -91,7 +127,7 @@ MCU flash will split to Boot area (boot code) and Flash area (app code)
 
 * ftable.inc 
 
-```
+```c
 FLASH_TABLE       .EQU  0x5000 
 INTERRUPT_OFFSET  .EQU  0x100 
 ```
@@ -156,30 +192,175 @@ comment out conditional check and assembly instructions
 
 ![](img/cstart_04.jpg)
 
-
 (5)
 modify main function name (__boot_main__) <a id="boot_main"></a>
 add branch instructions : [FALSH_TABLE](#FALSH_TABLE)
 
 ![](img/cstart_05.jpg)
 
-
 (6)
 comment out .const section
 
 ![](img/cstart_06.jpg)
 
-
 (7)
-comment out bsp_init_system
+modify bsp_init_system function name
 
 ![](img/cstart_07.jpg)
-
 
 (8)
 modify hardware init function name (__boot_hdwinit__) <a id="boot_hdwinit"></a>
 
 ![](img/cstart_08.jpg)
+
+(9)
+increase bss size to 0x500
+
+![](img/cstart_09.jpg)
+![](img/cstart_10.jpg)
+
+(10)
+add ram flag section
+
+```c
+  .SECTION .boot_info, BSS
+  .L_section_boot_info:
+```
+
+![](img/cstart_11_3.jpg)
+
+(11)
+add ==code flash library section==
+
+![](img/cstart_11.jpg)
+
+```c
+  .SECTION RFD_DATA_nR, DATA
+  .SECTION RFD_CMN_fR, TEXTF
+  .SECTION RFD_CF_fR, TEXTF
+  .SECTION SMP_CMN_fR, TEXTF
+  .SECTION SMP_CF_fR, TEXTF
+```
+
+![](img/cstart_11_1.jpg)
+
+```c
+
+	; copy RFD external variables having initial value (near)
+	MOV	ES,#HIGHW(STARTOF(RFD_DATA_n))
+	MOVW	BC,#LOWW(SIZEOF(RFD_DATA_n))
+	BR	$.L2_RFD_DATA
+.L1_RFD_DATA:
+	DECW	BC
+	MOV	A,ES:LOWW(STARTOF(RFD_DATA_n))[BC]
+	MOV	LOWW(STARTOF(RFD_DATA_nR))[BC],A
+.L2_RFD_DATA:
+	CLRW	AX
+	CMPW	AX,BC
+	BNZ	$.L1_RFD_DATA
+
+
+	; copy code to RAM (RFD_CMN)
+	MOV	C,#HIGHW(STARTOF(RFD_CMN_f))
+	MOVW	HL,#LOWW(STARTOF(RFD_CMN_f))
+	MOVW	DE,#LOWW(STARTOF(RFD_CMN_fR))
+	BR	$.L12_TEXT
+.L11_TEXT:
+	MOV	A,C
+	MOV	ES,A
+	MOV	A,ES:[HL]
+	MOV	[DE],A
+	INCW	DE
+	INCW	HL
+	CLRW	AX
+	CMPW	AX,HL
+	SKNZ
+	INC	C
+.L12_TEXT:
+	MOVW	AX,HL
+	CMPW	AX,#LOWW(STARTOF(RFD_CMN_f) + SIZEOF(RFD_CMN_f))
+	BNZ	$.L11_TEXT
+
+	; copy code to RAM (RFD_CF)
+	MOV	C,#HIGHW(STARTOF(RFD_CF_f))
+	MOVW	HL,#LOWW(STARTOF(RFD_CF_f))
+	MOVW	DE,#LOWW(STARTOF(RFD_CF_fR))
+	BR	$.L22_TEXT
+.L21_TEXT:
+	MOV	A,C
+	MOV	ES,A
+	MOV	A,ES:[HL]
+	MOV	[DE],A
+	INCW	DE
+	INCW	HL
+	CLRW	AX
+	CMPW	AX,HL
+	SKNZ
+	INC	C
+.L22_TEXT:
+	MOVW	AX,HL
+	CMPW	AX,#LOWW(STARTOF(RFD_CF_f) + SIZEOF(RFD_CF_f))
+	BNZ	$.L21_TEXT
+
+	; copy code to RAM (SMP_CMN)
+	MOV	C,#HIGHW(STARTOF(SMP_CMN_f))
+	MOVW	HL,#LOWW(STARTOF(SMP_CMN_f))
+	MOVW	DE,#LOWW(STARTOF(SMP_CMN_fR))
+	BR	$.L32_TEXT
+.L31_TEXT:
+	MOV	A,C
+	MOV	ES,A
+	MOV	A,ES:[HL]
+	MOV	[DE],A
+	INCW	DE
+	INCW	HL
+	CLRW	AX
+	CMPW	AX,HL
+	SKNZ
+	INC	C
+.L32_TEXT:
+	MOVW	AX,HL
+	CMPW	AX,#LOWW(STARTOF(SMP_CMN_f) + SIZEOF(SMP_CMN_f))
+	BNZ	$.L31_TEXT
+
+	; copy code to RAM (SMP_CF)
+	MOV	C,#HIGHW(STARTOF(SMP_CF_f))
+	MOVW	HL,#LOWW(STARTOF(SMP_CF_f))
+	MOVW	DE,#LOWW(STARTOF(SMP_CF_fR))
+	BR	$.L42_TEXT
+.L41_TEXT:
+	MOV	A,C
+	MOV	ES,A
+	MOV	A,ES:[HL]
+	MOV	[DE],A
+	INCW	DE
+	INCW	HL
+	CLRW	AX
+	CMPW	AX,HL
+	SKNZ
+	INC	C
+.L42_TEXT:
+	MOVW	AX,HL
+	CMPW	AX,#LOWW(STARTOF(SMP_CF_f) + SIZEOF(SMP_CF_f))
+	BNZ	$.L41_TEXT
+```
+
+![](img/cstart_11_2.jpg)
+
+
+---
+
+boot code : Compare below file to see the difference
+after modification : 
+RL78_F24_Boot_loader_UART\cstart.asm
+https://github.com/released/RL78_F24_Boot_loader_UART/blob/main/cstart.asm
+
+code flash : 
+RL78_F24_Boot_loader_UART\RFDRL78T02\sample\RL78_F24\CF\CCRL\source\cstart.asm
+
+smart configurator original file : 
+RL78_F24_Boot_loader_UART\src\smc_gen\r_bsp\mcu\all\cstart.asm
+
 
 <u>How to Divide Boot and Flash Areas</u>
 
@@ -225,6 +406,194 @@ __3.1.2  Modifying hdwinit.asm and stkinit.asm__
 ![](img/RFD_tree_file.jpg)
 
 
+---
+
+* refer to RL78_F24_Boot_loader_UART\RFDRL78T02\sample\common\source\codeflash\sample_control_code_flash.c
+* __KEY POINT : SAMPLE_START_SECTION_SMP_CF__
+
+* __Sample_CodeFlashControl_Erase__
+
+```c
+R_RFD_FAR_FUNC e_sample_ret_t Sample_CodeFlashControl_Erase(uint32_t i_u32_start_addr)
+{
+    /* Local variable definition */
+    e_rfd_ret_t    l_e_rfd_ret_status;
+    e_sample_ret_t l_e_sam_ret_status;
+    e_sample_ret_t l_e_sam_ret_value;
+    bool           l_e_sam_error_flag;
+    // uint16_t       l_u16_count;
+    uint16_t       l_u16_block_number;
+    // uint32_t       l_u32_check_write_data_addr;
+    
+    /* Set local variables */
+    l_e_sam_ret_value           = SAMPLE_ENUM_RET_STS_OK;
+    l_e_sam_error_flag          = false;
+    
+    /* This expression (actual block number) never exceeds the range of casting uint16_t */
+    l_u16_block_number          = (uint16_t)(i_u32_start_addr >> SAMPLE_VALUE_U08_SHIFT_ADDR_TO_BLOCK_CF);
+    // l_u32_check_write_data_addr = i_u32_start_addr;
+    
+    /******************************************************************************************************************
+     * Set the code flash programming mode
+     *****************************************************************************************************************/
+    l_e_rfd_ret_status = R_RFD_SetFlashMemoryMode(R_RFD_ENUM_FLASH_MODE_CODE_PROGRAMMING);
+    
+    if (R_RFD_ENUM_RET_STS_OK != l_e_rfd_ret_status)
+    {
+        l_e_sam_error_flag = true;
+        l_e_sam_ret_value  = SAMPLE_ENUM_RET_ERR_MODE_MISMATCHED;
+    }
+    else
+    {
+        /* No operation */
+    }
+    
+    /******************************************************************************************************************
+     * BLANKCHECK -> ERASE
+     *****************************************************************************************************************/
+    if (false == l_e_sam_error_flag)
+    {
+        /* BLANKCHECK (1 block) */
+        R_RFD_BlankCheckCodeFlashReq(l_u16_block_number);
+        l_e_sam_ret_status = Sample_CheckCFDFSeqEnd();
+        
+        if (SAMPLE_ENUM_RET_ERR_ACT_BLANKCHECK == l_e_sam_ret_status)
+        {
+            /* ERASE (1 block) */
+            R_RFD_EraseCodeFlashReq(l_u16_block_number);
+            l_e_sam_ret_status = Sample_CheckCFDFSeqEnd();
+            
+            if (SAMPLE_ENUM_RET_STS_OK != l_e_sam_ret_status)
+            {
+                l_e_sam_error_flag = true;
+                l_e_sam_ret_value  = SAMPLE_ENUM_RET_ERR_CMD_ERASE;
+            }
+            else
+            {
+                /* No operation */
+            }
+        }
+        else if (SAMPLE_ENUM_RET_STS_OK != l_e_sam_ret_status)
+        {
+            l_e_sam_error_flag = true;
+            l_e_sam_ret_value  = SAMPLE_ENUM_RET_ERR_CMD_BLANKCHECK;
+        }
+        else
+        {
+            /* No operation */
+        }
+    }
+    else /* true == l_e_sam_error_flag */
+    {
+        /* No operation */
+    }
+        
+    /******************************************************************************************************************
+     * Set non-programmable mode
+     *****************************************************************************************************************/
+    l_e_rfd_ret_status = R_RFD_SetFlashMemoryMode(R_RFD_ENUM_FLASH_MODE_CODE_TO_NONPROGRAMMABLE);
+    
+    if (R_RFD_ENUM_RET_STS_OK != l_e_rfd_ret_status)
+    {
+        l_e_sam_error_flag = true;
+        l_e_sam_ret_value  = SAMPLE_ENUM_RET_ERR_MODE_MISMATCHED;
+    }
+    else
+    {
+        /* No operation */
+    }
+        
+    return (l_e_sam_ret_value);
+}
+```
+
+* __Sample_CodeFlashControl_SingleWrite__
+
+```c
+R_RFD_FAR_FUNC e_sample_ret_t Sample_CodeFlashControl_SingleWrite(uint32_t i_u32_start_addr,
+                                                      uint8_t __near * inp_u08_write_data)
+{
+    /* Local variable definition */
+    e_rfd_ret_t    l_e_rfd_ret_status;
+    e_sample_ret_t l_e_sam_ret_status;
+    e_sample_ret_t l_e_sam_ret_value;
+    bool           l_e_sam_error_flag;
+    uint16_t       l_u16_count = 0;
+    // uint16_t       l_u16_block_number;
+    // uint32_t       l_u32_check_write_data_addr;
+    
+    /* Set local variables */
+    l_e_sam_ret_value           = SAMPLE_ENUM_RET_STS_OK;
+    l_e_sam_error_flag          = false;
+    
+    /* This expression (actual block number) never exceeds the range of casting uint16_t */
+    // l_u16_block_number          = (uint16_t)(i_u32_start_addr >> SAMPLE_VALUE_U08_SHIFT_ADDR_TO_BLOCK_CF);
+    // l_u32_check_write_data_addr = i_u32_start_addr;
+    
+    /******************************************************************************************************************
+     * Set the code flash programming mode
+     *****************************************************************************************************************/
+    l_e_rfd_ret_status = R_RFD_SetFlashMemoryMode(R_RFD_ENUM_FLASH_MODE_CODE_PROGRAMMING);
+    
+    if (R_RFD_ENUM_RET_STS_OK != l_e_rfd_ret_status)
+    {
+        l_e_sam_error_flag = true;
+        l_e_sam_ret_value  = SAMPLE_ENUM_RET_ERR_MODE_MISMATCHED;
+    }
+    else
+    {
+        /* No operation */
+    }
+   
+    /******************************************************************************************************************
+     * WRITE
+     *****************************************************************************************************************/
+    if (false == l_e_sam_error_flag)
+    {
+        // for (l_u16_count = 0u; l_u16_count < i_u16_write_data_length; l_u16_count += 4u)
+        {
+            // R_RFD_WriteCodeFlashReq(i_u32_start_addr + l_u16_count, &inp_u08_write_data[l_u16_count]);
+            R_RFD_WriteCodeFlashReq(i_u32_start_addr , &inp_u08_write_data[l_u16_count]);
+            l_e_sam_ret_status = Sample_CheckCFDFSeqEnd();
+            
+            if (SAMPLE_ENUM_RET_STS_OK != l_e_sam_ret_status)
+            {
+                l_e_sam_error_flag = true;
+                l_e_sam_ret_value  = SAMPLE_ENUM_RET_ERR_CMD_WRITE;
+                // break;
+            }
+            else
+            {
+                /* No operation */
+            }
+        }
+    }
+    else /* true == l_e_sam_error_flag */
+    {
+        /* No operation */
+    }
+        
+    /******************************************************************************************************************
+     * Set non-programmable mode
+     *****************************************************************************************************************/
+    l_e_rfd_ret_status = R_RFD_SetFlashMemoryMode(R_RFD_ENUM_FLASH_MODE_CODE_TO_NONPROGRAMMABLE);
+    
+    if (R_RFD_ENUM_RET_STS_OK != l_e_rfd_ret_status)
+    {
+        l_e_sam_error_flag = true;
+        l_e_sam_ret_value  = SAMPLE_ENUM_RET_ERR_MODE_MISMATCHED;
+    }
+    else
+    {
+        /* No operation */
+    }
+    
+    return (l_e_sam_ret_value);
+}
+
+
+```
+
 <u>Renesas Flash Driver RL78 Type 02 User’s  Manual</u>
 
 ---
@@ -234,9 +603,11 @@ __3.1.2  Modifying hdwinit.asm and stkinit.asm__
 * register CRC compare into Boot area (boot code) project 
 * purpose: 
   * condition check (check and compare app code CRC , prevent jump into corrupted app code)
-  * after update flash , check CRC and prepare jump into app code
+  * after update flash , check CRC and prepare jump into app code (I2C)
 
 ![](img/crc_01.jpg)
+![](img/crc_01_2.jpg)
+![](img/crc_01_3.jpg)
 ![](img/crc_02.jpg)
 
 ---
@@ -281,7 +652,7 @@ CRC in app code last 4 bytes will be added after compile at <b><u>app code proje
 # Project : boot code modifictaion - boot_main.c
 
 * for boot_hdwinit() , will be initialized by [cstart.asm](#boot_hdwinit)
-  * ==copy== below function from driver and ==rename== in boot_main.c for boot_hdwinit
+  * ==copy== below function from driver and ==rename== with prefix: ==boot_== in boot_main.c for boot_hdwinit
     * bsp_init_system() 
       * copy mcu_clock_setup()
     * R_Config_PORT_Create
@@ -291,6 +662,7 @@ CRC in app code last 4 bytes will be added after compile at <b><u>app code proje
       * R_SAU1_Create()
       * R_Config_UART1_Start()
     * R_Config_IICA0_Create()
+    * R_Config_TAU0_0_Start , for delay function (1ms)
 * for boot_main() , will start with condition check and judge if need to start programming
 
 ---
@@ -306,6 +678,32 @@ CRC in app code last 4 bytes will be added after compile at <b><u>app code proje
 ![](img/boot_i2c_01.jpg)
 ![](img/boot_i2c_02.jpg)
 ![](img/boot_i2c_03.jpg)
+
+
+---
+
+# Project : boot code modifictaion - xmodem update flow
+
+below is at xmodem update when g_app_required_update == 1
+![](img/xmodem_code_01.jpg)
+
+when trig update flow , will wait for xmodem from PC host
+![](img/xmodem_erase.jpg)
+
+use teraterm , to send file under xmodem
+![](img/xmodem_send.jpg)
+
+when under transmit binary file
+![](img/xmodem_under_xfer.jpg)
+
+trasmit time , update RL78 F24 app code : 236K
+* with boot code enable log message (xmodem.c , check debug3) , spent 41 sec
+![](img/xmodem_under_xfer2.jpg)
+* without boot code enable log message (xmodem.c , check debug3) , spent 40 sec
+![](img/xmodem_under_xfer3.jpg)
+
+when update app code finish
+![](img/xmodem_program_finish.jpg)
 
 ---
 
@@ -336,7 +734,7 @@ __3.2.5  Specifying hex file output only to the boot area address range__
 * file size will be different if use other platform (ex : RL78 F13 , RL78 G16 , etc)
   * [map const define ?](#map_const)
 
-```
+```c
 %BuildModeName%\boot0000_4FFF.hex=0000-4FFF
 ```
 
@@ -357,7 +755,7 @@ __3.2.5  Specifying hex file output only to the boot area address range__
   * add : copy_fsy.bat
   * copy ==boot code project fsy== file to app code project root folder
 
-```
+```c
 copy /y/v .\DefaultBuild\RL78_F24_Boot_loader_UART.fsy ..\RL78_F24_Boot_loader_app\
 ```
 
@@ -392,7 +790,7 @@ copy /y/v .\DefaultBuild\RL78_F24_Boot_loader_UART.fsy ..\RL78_F24_Boot_loader_a
 
 ![](img/boot_property_link_01.jpg)
 * __[Device] > [Option byte values for OCD]__
-  * set to ```A4```
+  * set to ```A5```
   * default will be 0xFF
 ![](img/boot_property_link_02.jpg)
 <br>
@@ -436,8 +834,8 @@ copy /y/v .\DefaultBuild\RL78_F24_Boot_loader_UART.fsy ..\RL78_F24_Boot_loader_a
 ![](img/boot_property_link_06.jpg)
 * __[Section] > [Section start address]__
 
-
-  * entry editor and modify as below : 
+  * set __Layout sections automaticallu__ to ==NO== 
+  * entry editor and modify as below ( for code flash library ) 
   * flash area
   ```
   RFD_DATA_n 
@@ -445,15 +843,17 @@ copy /y/v .\DefaultBuild\RL78_F24_Boot_loader_UART.fsy ..\RL78_F24_Boot_loader_a
   RFD_CF_f 
   SMP_CMN_f 
   SMP_CF_f 
+
   ```
 
   * ram area
   ```
   RFD_DATA_nR 
   RFD_CMN_fR 
-  RFD_CF_fR 
+  RFD_CF_fR
   SMP_CMN_fR 
-  SMP_CF_fR   
+  SMP_CF_fR  
+
   ```
 
   ![](img/boot_property_link_06_1.jpg)
@@ -477,6 +877,8 @@ copy /y/v .\DefaultBuild\RL78_F24_Boot_loader_UART.fsy ..\RL78_F24_Boot_loader_a
 ![](img/boot_property_link_08.jpg)
 <br>
 
+* reserve SRAM flag 0xFF700 area [(ram flag)](#ram_flag) , to prevent initial when power on
+
 * __[Section] > [ROM to RAM mapped section]__
   * entry editor and modify as below :
 
@@ -487,14 +889,18 @@ copy /y/v .\DefaultBuild\RL78_F24_Boot_loader_UART.fsy ..\RL78_F24_Boot_loader_a
   RFD_CMN_f=RFD_CMN_fR 
   RFD_CF_f=RFD_CF_fR 
   SMP_CMN_f=SMP_CMN_fR 
-  SMP_CF_f=SMP_CF_fR  
+  SMP_CF_f=SMP_CF_fR
+
   ``` 
 
 ![](img/boot_property_link_09.jpg)
 ![](img/boot_property_link_09_1.jpg)
 
+
+  * set __Layout sections automaticallu__ to ==YES== 
   * the final result : 
 ![](img/boot_property_link_07.jpg)
+![](img/boot_property_link_09_2.jpg)
 <br>
 
 ---
@@ -570,7 +976,7 @@ __3.2.5  Specifying hex file output only to the boot area address range__
 * file size will be different if use other platform (ex : RL78 F13 , RL78 G16 , etc)
   * [map const define ?](#map_const)
 
-```
+```c
 %BuildModeName%\boot0000_4FFF.hex=0000-4FFF
 ```
 
@@ -623,7 +1029,7 @@ __3.2.5  Specifying hex file output only to the boot area address range__
 
 * ftable.inc 
 
-```
+```c
 FLASH_TABLE       .EQU  0x5000 
 INTERRUPT_OFFSET  .EQU  0x100 
 ```
@@ -669,12 +1075,65 @@ __4.1.1  Modifying the startup routine (cstart.asm)__
 * ==copy== cstart.asm to app code project root folder
 * ==register== to Flash area (app code) project , then start to ==modify==
 
-- comment out conditional check
+(1)
+comment out conditional check
 
 ![](img/app_cstart_01.jpg)
 
-<u>How to Divide Boot and Flash Areas</u>
+(2)
+add ram flag section
 
+```c
+  .SECTION .boot_info, BSS
+  .L_section_boot_info:
+```
+
+![](img/app_cstart_02.jpg)
+
+(3)
+add ==data flash library section==
+
+```c
+  .SECTION RFD_DATA_nR, DATA
+```
+
+![](img/app_cstart_03.jpg)
+
+
+```c
+	; copy RFD external variables having initial value (near)
+	MOV	ES,#HIGHW(STARTOF(RFD_DATA_n))
+	MOVW	BC,#LOWW(SIZEOF(RFD_DATA_n))
+	BR	$.L2_RFD_DATA
+.L1_RFD_DATA:
+	DECW	BC
+	MOV	A,ES:LOWW(STARTOF(RFD_DATA_n))[BC]
+	MOV	LOWW(STARTOF(RFD_DATA_nR))[BC],A
+.L2_RFD_DATA:
+	CLRW	AX
+	CMPW	AX,BC
+	BNZ	$.L1_RFD_DATA
+
+```
+
+![](img/app_cstart_04.jpg)
+
+
+---
+
+app code : Compare below file to see the difference
+after modification : 
+RL78_F24_Boot_loader_app\cstart.asm
+https://github.com/released/RL78_F24_Boot_loader_app/blob/main/cstart.asm
+
+data flash : 
+RL78_F24_Boot_loader_app\RFDRL78T02\sample\RL78_F24\DF\CCRL\source\cstart.asm
+
+smart configurator original file : 
+RL78_F24_Boot_loader_app\src\smc_gen\r_bsp\mcu\all\cstart.asm
+
+
+<u>How to Divide Boot and Flash Areas</u>
 
 ---
 
@@ -696,7 +1155,7 @@ __4.1.2  Creating a branch table program (ftable.asm)__
   * in app code , use UART0 TX/RX , UART1 TX/RX , TAU0_1 , IICA0 interrupt
   * register these interrupt name with prefix !!_ 
 
-```
+```c
 		.DB4    0xffffffff                      ; INTP13/INTCL	             	;0x0014
 		 BR     !!_r_Config_UART0_interrupt_send	; INTST0/INTCSI00/INTIIC00  ;0x0016
 		 BR     !!_r_Config_UART0_interrupt_receive	; INTSR0/INTCSI01/INTIIC01 	;0x0018
@@ -741,6 +1200,14 @@ __4.2.1  Registering the externally defined symbol file with the project__
 
 ![](img/app_project_tree_01.jpg)
 
+---
+
+# Project : app code modifictaion - add DATA FLASH library
+
+* base on [RL78 MCU](#target_MCU_flash_type)  , register correspond ==DATA FLASH library== into Flash area (app code) project and exclude uncessary file (code flash , extra area)
+
+![](img/RFD_tree_file2.jpg)
+
 
 ---
 
@@ -765,7 +1232,7 @@ __4.2.1  Registering the externally defined symbol file with the project__
 refer to How to Divide Boot and Flash Areas :
 __Do not specify the vector address (vect) with the #pragma interrupt directive in the flash area.__
 
-* ==EVERY TIME== when use smart config tool to re-generate driver , 
+* ==EVERY TIME== when use smart config tool to ==re-generate driver==
 * need to ==remove static declaration== and ==comment on vect definition== in earch drvier ==Config_xxx_user.c==
 
 ![](img/app_user_interrupt_01.jpg)
@@ -781,10 +1248,10 @@ __Do not specify the vector address (vect) with the #pragma interrupt directive 
 
 * add [ram flag](#ram_flag) declaration
 
-```
+```c
 
 #define RESET_TO_BOOT_SIGN 0xAA55AA55
-#pragma address (reset_to_bootloader = 0x000ffe10)
+#pragma address (reset_to_bootloader = 0x000FF700)
 volatile uint32_t reset_to_bootloader;
 
 ```
@@ -793,7 +1260,7 @@ volatile uint32_t reset_to_bootloader;
 
   * example : when receive change to boot mode command , modify the flag and reset MCU
 
-```
+```c
     if(g_i2c_receive_complete)
     {
         if(0 == memcmp(&iic_buf[0], switch_device_to_boot_mode_cmd, 6))
@@ -808,8 +1275,24 @@ volatile uint32_t reset_to_bootloader;
         g_i2c_receive_complete = false;
     }
 
-
 ```
+
+```c
+void uart_rcv_process(void)
+{
+    if (FLAG_PROJ_TRIG_3)
+    {
+        FLAG_PROJ_TRIG_3 = 0;
+
+        reset_to_bootloader = RESET_TO_BOOT_SIGN;
+        printf_tiny("(app)reset_to_bootloader:0x%X",reset_to_bootloader>>16);
+        printf_tiny("%X\r\n",reset_to_bootloader&0xFFFF);
+
+        _reset_by_illegal_memory_access();        
+    }
+}
+```
+
 ---
 # Project : app code property modifictaion - E2 lite setting
 
@@ -837,7 +1320,7 @@ __4.2.3  Specifying hex file output only to the flash area address range__
 * file size will be different if use other platform (ex : RL78 F13 , RL78 G16 , etc)
   * [map const define ?](#map_const)
 
-```
+```c
 %BuildModeName%\flash5000_3FFFF.hex=5000-3FFFF
 ```
 
@@ -867,7 +1350,7 @@ __4.2.3  Specifying hex file output only to the flash area address range__
 <br>
 
 __1backupHex.cmd__
-```
+```c
 # input file
 .\DefaultBuild\flash5000_3FFFF.hex -Intel
 
@@ -882,7 +1365,7 @@ __1backupHex.cmd__
 <br>
 
 __2generateChecksum.cmd__
-```
+```c
 # input file
 .\DefaultBuild\flash5000_3FFFF.hex -Intel
 
@@ -901,7 +1384,7 @@ __2generateChecksum.cmd__
 <br>
 
 __3generateCRCHex.cmd__
-```
+```c
 
 # input file
 .\DefaultBuild\flash5000_3FFFF.hex -Intel
@@ -918,7 +1401,7 @@ __3generateCRCHex.cmd__
 <br>
 
 __4generateCRCBin.cmd__
-```
+```c
 
 # input file
 .\DefaultBuild\flash5000_3FFFF_CRC.hex -Intel
@@ -934,7 +1417,7 @@ __4generateCRCBin.cmd__
 <br>
 
 __5generateCRCHexOverlap.cmd__
-```
+```c
 
 # input file
 .\DefaultBuild\flash5000_3FFFF_CRC.hex -Intel
@@ -950,7 +1433,7 @@ __5generateCRCHexOverlap.cmd__
 <br>
 
 __6generateBootAppHex.cmd__
-```
+```c
 ..\RL78_F24_Boot_loader_UART\DefaultBuild\boot0000_4FFF.hex -Intel .\DefaultBuild\flash5000_3FFFF.hex -Intel -o .\boot_app.hex -Intel -Output_Block_Size=16
 
 ```
@@ -958,7 +1441,7 @@ __6generateBootAppHex.cmd__
 <br>
 
 __7generateBootAppBin.cmd__
-```
+```c
 
 # input file
 .\boot_app.hex -Intel
@@ -971,7 +1454,19 @@ __7generateBootAppBin.cmd__
 
 ```
 
-![](img/app_property_common_02_1.jpg)
+---
+
+use RFP to download whole program : boot_app.bin(boot code + app code)
+
+![](img/app_RFP_01.jpg)
+
+
+__boot code binary folder__ : 
+RL78_F24_Boot_loader_UART\DefaultBuild\boot0000_4FFF.hex
+
+__app code binary folder__ : 
+RL78_F24_Boot_loader_app\DefaultBuild\flash5000_3FFFF.bin
+RL78_F24_Boot_loader_app\DefaultBuild\flash5000_3FFFF.hex
 
 ---
 
@@ -995,7 +1490,7 @@ __7generateBootAppBin.cmd__
 
 ![](img/app_property_link_01.jpg)
 * __[Device] > [Option byte values for OCD]__
-  * set to ```A4```
+  * set to ```A5```
   * default will be 0xFF
 
 <br>
@@ -1028,10 +1523,43 @@ __7generateBootAppBin.cmd__
 refer to How to Divide Boot and Flash Areas :
 __4.2.2  Specifying the section allocation__
 
+  * set __Layout sections automaticallu__ to ==NO== 
   * app code will start from 0x5000 (RL78 F24) , and reserved branch table area (0x5200)
-  * reserve SRAM flag 0xFFE10 area [(ram flag)](#ram_flag) , to prevent initial when power on
+  * entry editor and modify as below ( for data flash library )
+  * flash area
+  ```
+  RFD_DATA_n 
+  RFD_CMN_f 
+  RFD_DF_f 
+  SMP_CMN_f 
+  SMP_DF_f 
 
-![](img/app_property_link_04_1.jpg)
+  ```
+
+  * ram area
+  ```
+  RFD_DATA_nR 
+
+  ```
+
+  * reserve SRAM flag 0xFF700 area [(ram flag)](#ram_flag) , to prevent initial when power on
+
+  * __[Section] > [ROM to RAM mapped section]__
+    * entry editor and modify as below :
+
+  ```
+  .data=.dataR
+  .sdata=.sdataR
+  RFD_DATA_n=RFD_DATA_nR
+  ``` 
+
+![](img/app_property_link_04_3.jpg)
+
+  * set __Layout sections automaticallu__ to ==YES==
+  * the final result : 
+
+![](img/app_property_link_04_2.jpg)
+
 <br>
 
 ---
@@ -1065,7 +1593,7 @@ __4.2.3  Specifying hex file output only to the flash area address range__
 * file size will be different if use other platform (ex : RL78 F13 , RL78 G16 , etc)
   * [map const define ?](#map_const)
 
-```
+```c
 %BuildModeName%\flash5000_3FFFF.hex=5000-3FFFF
 ```
 

@@ -24,6 +24,7 @@
     
       <div class="crossnote markdown-preview  ">
       
+<p><a href="https://released.github.io/">return to index</a></p>
 <p><a id="article_top" href=""></a></p>
 <h1 id="agenda">Agenda </h1>
 <ul>
@@ -74,6 +75,14 @@ document no. : R20UT3475EJ0300<br>
 <br></p>
 </li>
 </ul>
+<span style="color:#FF0000">
+<b><u>Key point</u></b><br><br>
+</span> 
+<ul>
+<li>project setting for boot code and app code</li>
+<li>target MCU platform flash library usage and setting</li>
+<li>target interface initial and receive data</li>
+</ul>
 <hr>
 <h1 id="flash-architecture">Flash architecture </h1>
 <p>MCU flash will split to Boot area (boot code) and Flash area (app code)</p>
@@ -82,30 +91,70 @@ document no. : R20UT3475EJ0300<br>
 <hr>
 <h1 id="scenario--boot-area-boot-code">Scenario : Boot area (boot code) </h1>
 <ul>
-<li><strong>condition_check</strong> : detect <mark>flag</mark> store in ram specific area (ex : 0xFFE10) ,
+<li>use UART0 : P15/TX , P16/RX , to check terminal log meesgae</li>
+<li><strong>condition_check</strong> :
 <ul>
-<li>to determine if re-boot from Flash area (app code)</li>
+<li>detect <mark>flag</mark> store in ram specific area (ex : 0xFF700) , to determine if re-boot from Flash area (app code)</li>
 <li>if no app code in app section</li>
-<li>CRC check error when power on</li>
-<li>any other custom user defined condition</li>
 </ul>
 </li>
-<li>at Flash area (app code) last 4 bytes , will store <mark>CRC data</mark> , read the CRC byte and compare to the CRC of Flash area (app code) , if comapare error , stay in Boot area (boot code)</li>
-<li>base on the <mark>flag</mark> or <mark>BUTTON presssed (active LOW)</mark> , to determine if going to receive data flow from interface (ex : I2C , UART , ...) or ready to jump into Flash area (app code)</li>
-<li><strong>programming Flash area (app code) flow</strong>
+</ul>
+<p><img src="img/boot_check_app_empty.jpg" alt=""></p>
 <ul>
-<li>after Flash area (app code) update finish , read the CRC byte and compare to the CRC of Flash area (app code) , then leave update flow</li>
+<li>
+<p>base on the <mark>flag</mark> or <mark>BUTTON presssed (active LOW)</mark> , to determine</p>
+<ul>
+<li>need to stay in boot code , to receive data flow from interface (ex : I2C , UART , ...)</li>
+<li>ready to jump into Flash area (app code)</li>
+</ul>
+</li>
+<li>
+<p><strong>verify_application_chksum</strong> :</p>
+<ul>
+<li>compare CRC checksum when power on</li>
+<li>at Flash area (app code) last 4 bytes , will store <mark>CRC data</mark></li>
+<li>calculate the Flash area (app code) CRC byte (<mark>caculate_crc32_checksum</mark>) and compare to the CRC data store in last 4 bytes of Flash area (app code)</li>
+<li>if comapare error , stay in Boot area (boot code)</li>
+</ul>
+</li>
+</ul>
+<p><img src="img/boot_compare_check_err.jpg" alt=""></p>
+<ul>
+<li>
+<p>any other custom user defined condition</p>
+</li>
+<li>
+<p><strong>programming Flash area (app code) flow</strong></p>
+<ul>
+<li>refer the code flash sample function : Sample_CodeFlashControl and modify as :
+<ul>
+<li><mark>Sample_CodeFlashControl_Erase</mark></li>
+<li><mark>Sample_CodeFlashControl_SingleWrite</mark></li>
+<li><strong>KEY POINT : SAMPLE_START_SECTION_SMP_CF</strong></li>
+</ul>
+</li>
+<li>after Flash area (app code) update finish ,
+<ul>
+<li>UART (xmodem , UART1 : P74/TX , P75/RX) : reboot MCU</li>
+<li>I2C (IICA0 , P62/SCL , P63/SDA): read the CRC byte and compare to the CRC of Flash area (app code) , then leave update flow
+<ul>
 <li>if CRC compare OK and no detect update inquiry , jump to Flash area (app code)</li>
 </ul>
 </li>
-<li><mark>NO INTERRUPT , use POLLING</mark> to receive interface data</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>
+<p><mark>NO INTERRUPT , use POLLING</mark> to receive interface data</p>
+</li>
 </ul>
 <p><img src="img/boot_flag_check.jpg" alt=""></p>
 <hr>
 <p><a id="ram_flag" href=""></a></p>
 <h1 id="scenario--flash-area-app-code">Scenario : Flash area (app code) </h1>
 <ul>
-<li>set <mark>ram flag</mark> store in ram specific area (ex : 0xFFE10)
+<li>set <mark>ram flag</mark> store in ram specific area (ex : 0xFF700)
 <ul>
 <li>change flag data and execute reset , when
 <ul>
@@ -113,11 +162,15 @@ document no. : R20UT3475EJ0300<br>
 <li>any other custom user defined condition (ex : ADC , GPIO etc)</li>
 </ul>
 </li>
+<li>use terminal (UART0 : P15/TX , P16/RX) , by press <mark>digit 3</mark> ,to set ram flag and reset</li>
 </ul>
 </li>
-<li>at Flash area (app code) last 4 bytes , will add <mark>CRC data</mark> after project compile finish</li>
+<li>by press <mark>digit 1</mark> to write data flash</li>
+<li>by press <mark>digit 2</mark> to read data flash</li>
+<li>at Flash area (app code) last 4 bytes , will add <mark>CRC data</mark> after <mark>project compile finish</mark></li>
 </ul>
-<p><img src="img/app_flag_set.jpg" alt=""></p>
+<p><img src="img/app_flag_set.jpg" alt=""><br>
+<img src="img/app_flag_set_2.jpg" alt=""></p>
 <hr>
 <h1 id="project--boot-codeapp-code-modifictaion---ftableinc">Project : boot code/app code modifictaion - ftable.inc </h1>
 <p><a id="FALSH_TABLE" href=""></a><br>
@@ -130,8 +183,8 @@ document no. : R20UT3475EJ0300<br>
 <p>ftable.inc</p>
 </li>
 </ul>
-<pre data-role="codeBlock" data-info="" class="language-text"><code>FLASH_TABLE       .EQU  0x5000 
-INTERRUPT_OFFSET  .EQU  0x100 
+<pre data-role="codeBlock" data-info="c" class="language-c c"><code>FLASH_TABLE       <span class="token punctuation">.</span>EQU  <span class="token number">0x5000</span> 
+INTERRUPT_OFFSET  <span class="token punctuation">.</span>EQU  <span class="token number">0x100</span> 
 </code></pre><br>
 <p><a id="map_const" href=""></a></p>
 <ul>
@@ -212,11 +265,136 @@ add branch instructions : <a href="#FALSH_TABLE">FALSH_TABLE</a></p>
 comment out .const section</p>
 <p><img src="img/cstart_06.jpg" alt=""></p>
 <p>(7)<br>
-comment out bsp_init_system</p>
+modify bsp_init_system function name</p>
 <p><img src="img/cstart_07.jpg" alt=""></p>
 <p>(8)<br>
 modify hardware init function name (<strong>boot_hdwinit</strong>) <a id="boot_hdwinit" href=""></a></p>
 <p><img src="img/cstart_08.jpg" alt=""></p>
+<p>(9)<br>
+increase bss size to 0x500</p>
+<p><img src="img/cstart_09.jpg" alt=""><br>
+<img src="img/cstart_10.jpg" alt=""></p>
+<p>(10)<br>
+add ram flag section</p>
+<pre data-role="codeBlock" data-info="c" class="language-c c"><code>  <span class="token punctuation">.</span>SECTION <span class="token punctuation">.</span>boot_info<span class="token punctuation">,</span> BSS
+  <span class="token punctuation">.</span>L_section_boot_info<span class="token operator">:</span>
+</code></pre><p><img src="img/cstart_11_3.jpg" alt=""></p>
+<p>(11)<br>
+add <mark>code flash library section</mark></p>
+<p><img src="img/cstart_11.jpg" alt=""></p>
+<pre data-role="codeBlock" data-info="c" class="language-c c"><code>  <span class="token punctuation">.</span>SECTION RFD_DATA_nR<span class="token punctuation">,</span> DATA
+  <span class="token punctuation">.</span>SECTION RFD_CMN_fR<span class="token punctuation">,</span> TEXTF
+  <span class="token punctuation">.</span>SECTION RFD_CF_fR<span class="token punctuation">,</span> TEXTF
+  <span class="token punctuation">.</span>SECTION SMP_CMN_fR<span class="token punctuation">,</span> TEXTF
+  <span class="token punctuation">.</span>SECTION SMP_CF_fR<span class="token punctuation">,</span> TEXTF
+</code></pre><p><img src="img/cstart_11_1.jpg" alt=""></p>
+<pre data-role="codeBlock" data-info="c" class="language-c c"><code>	<span class="token punctuation">;</span> copy RFD external variables having initial <span class="token function">value</span> <span class="token punctuation">(</span>near<span class="token punctuation">)</span>
+	MOV	ES<span class="token punctuation">,</span>#<span class="token function">HIGHW</span><span class="token punctuation">(</span><span class="token function">STARTOF</span><span class="token punctuation">(</span>RFD_DATA_n<span class="token punctuation">)</span><span class="token punctuation">)</span>
+	MOVW	BC<span class="token punctuation">,</span>#<span class="token function">LOWW</span><span class="token punctuation">(</span><span class="token function">SIZEOF</span><span class="token punctuation">(</span>RFD_DATA_n<span class="token punctuation">)</span><span class="token punctuation">)</span>
+	BR	$<span class="token punctuation">.</span>L2_RFD_DATA
+<span class="token punctuation">.</span>L1_RFD_DATA<span class="token operator">:</span>
+	DECW	BC
+	MOV	A<span class="token punctuation">,</span>ES<span class="token operator">:</span><span class="token function">LOWW</span><span class="token punctuation">(</span><span class="token function">STARTOF</span><span class="token punctuation">(</span>RFD_DATA_n<span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">[</span>BC<span class="token punctuation">]</span>
+	MOV	<span class="token function">LOWW</span><span class="token punctuation">(</span><span class="token function">STARTOF</span><span class="token punctuation">(</span>RFD_DATA_nR<span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">[</span>BC<span class="token punctuation">]</span><span class="token punctuation">,</span>A
+<span class="token punctuation">.</span>L2_RFD_DATA<span class="token operator">:</span>
+	CLRW	AX
+	CMPW	AX<span class="token punctuation">,</span>BC
+	BNZ	$<span class="token punctuation">.</span>L1_RFD_DATA
+
+
+	<span class="token punctuation">;</span> copy code to <span class="token function">RAM</span> <span class="token punctuation">(</span>RFD_CMN<span class="token punctuation">)</span>
+	MOV	C<span class="token punctuation">,</span>#<span class="token function">HIGHW</span><span class="token punctuation">(</span><span class="token function">STARTOF</span><span class="token punctuation">(</span>RFD_CMN_f<span class="token punctuation">)</span><span class="token punctuation">)</span>
+	MOVW	HL<span class="token punctuation">,</span>#<span class="token function">LOWW</span><span class="token punctuation">(</span><span class="token function">STARTOF</span><span class="token punctuation">(</span>RFD_CMN_f<span class="token punctuation">)</span><span class="token punctuation">)</span>
+	MOVW	DE<span class="token punctuation">,</span>#<span class="token function">LOWW</span><span class="token punctuation">(</span><span class="token function">STARTOF</span><span class="token punctuation">(</span>RFD_CMN_fR<span class="token punctuation">)</span><span class="token punctuation">)</span>
+	BR	$<span class="token punctuation">.</span>L12_TEXT
+<span class="token punctuation">.</span>L11_TEXT<span class="token operator">:</span>
+	MOV	A<span class="token punctuation">,</span>C
+	MOV	ES<span class="token punctuation">,</span>A
+	MOV	A<span class="token punctuation">,</span>ES<span class="token operator">:</span><span class="token punctuation">[</span>HL<span class="token punctuation">]</span>
+	MOV	<span class="token punctuation">[</span>DE<span class="token punctuation">]</span><span class="token punctuation">,</span>A
+	INCW	DE
+	INCW	HL
+	CLRW	AX
+	CMPW	AX<span class="token punctuation">,</span>HL
+	SKNZ
+	INC	C
+<span class="token punctuation">.</span>L12_TEXT<span class="token operator">:</span>
+	MOVW	AX<span class="token punctuation">,</span>HL
+	CMPW	AX<span class="token punctuation">,</span>#<span class="token function">LOWW</span><span class="token punctuation">(</span><span class="token function">STARTOF</span><span class="token punctuation">(</span>RFD_CMN_f<span class="token punctuation">)</span> <span class="token operator">+</span> <span class="token function">SIZEOF</span><span class="token punctuation">(</span>RFD_CMN_f<span class="token punctuation">)</span><span class="token punctuation">)</span>
+	BNZ	$<span class="token punctuation">.</span>L11_TEXT
+
+	<span class="token punctuation">;</span> copy code to <span class="token function">RAM</span> <span class="token punctuation">(</span>RFD_CF<span class="token punctuation">)</span>
+	MOV	C<span class="token punctuation">,</span>#<span class="token function">HIGHW</span><span class="token punctuation">(</span><span class="token function">STARTOF</span><span class="token punctuation">(</span>RFD_CF_f<span class="token punctuation">)</span><span class="token punctuation">)</span>
+	MOVW	HL<span class="token punctuation">,</span>#<span class="token function">LOWW</span><span class="token punctuation">(</span><span class="token function">STARTOF</span><span class="token punctuation">(</span>RFD_CF_f<span class="token punctuation">)</span><span class="token punctuation">)</span>
+	MOVW	DE<span class="token punctuation">,</span>#<span class="token function">LOWW</span><span class="token punctuation">(</span><span class="token function">STARTOF</span><span class="token punctuation">(</span>RFD_CF_fR<span class="token punctuation">)</span><span class="token punctuation">)</span>
+	BR	$<span class="token punctuation">.</span>L22_TEXT
+<span class="token punctuation">.</span>L21_TEXT<span class="token operator">:</span>
+	MOV	A<span class="token punctuation">,</span>C
+	MOV	ES<span class="token punctuation">,</span>A
+	MOV	A<span class="token punctuation">,</span>ES<span class="token operator">:</span><span class="token punctuation">[</span>HL<span class="token punctuation">]</span>
+	MOV	<span class="token punctuation">[</span>DE<span class="token punctuation">]</span><span class="token punctuation">,</span>A
+	INCW	DE
+	INCW	HL
+	CLRW	AX
+	CMPW	AX<span class="token punctuation">,</span>HL
+	SKNZ
+	INC	C
+<span class="token punctuation">.</span>L22_TEXT<span class="token operator">:</span>
+	MOVW	AX<span class="token punctuation">,</span>HL
+	CMPW	AX<span class="token punctuation">,</span>#<span class="token function">LOWW</span><span class="token punctuation">(</span><span class="token function">STARTOF</span><span class="token punctuation">(</span>RFD_CF_f<span class="token punctuation">)</span> <span class="token operator">+</span> <span class="token function">SIZEOF</span><span class="token punctuation">(</span>RFD_CF_f<span class="token punctuation">)</span><span class="token punctuation">)</span>
+	BNZ	$<span class="token punctuation">.</span>L21_TEXT
+
+	<span class="token punctuation">;</span> copy code to <span class="token function">RAM</span> <span class="token punctuation">(</span>SMP_CMN<span class="token punctuation">)</span>
+	MOV	C<span class="token punctuation">,</span>#<span class="token function">HIGHW</span><span class="token punctuation">(</span><span class="token function">STARTOF</span><span class="token punctuation">(</span>SMP_CMN_f<span class="token punctuation">)</span><span class="token punctuation">)</span>
+	MOVW	HL<span class="token punctuation">,</span>#<span class="token function">LOWW</span><span class="token punctuation">(</span><span class="token function">STARTOF</span><span class="token punctuation">(</span>SMP_CMN_f<span class="token punctuation">)</span><span class="token punctuation">)</span>
+	MOVW	DE<span class="token punctuation">,</span>#<span class="token function">LOWW</span><span class="token punctuation">(</span><span class="token function">STARTOF</span><span class="token punctuation">(</span>SMP_CMN_fR<span class="token punctuation">)</span><span class="token punctuation">)</span>
+	BR	$<span class="token punctuation">.</span>L32_TEXT
+<span class="token punctuation">.</span>L31_TEXT<span class="token operator">:</span>
+	MOV	A<span class="token punctuation">,</span>C
+	MOV	ES<span class="token punctuation">,</span>A
+	MOV	A<span class="token punctuation">,</span>ES<span class="token operator">:</span><span class="token punctuation">[</span>HL<span class="token punctuation">]</span>
+	MOV	<span class="token punctuation">[</span>DE<span class="token punctuation">]</span><span class="token punctuation">,</span>A
+	INCW	DE
+	INCW	HL
+	CLRW	AX
+	CMPW	AX<span class="token punctuation">,</span>HL
+	SKNZ
+	INC	C
+<span class="token punctuation">.</span>L32_TEXT<span class="token operator">:</span>
+	MOVW	AX<span class="token punctuation">,</span>HL
+	CMPW	AX<span class="token punctuation">,</span>#<span class="token function">LOWW</span><span class="token punctuation">(</span><span class="token function">STARTOF</span><span class="token punctuation">(</span>SMP_CMN_f<span class="token punctuation">)</span> <span class="token operator">+</span> <span class="token function">SIZEOF</span><span class="token punctuation">(</span>SMP_CMN_f<span class="token punctuation">)</span><span class="token punctuation">)</span>
+	BNZ	$<span class="token punctuation">.</span>L31_TEXT
+
+	<span class="token punctuation">;</span> copy code to <span class="token function">RAM</span> <span class="token punctuation">(</span>SMP_CF<span class="token punctuation">)</span>
+	MOV	C<span class="token punctuation">,</span>#<span class="token function">HIGHW</span><span class="token punctuation">(</span><span class="token function">STARTOF</span><span class="token punctuation">(</span>SMP_CF_f<span class="token punctuation">)</span><span class="token punctuation">)</span>
+	MOVW	HL<span class="token punctuation">,</span>#<span class="token function">LOWW</span><span class="token punctuation">(</span><span class="token function">STARTOF</span><span class="token punctuation">(</span>SMP_CF_f<span class="token punctuation">)</span><span class="token punctuation">)</span>
+	MOVW	DE<span class="token punctuation">,</span>#<span class="token function">LOWW</span><span class="token punctuation">(</span><span class="token function">STARTOF</span><span class="token punctuation">(</span>SMP_CF_fR<span class="token punctuation">)</span><span class="token punctuation">)</span>
+	BR	$<span class="token punctuation">.</span>L42_TEXT
+<span class="token punctuation">.</span>L41_TEXT<span class="token operator">:</span>
+	MOV	A<span class="token punctuation">,</span>C
+	MOV	ES<span class="token punctuation">,</span>A
+	MOV	A<span class="token punctuation">,</span>ES<span class="token operator">:</span><span class="token punctuation">[</span>HL<span class="token punctuation">]</span>
+	MOV	<span class="token punctuation">[</span>DE<span class="token punctuation">]</span><span class="token punctuation">,</span>A
+	INCW	DE
+	INCW	HL
+	CLRW	AX
+	CMPW	AX<span class="token punctuation">,</span>HL
+	SKNZ
+	INC	C
+<span class="token punctuation">.</span>L42_TEXT<span class="token operator">:</span>
+	MOVW	AX<span class="token punctuation">,</span>HL
+	CMPW	AX<span class="token punctuation">,</span>#<span class="token function">LOWW</span><span class="token punctuation">(</span><span class="token function">STARTOF</span><span class="token punctuation">(</span>SMP_CF_f<span class="token punctuation">)</span> <span class="token operator">+</span> <span class="token function">SIZEOF</span><span class="token punctuation">(</span>SMP_CF_f<span class="token punctuation">)</span><span class="token punctuation">)</span>
+	BNZ	$<span class="token punctuation">.</span>L41_TEXT
+</code></pre><p><img src="img/cstart_11_2.jpg" alt=""></p>
+<hr>
+<p>boot code : Compare below file to see the difference<br>
+after modification :<br>
+RL78_F24_Boot_loader_UART\cstart.asm<br>
+<a href="https://github.com/released/RL78_F24_Boot_loader_UART/blob/main/cstart.asm">https://github.com/released/RL78_F24_Boot_loader_UART/blob/main/cstart.asm</a></p>
+<p>code flash :<br>
+RL78_F24_Boot_loader_UART\RFDRL78T02\sample\RL78_F24\CF\CCRL\source\cstart.asm</p>
+<p>smart configurator original file :<br>
+RL78_F24_Boot_loader_UART\src\smc_gen\r_bsp\mcu\all\cstart.asm</p>
 <p><u>How to Divide Boot and Flash Areas</u></p>
 <hr>
 <h1 id="project--boot-code-modifictaion---stkinitasm">Project : boot code modifictaion - stkinit.asm </h1>
@@ -249,7 +427,195 @@ modify hardware init function name (<strong>boot_hdwinit</strong>) <a id="boot_h
 <li>base on <a href="#target_MCU_flash_type">RL78 MCU</a>  , register correspond <mark>CODE FLASH library</mark> into Boot area (boot code) project and exclude uncessary file (data flash , extra area)</li>
 </ul>
 <p><img src="img/RFD_tree_file.jpg" alt=""></p>
-<p><u>Renesas Flash Driver RL78 Type 02 User’s  Manual</u></p>
+<hr>
+<ul>
+<li>
+<p>refer to RL78_F24_Boot_loader_UART\RFDRL78T02\sample\common\source\codeflash\sample_control_code_flash.c</p>
+</li>
+<li>
+<p><strong>KEY POINT : SAMPLE_START_SECTION_SMP_CF</strong></p>
+</li>
+<li>
+<p><strong>Sample_CodeFlashControl_Erase</strong></p>
+</li>
+</ul>
+<pre data-role="codeBlock" data-info="c" class="language-c c"><code>R_RFD_FAR_FUNC <span class="token class-name">e_sample_ret_t</span> <span class="token function">Sample_CodeFlashControl_Erase</span><span class="token punctuation">(</span><span class="token class-name">uint32_t</span> i_u32_start_addr<span class="token punctuation">)</span>
+<span class="token punctuation">{</span>
+    <span class="token comment">/* Local variable definition */</span>
+    <span class="token class-name">e_rfd_ret_t</span>    l_e_rfd_ret_status<span class="token punctuation">;</span>
+    <span class="token class-name">e_sample_ret_t</span> l_e_sam_ret_status<span class="token punctuation">;</span>
+    <span class="token class-name">e_sample_ret_t</span> l_e_sam_ret_value<span class="token punctuation">;</span>
+    bool           l_e_sam_error_flag<span class="token punctuation">;</span>
+    <span class="token comment">// uint16_t       l_u16_count;</span>
+    <span class="token class-name">uint16_t</span>       l_u16_block_number<span class="token punctuation">;</span>
+    <span class="token comment">// uint32_t       l_u32_check_write_data_addr;</span>
+    
+    <span class="token comment">/* Set local variables */</span>
+    l_e_sam_ret_value           <span class="token operator">=</span> SAMPLE_ENUM_RET_STS_OK<span class="token punctuation">;</span>
+    l_e_sam_error_flag          <span class="token operator">=</span> false<span class="token punctuation">;</span>
+    
+    <span class="token comment">/* This expression (actual block number) never exceeds the range of casting uint16_t */</span>
+    l_u16_block_number          <span class="token operator">=</span> <span class="token punctuation">(</span><span class="token class-name">uint16_t</span><span class="token punctuation">)</span><span class="token punctuation">(</span>i_u32_start_addr <span class="token operator">&gt;&gt;</span> SAMPLE_VALUE_U08_SHIFT_ADDR_TO_BLOCK_CF<span class="token punctuation">)</span><span class="token punctuation">;</span>
+    <span class="token comment">// l_u32_check_write_data_addr = i_u32_start_addr;</span>
+    
+    <span class="token comment">/******************************************************************************************************************
+     * Set the code flash programming mode
+     *****************************************************************************************************************/</span>
+    l_e_rfd_ret_status <span class="token operator">=</span> <span class="token function">R_RFD_SetFlashMemoryMode</span><span class="token punctuation">(</span>R_RFD_ENUM_FLASH_MODE_CODE_PROGRAMMING<span class="token punctuation">)</span><span class="token punctuation">;</span>
+    
+    <span class="token keyword keyword-if">if</span> <span class="token punctuation">(</span>R_RFD_ENUM_RET_STS_OK <span class="token operator">!=</span> l_e_rfd_ret_status<span class="token punctuation">)</span>
+    <span class="token punctuation">{</span>
+        l_e_sam_error_flag <span class="token operator">=</span> true<span class="token punctuation">;</span>
+        l_e_sam_ret_value  <span class="token operator">=</span> SAMPLE_ENUM_RET_ERR_MODE_MISMATCHED<span class="token punctuation">;</span>
+    <span class="token punctuation">}</span>
+    <span class="token keyword keyword-else">else</span>
+    <span class="token punctuation">{</span>
+        <span class="token comment">/* No operation */</span>
+    <span class="token punctuation">}</span>
+    
+    <span class="token comment">/******************************************************************************************************************
+     * BLANKCHECK -&gt; ERASE
+     *****************************************************************************************************************/</span>
+    <span class="token keyword keyword-if">if</span> <span class="token punctuation">(</span>false <span class="token operator">==</span> l_e_sam_error_flag<span class="token punctuation">)</span>
+    <span class="token punctuation">{</span>
+        <span class="token comment">/* BLANKCHECK (1 block) */</span>
+        <span class="token function">R_RFD_BlankCheckCodeFlashReq</span><span class="token punctuation">(</span>l_u16_block_number<span class="token punctuation">)</span><span class="token punctuation">;</span>
+        l_e_sam_ret_status <span class="token operator">=</span> <span class="token function">Sample_CheckCFDFSeqEnd</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+        
+        <span class="token keyword keyword-if">if</span> <span class="token punctuation">(</span>SAMPLE_ENUM_RET_ERR_ACT_BLANKCHECK <span class="token operator">==</span> l_e_sam_ret_status<span class="token punctuation">)</span>
+        <span class="token punctuation">{</span>
+            <span class="token comment">/* ERASE (1 block) */</span>
+            <span class="token function">R_RFD_EraseCodeFlashReq</span><span class="token punctuation">(</span>l_u16_block_number<span class="token punctuation">)</span><span class="token punctuation">;</span>
+            l_e_sam_ret_status <span class="token operator">=</span> <span class="token function">Sample_CheckCFDFSeqEnd</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+            
+            <span class="token keyword keyword-if">if</span> <span class="token punctuation">(</span>SAMPLE_ENUM_RET_STS_OK <span class="token operator">!=</span> l_e_sam_ret_status<span class="token punctuation">)</span>
+            <span class="token punctuation">{</span>
+                l_e_sam_error_flag <span class="token operator">=</span> true<span class="token punctuation">;</span>
+                l_e_sam_ret_value  <span class="token operator">=</span> SAMPLE_ENUM_RET_ERR_CMD_ERASE<span class="token punctuation">;</span>
+            <span class="token punctuation">}</span>
+            <span class="token keyword keyword-else">else</span>
+            <span class="token punctuation">{</span>
+                <span class="token comment">/* No operation */</span>
+            <span class="token punctuation">}</span>
+        <span class="token punctuation">}</span>
+        <span class="token keyword keyword-else">else</span> <span class="token keyword keyword-if">if</span> <span class="token punctuation">(</span>SAMPLE_ENUM_RET_STS_OK <span class="token operator">!=</span> l_e_sam_ret_status<span class="token punctuation">)</span>
+        <span class="token punctuation">{</span>
+            l_e_sam_error_flag <span class="token operator">=</span> true<span class="token punctuation">;</span>
+            l_e_sam_ret_value  <span class="token operator">=</span> SAMPLE_ENUM_RET_ERR_CMD_BLANKCHECK<span class="token punctuation">;</span>
+        <span class="token punctuation">}</span>
+        <span class="token keyword keyword-else">else</span>
+        <span class="token punctuation">{</span>
+            <span class="token comment">/* No operation */</span>
+        <span class="token punctuation">}</span>
+    <span class="token punctuation">}</span>
+    <span class="token keyword keyword-else">else</span> <span class="token comment">/* true == l_e_sam_error_flag */</span>
+    <span class="token punctuation">{</span>
+        <span class="token comment">/* No operation */</span>
+    <span class="token punctuation">}</span>
+        
+    <span class="token comment">/******************************************************************************************************************
+     * Set non-programmable mode
+     *****************************************************************************************************************/</span>
+    l_e_rfd_ret_status <span class="token operator">=</span> <span class="token function">R_RFD_SetFlashMemoryMode</span><span class="token punctuation">(</span>R_RFD_ENUM_FLASH_MODE_CODE_TO_NONPROGRAMMABLE<span class="token punctuation">)</span><span class="token punctuation">;</span>
+    
+    <span class="token keyword keyword-if">if</span> <span class="token punctuation">(</span>R_RFD_ENUM_RET_STS_OK <span class="token operator">!=</span> l_e_rfd_ret_status<span class="token punctuation">)</span>
+    <span class="token punctuation">{</span>
+        l_e_sam_error_flag <span class="token operator">=</span> true<span class="token punctuation">;</span>
+        l_e_sam_ret_value  <span class="token operator">=</span> SAMPLE_ENUM_RET_ERR_MODE_MISMATCHED<span class="token punctuation">;</span>
+    <span class="token punctuation">}</span>
+    <span class="token keyword keyword-else">else</span>
+    <span class="token punctuation">{</span>
+        <span class="token comment">/* No operation */</span>
+    <span class="token punctuation">}</span>
+        
+    <span class="token keyword keyword-return">return</span> <span class="token punctuation">(</span>l_e_sam_ret_value<span class="token punctuation">)</span><span class="token punctuation">;</span>
+<span class="token punctuation">}</span>
+</code></pre><ul>
+<li><strong>Sample_CodeFlashControl_SingleWrite</strong></li>
+</ul>
+<pre data-role="codeBlock" data-info="c" class="language-c c"><code>R_RFD_FAR_FUNC <span class="token class-name">e_sample_ret_t</span> <span class="token function">Sample_CodeFlashControl_SingleWrite</span><span class="token punctuation">(</span><span class="token class-name">uint32_t</span> i_u32_start_addr<span class="token punctuation">,</span>
+                                                      <span class="token class-name">uint8_t</span> __near <span class="token operator">*</span> inp_u08_write_data<span class="token punctuation">)</span>
+<span class="token punctuation">{</span>
+    <span class="token comment">/* Local variable definition */</span>
+    <span class="token class-name">e_rfd_ret_t</span>    l_e_rfd_ret_status<span class="token punctuation">;</span>
+    <span class="token class-name">e_sample_ret_t</span> l_e_sam_ret_status<span class="token punctuation">;</span>
+    <span class="token class-name">e_sample_ret_t</span> l_e_sam_ret_value<span class="token punctuation">;</span>
+    bool           l_e_sam_error_flag<span class="token punctuation">;</span>
+    <span class="token class-name">uint16_t</span>       l_u16_count <span class="token operator">=</span> <span class="token number">0</span><span class="token punctuation">;</span>
+    <span class="token comment">// uint16_t       l_u16_block_number;</span>
+    <span class="token comment">// uint32_t       l_u32_check_write_data_addr;</span>
+    
+    <span class="token comment">/* Set local variables */</span>
+    l_e_sam_ret_value           <span class="token operator">=</span> SAMPLE_ENUM_RET_STS_OK<span class="token punctuation">;</span>
+    l_e_sam_error_flag          <span class="token operator">=</span> false<span class="token punctuation">;</span>
+    
+    <span class="token comment">/* This expression (actual block number) never exceeds the range of casting uint16_t */</span>
+    <span class="token comment">// l_u16_block_number          = (uint16_t)(i_u32_start_addr &gt;&gt; SAMPLE_VALUE_U08_SHIFT_ADDR_TO_BLOCK_CF);</span>
+    <span class="token comment">// l_u32_check_write_data_addr = i_u32_start_addr;</span>
+    
+    <span class="token comment">/******************************************************************************************************************
+     * Set the code flash programming mode
+     *****************************************************************************************************************/</span>
+    l_e_rfd_ret_status <span class="token operator">=</span> <span class="token function">R_RFD_SetFlashMemoryMode</span><span class="token punctuation">(</span>R_RFD_ENUM_FLASH_MODE_CODE_PROGRAMMING<span class="token punctuation">)</span><span class="token punctuation">;</span>
+    
+    <span class="token keyword keyword-if">if</span> <span class="token punctuation">(</span>R_RFD_ENUM_RET_STS_OK <span class="token operator">!=</span> l_e_rfd_ret_status<span class="token punctuation">)</span>
+    <span class="token punctuation">{</span>
+        l_e_sam_error_flag <span class="token operator">=</span> true<span class="token punctuation">;</span>
+        l_e_sam_ret_value  <span class="token operator">=</span> SAMPLE_ENUM_RET_ERR_MODE_MISMATCHED<span class="token punctuation">;</span>
+    <span class="token punctuation">}</span>
+    <span class="token keyword keyword-else">else</span>
+    <span class="token punctuation">{</span>
+        <span class="token comment">/* No operation */</span>
+    <span class="token punctuation">}</span>
+   
+    <span class="token comment">/******************************************************************************************************************
+     * WRITE
+     *****************************************************************************************************************/</span>
+    <span class="token keyword keyword-if">if</span> <span class="token punctuation">(</span>false <span class="token operator">==</span> l_e_sam_error_flag<span class="token punctuation">)</span>
+    <span class="token punctuation">{</span>
+        <span class="token comment">// for (l_u16_count = 0u; l_u16_count &lt; i_u16_write_data_length; l_u16_count += 4u)</span>
+        <span class="token punctuation">{</span>
+            <span class="token comment">// R_RFD_WriteCodeFlashReq(i_u32_start_addr + l_u16_count, &amp;inp_u08_write_data[l_u16_count]);</span>
+            <span class="token function">R_RFD_WriteCodeFlashReq</span><span class="token punctuation">(</span>i_u32_start_addr <span class="token punctuation">,</span> <span class="token operator">&amp;</span>inp_u08_write_data<span class="token punctuation">[</span>l_u16_count<span class="token punctuation">]</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+            l_e_sam_ret_status <span class="token operator">=</span> <span class="token function">Sample_CheckCFDFSeqEnd</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+            
+            <span class="token keyword keyword-if">if</span> <span class="token punctuation">(</span>SAMPLE_ENUM_RET_STS_OK <span class="token operator">!=</span> l_e_sam_ret_status<span class="token punctuation">)</span>
+            <span class="token punctuation">{</span>
+                l_e_sam_error_flag <span class="token operator">=</span> true<span class="token punctuation">;</span>
+                l_e_sam_ret_value  <span class="token operator">=</span> SAMPLE_ENUM_RET_ERR_CMD_WRITE<span class="token punctuation">;</span>
+                <span class="token comment">// break;</span>
+            <span class="token punctuation">}</span>
+            <span class="token keyword keyword-else">else</span>
+            <span class="token punctuation">{</span>
+                <span class="token comment">/* No operation */</span>
+            <span class="token punctuation">}</span>
+        <span class="token punctuation">}</span>
+    <span class="token punctuation">}</span>
+    <span class="token keyword keyword-else">else</span> <span class="token comment">/* true == l_e_sam_error_flag */</span>
+    <span class="token punctuation">{</span>
+        <span class="token comment">/* No operation */</span>
+    <span class="token punctuation">}</span>
+        
+    <span class="token comment">/******************************************************************************************************************
+     * Set non-programmable mode
+     *****************************************************************************************************************/</span>
+    l_e_rfd_ret_status <span class="token operator">=</span> <span class="token function">R_RFD_SetFlashMemoryMode</span><span class="token punctuation">(</span>R_RFD_ENUM_FLASH_MODE_CODE_TO_NONPROGRAMMABLE<span class="token punctuation">)</span><span class="token punctuation">;</span>
+    
+    <span class="token keyword keyword-if">if</span> <span class="token punctuation">(</span>R_RFD_ENUM_RET_STS_OK <span class="token operator">!=</span> l_e_rfd_ret_status<span class="token punctuation">)</span>
+    <span class="token punctuation">{</span>
+        l_e_sam_error_flag <span class="token operator">=</span> true<span class="token punctuation">;</span>
+        l_e_sam_ret_value  <span class="token operator">=</span> SAMPLE_ENUM_RET_ERR_MODE_MISMATCHED<span class="token punctuation">;</span>
+    <span class="token punctuation">}</span>
+    <span class="token keyword keyword-else">else</span>
+    <span class="token punctuation">{</span>
+        <span class="token comment">/* No operation */</span>
+    <span class="token punctuation">}</span>
+    
+    <span class="token keyword keyword-return">return</span> <span class="token punctuation">(</span>l_e_sam_ret_value<span class="token punctuation">)</span><span class="token punctuation">;</span>
+<span class="token punctuation">}</span>
+
+
+</code></pre><p><u>Renesas Flash Driver RL78 Type 02 User’s  Manual</u></p>
 <hr>
 <h1 id="project--boot-code-modifictaion---add-crc-compare-1">Project : boot code modifictaion - add CRC compare (1) </h1>
 <ul>
@@ -257,11 +623,13 @@ modify hardware init function name (<strong>boot_hdwinit</strong>) <a id="boot_h
 <li>purpose:
 <ul>
 <li>condition check (check and compare app code CRC , prevent jump into corrupted app code)</li>
-<li>after update flash , check CRC and prepare jump into app code</li>
+<li>after update flash , check CRC and prepare jump into app code (I2C)</li>
 </ul>
 </li>
 </ul>
 <p><img src="img/crc_01.jpg" alt=""><br>
+<img src="img/crc_01_2.jpg" alt=""><br>
+<img src="img/crc_01_3.jpg" alt=""><br>
 <img src="img/crc_02.jpg" alt=""></p>
 <hr>
 <h1 id="project--boot-code-modifictaion---add-crc-compare-2">Project : boot code modifictaion - add CRC compare (2) </h1>
@@ -299,7 +667,7 @@ CRC in app code last 4 bytes will be added after compile at <b><u>app code proje
 <ul>
 <li>for boot_hdwinit() , will be initialized by <a href="#boot_hdwinit">cstart.asm</a>
 <ul>
-<li><mark>copy</mark> below function from driver and <mark>rename</mark> in boot_main.c for boot_hdwinit
+<li><mark>copy</mark> below function from driver and <mark>rename</mark> with prefix: <mark>boot_</mark> in boot_main.c for boot_hdwinit
 <ul>
 <li>bsp_init_system()
 <ul>
@@ -316,6 +684,7 @@ CRC in app code last 4 bytes will be added after compile at <b><u>app code proje
 </ul>
 </li>
 <li>R_Config_IICA0_Create()</li>
+<li>R_Config_TAU0_0_Start , for delay function (1ms)</li>
 </ul>
 </li>
 </ul>
@@ -333,6 +702,25 @@ CRC in app code last 4 bytes will be added after compile at <b><u>app code proje
 <p><img src="img/boot_i2c_01.jpg" alt=""><br>
 <img src="img/boot_i2c_02.jpg" alt=""><br>
 <img src="img/boot_i2c_03.jpg" alt=""></p>
+<hr>
+<h1 id="project--boot-code-modifictaion---xmodem-update-flow">Project : boot code modifictaion - xmodem update flow </h1>
+<p>below is at xmodem update when g_app_required_update == 1<br>
+<img src="img/xmodem_code_01.jpg" alt=""></p>
+<p>when trig update flow , will wait for xmodem from PC host<br>
+<img src="img/xmodem_erase.jpg" alt=""></p>
+<p>use teraterm , to send file under xmodem<br>
+<img src="img/xmodem_send.jpg" alt=""></p>
+<p>when under transmit binary file<br>
+<img src="img/xmodem_under_xfer.jpg" alt=""></p>
+<p>trasmit time , update RL78 F24 app code : 236K</p>
+<ul>
+<li>with boot code enable log message (xmodem.c , check debug3) , spent 41 sec<br>
+<img src="img/xmodem_under_xfer2.jpg" alt=""></li>
+<li>without boot code enable log message (xmodem.c , check debug3) , spent 40 sec<br>
+<img src="img/xmodem_under_xfer3.jpg" alt=""></li>
+</ul>
+<p>when update app code finish<br>
+<img src="img/xmodem_program_finish.jpg" alt=""></p>
 <hr>
 <h1 id="project--boot-code-property-modifictaion---e2-lite-setting">Project : boot code property modifictaion - E2 lite setting </h1>
 <p><img src="img/boot_e2_lite_property_flash.jpg" alt=""></p>
@@ -356,7 +744,7 @@ CRC in app code last 4 bytes will be added after compile at <b><u>app code proje
 </ul>
 </li>
 </ul>
-<pre data-role="codeBlock" data-info="" class="language-text"><code>%BuildModeName%\boot0000_4FFF.hex=0000-4FFF
+<pre data-role="codeBlock" data-info="c" class="language-c c"><code><span class="token operator">%</span>BuildModeName<span class="token operator">%</span>\boot0000_4FFF<span class="token punctuation">.</span>hex<span class="token operator">=</span><span class="token number">0000</span><span class="token operator">-</span><span class="token number">4FFF</span>
 </code></pre><table>
 <thead>
 <tr>
@@ -398,7 +786,7 @@ CRC in app code last 4 bytes will be added after compile at <b><u>app code proje
 </ul>
 </li>
 </ul>
-<pre data-role="codeBlock" data-info="" class="language-text"><code>copy /y/v .\DefaultBuild\RL78_F24_Boot_loader_UART.fsy ..\RL78_F24_Boot_loader_app\
+<pre data-role="codeBlock" data-info="c" class="language-c c"><code>copy <span class="token operator">/</span>y<span class="token operator">/</span>v <span class="token punctuation">.</span>\DefaultBuild\RL78_F24_Boot_loader_UART<span class="token punctuation">.</span>fsy <span class="token punctuation">.</span><span class="token punctuation">.</span>\RL78_F24_Boot_loader_app\
 </code></pre><p><img src="img/boot_foloder_DefaultBuild.jpg" alt=""></p>
 <p><u>How to Divide Boot and Flash Areas</u><br>
 <u>CC-RL Compiler User's Manual</u><br>
@@ -418,7 +806,7 @@ CRC in app code last 4 bytes will be added after compile at <b><u>app code proje
 <ul>
 <li><strong>[Device] &gt; [Option byte values for OCD]</strong>
 <ul>
-<li>set to <code>A4</code></li>
+<li>set to <code>A5</code></li>
 <li>default will be 0xFF<br>
 <img src="img/boot_property_link_02.jpg" alt=""><br>
 <br></li>
@@ -488,7 +876,8 @@ CRC in app code last 4 bytes will be added after compile at <b><u>app code proje
 <li>
 <p><strong>[Section] &gt; [Section start address]</strong></p>
 <ul>
-<li>entry editor and modify as below :</li>
+<li>set <strong>Layout sections automaticallu</strong> to <mark>NO</mark></li>
+<li>entry editor and modify as below ( for code flash library )</li>
 <li>flash area</li>
 </ul>
 <pre data-role="codeBlock" data-info="" class="language-text"><code>RFD_DATA_n 
@@ -496,14 +885,16 @@ RFD_CMN_f
 RFD_CF_f 
 SMP_CMN_f 
 SMP_CF_f 
+
 </code></pre><ul>
 <li>ram area</li>
 </ul>
 <pre data-role="codeBlock" data-info="" class="language-text"><code>RFD_DATA_nR 
 RFD_CMN_fR 
-RFD_CF_fR 
+RFD_CF_fR
 SMP_CMN_fR 
-SMP_CF_fR   
+SMP_CF_fR  
+
 </code></pre><p><img src="img/boot_property_link_06_1.jpg" alt=""><br>
 <br></p>
 </li>
@@ -527,6 +918,9 @@ SMP_CF_fR
 <br></p>
 <ul>
 <li>
+<p>reserve SRAM flag 0xFF700 area <a href="#ram_flag">(ram flag)</a> , to prevent initial when power on</p>
+</li>
+<li>
 <p><strong>[Section] &gt; [ROM to RAM mapped section]</strong></p>
 <ul>
 <li>entry editor and modify as below :</li>
@@ -537,14 +931,17 @@ RFD_DATA_n=RFD_DATA_nR
 RFD_CMN_f=RFD_CMN_fR 
 RFD_CF_f=RFD_CF_fR 
 SMP_CMN_f=SMP_CMN_fR 
-SMP_CF_f=SMP_CF_fR  
+SMP_CF_f=SMP_CF_fR
+
 </code></pre></li>
 </ul>
 <p><img src="img/boot_property_link_09.jpg" alt=""><br>
 <img src="img/boot_property_link_09_1.jpg" alt=""></p>
 <ul>
+<li>set <strong>Layout sections automaticallu</strong> to <mark>YES</mark></li>
 <li>the final result :<br>
 <img src="img/boot_property_link_07.jpg" alt=""><br>
+<img src="img/boot_property_link_09_2.jpg" alt=""><br>
 <br></li>
 </ul>
 <hr>
@@ -630,7 +1027,7 @@ SMP_CF_f=SMP_CF_fR
 </ul>
 </li>
 </ul>
-<pre data-role="codeBlock" data-info="" class="language-text"><code>%BuildModeName%\boot0000_4FFF.hex=0000-4FFF
+<pre data-role="codeBlock" data-info="c" class="language-c c"><code><span class="token operator">%</span>BuildModeName<span class="token operator">%</span>\boot0000_4FFF<span class="token punctuation">.</span>hex<span class="token operator">=</span><span class="token number">0000</span><span class="token operator">-</span><span class="token number">4FFF</span>
 </code></pre><table>
 <thead>
 <tr>
@@ -698,8 +1095,8 @@ SMP_CF_f=SMP_CF_fR
 <p>ftable.inc</p>
 </li>
 </ul>
-<pre data-role="codeBlock" data-info="" class="language-text"><code>FLASH_TABLE       .EQU  0x5000 
-INTERRUPT_OFFSET  .EQU  0x100 
+<pre data-role="codeBlock" data-info="c" class="language-c c"><code>FLASH_TABLE       <span class="token punctuation">.</span>EQU  <span class="token number">0x5000</span> 
+INTERRUPT_OFFSET  <span class="token punctuation">.</span>EQU  <span class="token number">0x100</span> 
 </code></pre><br>
 <p><a id="map_const" href=""></a></p>
 <ul>
@@ -760,10 +1157,41 @@ INTERRUPT_OFFSET  .EQU  0x100
 <li><mark>copy</mark> cstart.asm to app code project root folder</li>
 <li><mark>register</mark> to Flash area (app code) project , then start to <mark>modify</mark></li>
 </ul>
-<ul>
-<li>comment out conditional check</li>
-</ul>
+<p>(1)<br>
+comment out conditional check</p>
 <p><img src="img/app_cstart_01.jpg" alt=""></p>
+<p>(2)<br>
+add ram flag section</p>
+<pre data-role="codeBlock" data-info="c" class="language-c c"><code>  <span class="token punctuation">.</span>SECTION <span class="token punctuation">.</span>boot_info<span class="token punctuation">,</span> BSS
+  <span class="token punctuation">.</span>L_section_boot_info<span class="token operator">:</span>
+</code></pre><p><img src="img/app_cstart_02.jpg" alt=""></p>
+<p>(3)<br>
+add <mark>data flash library section</mark></p>
+<pre data-role="codeBlock" data-info="c" class="language-c c"><code>  <span class="token punctuation">.</span>SECTION RFD_DATA_nR<span class="token punctuation">,</span> DATA
+</code></pre><p><img src="img/app_cstart_03.jpg" alt=""></p>
+<pre data-role="codeBlock" data-info="c" class="language-c c"><code>	<span class="token punctuation">;</span> copy RFD external variables having initial <span class="token function">value</span> <span class="token punctuation">(</span>near<span class="token punctuation">)</span>
+	MOV	ES<span class="token punctuation">,</span>#<span class="token function">HIGHW</span><span class="token punctuation">(</span><span class="token function">STARTOF</span><span class="token punctuation">(</span>RFD_DATA_n<span class="token punctuation">)</span><span class="token punctuation">)</span>
+	MOVW	BC<span class="token punctuation">,</span>#<span class="token function">LOWW</span><span class="token punctuation">(</span><span class="token function">SIZEOF</span><span class="token punctuation">(</span>RFD_DATA_n<span class="token punctuation">)</span><span class="token punctuation">)</span>
+	BR	$<span class="token punctuation">.</span>L2_RFD_DATA
+<span class="token punctuation">.</span>L1_RFD_DATA<span class="token operator">:</span>
+	DECW	BC
+	MOV	A<span class="token punctuation">,</span>ES<span class="token operator">:</span><span class="token function">LOWW</span><span class="token punctuation">(</span><span class="token function">STARTOF</span><span class="token punctuation">(</span>RFD_DATA_n<span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">[</span>BC<span class="token punctuation">]</span>
+	MOV	<span class="token function">LOWW</span><span class="token punctuation">(</span><span class="token function">STARTOF</span><span class="token punctuation">(</span>RFD_DATA_nR<span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">[</span>BC<span class="token punctuation">]</span><span class="token punctuation">,</span>A
+<span class="token punctuation">.</span>L2_RFD_DATA<span class="token operator">:</span>
+	CLRW	AX
+	CMPW	AX<span class="token punctuation">,</span>BC
+	BNZ	$<span class="token punctuation">.</span>L1_RFD_DATA
+
+</code></pre><p><img src="img/app_cstart_04.jpg" alt=""></p>
+<hr>
+<p>app code : Compare below file to see the difference<br>
+after modification :<br>
+RL78_F24_Boot_loader_app\cstart.asm<br>
+<a href="https://github.com/released/RL78_F24_Boot_loader_app/blob/main/cstart.asm">https://github.com/released/RL78_F24_Boot_loader_app/blob/main/cstart.asm</a></p>
+<p>data flash :<br>
+RL78_F24_Boot_loader_app\RFDRL78T02\sample\RL78_F24\DF\CCRL\source\cstart.asm</p>
+<p>smart configurator original file :<br>
+RL78_F24_Boot_loader_app\src\smc_gen\r_bsp\mcu\all\cstart.asm</p>
 <p><u>How to Divide Boot and Flash Areas</u></p>
 <hr>
 <h1 id="project--app-code-modifictaion---ftableasm">Project : app code modifictaion - ftable.asm </h1>
@@ -789,22 +1217,22 @@ INTERRUPT_OFFSET  .EQU  0x100
 </ul>
 </li>
 </ul>
-<pre data-role="codeBlock" data-info="" class="language-text"><code>		.DB4    0xffffffff                      ; INTP13/INTCL	             	;0x0014
-		 BR     !!_r_Config_UART0_interrupt_send	; INTST0/INTCSI00/INTIIC00  ;0x0016
-		 BR     !!_r_Config_UART0_interrupt_receive	; INTSR0/INTCSI01/INTIIC01 	;0x0018
-		.DB4    0xffffffff						; INTTRD0                       ;0x001A
-    ...
-		.DB4    0xffffffff					    ; INTLIN0STA/INTLIN0	        ;0x0026
-		 BR     !!_r_Config_IICA0_interrupt	    ; INTIICA0 		                ;0x0028
-		.DB4    0xffffffff                      ; INTP8/INTRTC                  ;0x002A
-		.DB4    0xffffffff      				; INTTM00                     	;0x002C
-		 BR     !!_r_Config_TAU0_1_interrupt    ; INTTM01                       ;0x002E
-		.DB4    0xffffffff                	    ; INTTM02                       ;0x0030
-    ...
-		.DB4    0xffffffff                      ; INTP10/INTTM03H               ;0x003C
-		 BR     !!_r_Config_UART1_interrupt_send	; INTST1/INTCSI10/INTIIC10      ;0x003E
-		 BR     !!_r_Config_UART1_interrupt_receive	; INTSR1/INTCSI11/INTIIC11      ;0x0040
-		.DB4    0xffffffff					    ; INTTM04                       ;0x0042
+<pre data-role="codeBlock" data-info="c" class="language-c c"><code>		<span class="token punctuation">.</span>DB4    <span class="token number">0xffffffff</span>                      <span class="token punctuation">;</span> INTP13<span class="token operator">/</span>INTCL	             	<span class="token punctuation">;</span><span class="token number">0x0014</span>
+		 BR     <span class="token operator">!</span><span class="token operator">!</span>_r_Config_UART0_interrupt_send	<span class="token punctuation">;</span> INTST0<span class="token operator">/</span>INTCSI00<span class="token operator">/</span>INTIIC00  <span class="token punctuation">;</span><span class="token number">0x0016</span>
+		 BR     <span class="token operator">!</span><span class="token operator">!</span>_r_Config_UART0_interrupt_receive	<span class="token punctuation">;</span> INTSR0<span class="token operator">/</span>INTCSI01<span class="token operator">/</span>INTIIC01 	<span class="token punctuation">;</span><span class="token number">0x0018</span>
+		<span class="token punctuation">.</span>DB4    <span class="token number">0xffffffff</span>						<span class="token punctuation">;</span> INTTRD0                       <span class="token punctuation">;</span><span class="token number">0x001A</span>
+    <span class="token punctuation">.</span><span class="token punctuation">.</span><span class="token punctuation">.</span>
+		<span class="token punctuation">.</span>DB4    <span class="token number">0xffffffff</span>					    <span class="token punctuation">;</span> INTLIN0STA<span class="token operator">/</span>INTLIN0	        <span class="token punctuation">;</span><span class="token number">0x0026</span>
+		 BR     <span class="token operator">!</span><span class="token operator">!</span>_r_Config_IICA0_interrupt	    <span class="token punctuation">;</span> INTIICA0 		                <span class="token punctuation">;</span><span class="token number">0x0028</span>
+		<span class="token punctuation">.</span>DB4    <span class="token number">0xffffffff</span>                      <span class="token punctuation">;</span> INTP8<span class="token operator">/</span>INTRTC                  <span class="token punctuation">;</span><span class="token number">0x002A</span>
+		<span class="token punctuation">.</span>DB4    <span class="token number">0xffffffff</span>      				<span class="token punctuation">;</span> INTTM00                     	<span class="token punctuation">;</span><span class="token number">0x002C</span>
+		 BR     <span class="token operator">!</span><span class="token operator">!</span>_r_Config_TAU0_1_interrupt    <span class="token punctuation">;</span> INTTM01                       <span class="token punctuation">;</span><span class="token number">0x002E</span>
+		<span class="token punctuation">.</span>DB4    <span class="token number">0xffffffff</span>                	    <span class="token punctuation">;</span> INTTM02                       <span class="token punctuation">;</span><span class="token number">0x0030</span>
+    <span class="token punctuation">.</span><span class="token punctuation">.</span><span class="token punctuation">.</span>
+		<span class="token punctuation">.</span>DB4    <span class="token number">0xffffffff</span>                      <span class="token punctuation">;</span> INTP10<span class="token operator">/</span>INTTM03H               <span class="token punctuation">;</span><span class="token number">0x003C</span>
+		 BR     <span class="token operator">!</span><span class="token operator">!</span>_r_Config_UART1_interrupt_send	<span class="token punctuation">;</span> INTST1<span class="token operator">/</span>INTCSI10<span class="token operator">/</span>INTIIC10      <span class="token punctuation">;</span><span class="token number">0x003E</span>
+		 BR     <span class="token operator">!</span><span class="token operator">!</span>_r_Config_UART1_interrupt_receive	<span class="token punctuation">;</span> INTSR1<span class="token operator">/</span>INTCSI11<span class="token operator">/</span>INTIIC11      <span class="token punctuation">;</span><span class="token number">0x0040</span>
+		<span class="token punctuation">.</span>DB4    <span class="token number">0xffffffff</span>					    <span class="token punctuation">;</span> INTTM04                       <span class="token punctuation">;</span><span class="token number">0x0042</span>
 
 </code></pre><p><u>How to Divide Boot and Flash Areas</u></p>
 <hr>
@@ -828,6 +1256,12 @@ INTERRUPT_OFFSET  .EQU  0x100
 </ul>
 <p><img src="img/app_project_tree_01.jpg" alt=""></p>
 <hr>
+<h1 id="project--app-code-modifictaion---add-data-flash-library">Project : app code modifictaion - add DATA FLASH library </h1>
+<ul>
+<li>base on <a href="#target_MCU_flash_type">RL78 MCU</a>  , register correspond <mark>DATA FLASH library</mark> into Flash area (app code) project and exclude uncessary file (code flash , extra area)</li>
+</ul>
+<p><img src="img/RFD_tree_file2.jpg" alt=""></p>
+<hr>
 <h1 id="project--app-code-modifictaion---use-smart-config-tool-to-generate-driver">Project : app code modifictaion - use smart config tool to generate driver </h1>
 <ul>
 <li>exclude the driver code (c code , asm code)</li>
@@ -843,7 +1277,7 @@ INTERRUPT_OFFSET  .EQU  0x100
 <p>refer to How to Divide Boot and Flash Areas :<br>
 <strong>Do not specify the vector address (vect) with the #pragma interrupt directive in the flash area.</strong></p>
 <ul>
-<li><mark>EVERY TIME</mark> when use smart config tool to re-generate driver ,</li>
+<li><mark>EVERY TIME</mark> when use smart config tool to <mark>re-generate driver</mark></li>
 <li>need to <mark>remove static declaration</mark> and <mark>comment on vect definition</mark> in earch drvier <mark>Config_xxx_user.c</mark></li>
 </ul>
 <p><img src="img/app_user_interrupt_01.jpg" alt=""><br>
@@ -856,9 +1290,9 @@ INTERRUPT_OFFSET  .EQU  0x100
 <ul>
 <li>add <a href="#ram_flag">ram flag</a> declaration</li>
 </ul>
-<pre data-role="codeBlock" data-info="" class="language-text"><code>#define RESET_TO_BOOT_SIGN 0xAA55AA55
-#pragma address (reset_to_bootloader = 0x000ffe10)
-volatile uint32_t reset_to_bootloader;
+<pre data-role="codeBlock" data-info="c" class="language-c c"><code><span class="token macro property"><span class="token directive-hash">#</span><span class="token directive keyword">define</span> <span class="token macro-name">RESET_TO_BOOT_SIGN</span> <span class="token expression"><span class="token number">0xAA55AA55</span></span></span>
+<span class="token macro property"><span class="token directive-hash">#</span><span class="token directive keyword">pragma</span> <span class="token expression"><span class="token function">address</span> <span class="token punctuation">(</span>reset_to_bootloader <span class="token operator">=</span> <span class="token number">0x000FF700</span><span class="token punctuation">)</span></span></span>
+<span class="token keyword keyword-volatile">volatile</span> <span class="token class-name">uint32_t</span> reset_to_bootloader<span class="token punctuation">;</span>
 
 </code></pre><ul>
 <li>
@@ -868,21 +1302,33 @@ volatile uint32_t reset_to_bootloader;
 </ul>
 </li>
 </ul>
-<pre data-role="codeBlock" data-info="" class="language-text"><code>    if(g_i2c_receive_complete)
-    {
-        if(0 == memcmp(&amp;iic_buf[0], switch_device_to_boot_mode_cmd, 6))
-        {
-            R_Config_IICA0_Slave_Send((uint8_t *)response_status_ok, 7);
-            while(!g_i2c_transmit_complete);
+<pre data-role="codeBlock" data-info="c" class="language-c c"><code>    <span class="token keyword keyword-if">if</span><span class="token punctuation">(</span>g_i2c_receive_complete<span class="token punctuation">)</span>
+    <span class="token punctuation">{</span>
+        <span class="token keyword keyword-if">if</span><span class="token punctuation">(</span><span class="token number">0</span> <span class="token operator">==</span> <span class="token function">memcmp</span><span class="token punctuation">(</span><span class="token operator">&amp;</span>iic_buf<span class="token punctuation">[</span><span class="token number">0</span><span class="token punctuation">]</span><span class="token punctuation">,</span> switch_device_to_boot_mode_cmd<span class="token punctuation">,</span> <span class="token number">6</span><span class="token punctuation">)</span><span class="token punctuation">)</span>
+        <span class="token punctuation">{</span>
+            <span class="token function">R_Config_IICA0_Slave_Send</span><span class="token punctuation">(</span><span class="token punctuation">(</span><span class="token class-name">uint8_t</span> <span class="token operator">*</span><span class="token punctuation">)</span>response_status_ok<span class="token punctuation">,</span> <span class="token number">7</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+            <span class="token keyword keyword-while">while</span><span class="token punctuation">(</span><span class="token operator">!</span>g_i2c_transmit_complete<span class="token punctuation">)</span><span class="token punctuation">;</span>
 
-            reset_to_bootloader = RESET_TO_BOOT_SIGN;
-            _reset_by_illegal_memory_access();
-        }
+            reset_to_bootloader <span class="token operator">=</span> RESET_TO_BOOT_SIGN<span class="token punctuation">;</span>
+            <span class="token function">_reset_by_illegal_memory_access</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+        <span class="token punctuation">}</span>
 
-        g_i2c_receive_complete = false;
-    }
+        g_i2c_receive_complete <span class="token operator">=</span> false<span class="token punctuation">;</span>
+    <span class="token punctuation">}</span>
 
+</code></pre><pre data-role="codeBlock" data-info="c" class="language-c c"><code><span class="token keyword keyword-void">void</span> <span class="token function">uart_rcv_process</span><span class="token punctuation">(</span><span class="token keyword keyword-void">void</span><span class="token punctuation">)</span>
+<span class="token punctuation">{</span>
+    <span class="token keyword keyword-if">if</span> <span class="token punctuation">(</span>FLAG_PROJ_TRIG_3<span class="token punctuation">)</span>
+    <span class="token punctuation">{</span>
+        FLAG_PROJ_TRIG_3 <span class="token operator">=</span> <span class="token number">0</span><span class="token punctuation">;</span>
 
+        reset_to_bootloader <span class="token operator">=</span> RESET_TO_BOOT_SIGN<span class="token punctuation">;</span>
+        <span class="token function">printf_tiny</span><span class="token punctuation">(</span><span class="token string">"(app)reset_to_bootloader:0x%X"</span><span class="token punctuation">,</span>reset_to_bootloader<span class="token operator">&gt;&gt;</span><span class="token number">16</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+        <span class="token function">printf_tiny</span><span class="token punctuation">(</span><span class="token string">"%X\r\n"</span><span class="token punctuation">,</span>reset_to_bootloader<span class="token operator">&amp;</span><span class="token number">0xFFFF</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+        <span class="token function">_reset_by_illegal_memory_access</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>        
+    <span class="token punctuation">}</span>
+<span class="token punctuation">}</span>
 </code></pre><hr>
 <h1 id="project--app-code-property-modifictaion---e2-lite-setting">Project : app code property modifictaion - E2 lite setting </h1>
 <p><img src="img/app_e2_lite_property_flash.jpg" alt=""></p>
@@ -906,7 +1352,7 @@ volatile uint32_t reset_to_bootloader;
 </ul>
 </li>
 </ul>
-<pre data-role="codeBlock" data-info="" class="language-text"><code>%BuildModeName%\flash5000_3FFFF.hex=5000-3FFFF
+<pre data-role="codeBlock" data-info="c" class="language-c c"><code><span class="token operator">%</span>BuildModeName<span class="token operator">%</span>\flash5000_3FFFF<span class="token punctuation">.</span>hex<span class="token operator">=</span><span class="token number">5000</span><span class="token operator">-</span><span class="token number">3FFFF</span>
 </code></pre><hr>
 <p><img src="img/app_property_common_02.jpg" alt=""></p>
 <ul>
@@ -957,80 +1403,87 @@ volatile uint32_t reset_to_bootloader;
 </ul>
 <br>
 <p><strong>1backupHex.cmd</strong></p>
-<pre data-role="codeBlock" data-info="" class="language-text"><code># input file
-.\DefaultBuild\flash5000_3FFFF.hex -Intel
+<pre data-role="codeBlock" data-info="c" class="language-c c"><code><span class="token macro property"><span class="token directive-hash">#</span> <span class="token directive keyword">input</span> <span class="token expression">file</span></span>
+<span class="token punctuation">.</span>\DefaultBuild\flash5000_3FFFF<span class="token punctuation">.</span>hex <span class="token operator">-</span>Intel
 
--crop 0x005000 0x40000
+<span class="token operator">-</span>crop <span class="token number">0x005000</span> <span class="token number">0x40000</span>
 
-# produce the output file
--Output
-.\DefaultBuild\flash5000_3FFFF_backup.hex -Intel
+<span class="token macro property"><span class="token directive-hash">#</span> <span class="token directive keyword">produce</span> <span class="token expression">the output file</span></span>
+<span class="token operator">-</span>Output
+<span class="token punctuation">.</span>\DefaultBuild\flash5000_3FFFF_backup<span class="token punctuation">.</span>hex <span class="token operator">-</span>Intel
 
 </code></pre><br>
 <p><strong>2generateChecksum.cmd</strong></p>
-<pre data-role="codeBlock" data-info="" class="language-text"><code># input file
-.\DefaultBuild\flash5000_3FFFF.hex -Intel
+<pre data-role="codeBlock" data-info="c" class="language-c c"><code><span class="token macro property"><span class="token directive-hash">#</span> <span class="token directive keyword">input</span> <span class="token expression">file</span></span>
+<span class="token punctuation">.</span>\DefaultBuild\flash5000_3FFFF<span class="token punctuation">.</span>hex <span class="token operator">-</span>Intel
 
--crop 0x5000 0x3FFFC
+<span class="token operator">-</span>crop <span class="token number">0x5000</span> <span class="token number">0x3FFFC</span>
 
--crc32-l-e 0x3FFFC		
+<span class="token operator">-</span>crc32<span class="token operator">-</span>l<span class="token operator">-</span>e <span class="token number">0x3FFFC</span>		
 
--crop 0x3FFFC 0x40000
+<span class="token operator">-</span>crop <span class="token number">0x3FFFC</span> <span class="token number">0x40000</span>
 											
--Output 
-- 
--HEX_Dump
+<span class="token operator">-</span>Output 
+<span class="token operator">-</span> 
+<span class="token operator">-</span>HEX_Dump
 
 </code></pre><br>
 <p><strong>3generateCRCHex.cmd</strong></p>
-<pre data-role="codeBlock" data-info="" class="language-text"><code># input file
-.\DefaultBuild\flash5000_3FFFF.hex -Intel
+<pre data-role="codeBlock" data-info="c" class="language-c c"><code><span class="token macro property"><span class="token directive-hash">#</span> <span class="token directive keyword">input</span> <span class="token expression">file</span></span>
+<span class="token punctuation">.</span>\DefaultBuild\flash5000_3FFFF<span class="token punctuation">.</span>hex <span class="token operator">-</span>Intel
 
--crop 0x5000 0x3FFFC
+<span class="token operator">-</span>crop <span class="token number">0x5000</span> <span class="token number">0x3FFFC</span>
 
--crc32-l-e 0x3FFFC
+<span class="token operator">-</span>crc32<span class="token operator">-</span>l<span class="token operator">-</span>e <span class="token number">0x3FFFC</span>
 
--Output
-.\DefaultBuild\flash5000_3FFFF_CRC.hex -Intel
+<span class="token operator">-</span>Output
+<span class="token punctuation">.</span>\DefaultBuild\flash5000_3FFFF_CRC<span class="token punctuation">.</span>hex <span class="token operator">-</span>Intel
 
 </code></pre><br>
 <p><strong>4generateCRCBin.cmd</strong></p>
-<pre data-role="codeBlock" data-info="" class="language-text"><code># input file
-.\DefaultBuild\flash5000_3FFFF_CRC.hex -Intel
+<pre data-role="codeBlock" data-info="c" class="language-c c"><code><span class="token macro property"><span class="token directive-hash">#</span> <span class="token directive keyword">input</span> <span class="token expression">file</span></span>
+<span class="token punctuation">.</span>\DefaultBuild\flash5000_3FFFF_CRC<span class="token punctuation">.</span>hex <span class="token operator">-</span>Intel
 
--crop 0x005000 0x40000 -offset -0x005000
+<span class="token operator">-</span>crop <span class="token number">0x005000</span> <span class="token number">0x40000</span> <span class="token operator">-</span>offset <span class="token operator">-</span><span class="token number">0x005000</span>
 
-# produce the output file
--Output
-.\DefaultBuild\flash5000_3FFFF.bin -binary
+<span class="token macro property"><span class="token directive-hash">#</span> <span class="token directive keyword">produce</span> <span class="token expression">the output file</span></span>
+<span class="token operator">-</span>Output
+<span class="token punctuation">.</span>\DefaultBuild\flash5000_3FFFF<span class="token punctuation">.</span>bin <span class="token operator">-</span>binary
 
 </code></pre><br>
 <p><strong>5generateCRCHexOverlap.cmd</strong></p>
-<pre data-role="codeBlock" data-info="" class="language-text"><code># input file
-.\DefaultBuild\flash5000_3FFFF_CRC.hex -Intel
+<pre data-role="codeBlock" data-info="c" class="language-c c"><code><span class="token macro property"><span class="token directive-hash">#</span> <span class="token directive keyword">input</span> <span class="token expression">file</span></span>
+<span class="token punctuation">.</span>\DefaultBuild\flash5000_3FFFF_CRC<span class="token punctuation">.</span>hex <span class="token operator">-</span>Intel
 
--crop 0x005000 0x40000
+<span class="token operator">-</span>crop <span class="token number">0x005000</span> <span class="token number">0x40000</span>
 
-# produce the output file
--Output
-.\DefaultBuild\flash5000_3FFFF.hex -intel
+<span class="token macro property"><span class="token directive-hash">#</span> <span class="token directive keyword">produce</span> <span class="token expression">the output file</span></span>
+<span class="token operator">-</span>Output
+<span class="token punctuation">.</span>\DefaultBuild\flash5000_3FFFF<span class="token punctuation">.</span>hex <span class="token operator">-</span>intel
 
 </code></pre><br>
 <p><strong>6generateBootAppHex.cmd</strong></p>
-<pre data-role="codeBlock" data-info="" class="language-text"><code>..\RL78_F24_Boot_loader_UART\DefaultBuild\boot0000_4FFF.hex -Intel .\DefaultBuild\flash5000_3FFFF.hex -Intel -o .\boot_app.hex -Intel -Output_Block_Size=16
+<pre data-role="codeBlock" data-info="c" class="language-c c"><code><span class="token punctuation">.</span><span class="token punctuation">.</span>\RL78_F24_Boot_loader_UART\DefaultBuild\boot0000_4FFF<span class="token punctuation">.</span>hex <span class="token operator">-</span>Intel <span class="token punctuation">.</span>\DefaultBuild\flash5000_3FFFF<span class="token punctuation">.</span>hex <span class="token operator">-</span>Intel <span class="token operator">-</span>o <span class="token punctuation">.</span>\boot_app<span class="token punctuation">.</span>hex <span class="token operator">-</span>Intel <span class="token operator">-</span>Output_Block_Size<span class="token operator">=</span><span class="token number">16</span>
 
 </code></pre><br>
 <p><strong>7generateBootAppBin.cmd</strong></p>
-<pre data-role="codeBlock" data-info="" class="language-text"><code># input file
-.\boot_app.hex -Intel
+<pre data-role="codeBlock" data-info="c" class="language-c c"><code><span class="token macro property"><span class="token directive-hash">#</span> <span class="token directive keyword">input</span> <span class="token expression">file</span></span>
+<span class="token punctuation">.</span>\boot_app<span class="token punctuation">.</span>hex <span class="token operator">-</span>Intel
 
--crop 0x00000 0x40000
+<span class="token operator">-</span>crop <span class="token number">0x00000</span> <span class="token number">0x40000</span>
 
-# produce the output file
--Output
-.\boot_app.bin -binary
+<span class="token macro property"><span class="token directive-hash">#</span> <span class="token directive keyword">produce</span> <span class="token expression">the output file</span></span>
+<span class="token operator">-</span>Output
+<span class="token punctuation">.</span>\boot_app<span class="token punctuation">.</span>bin <span class="token operator">-</span>binary
 
-</code></pre><p><img src="img/app_property_common_02_1.jpg" alt=""></p>
+</code></pre><hr>
+<p>use RFP to download whole program : boot_app.bin(boot code + app code)</p>
+<p><img src="img/app_RFP_01.jpg" alt=""></p>
+<p><strong>boot code binary folder</strong> :<br>
+RL78_F24_Boot_loader_UART\DefaultBuild\boot0000_4FFF.hex</p>
+<p><strong>app code binary folder</strong> :<br>
+RL78_F24_Boot_loader_app\DefaultBuild\flash5000_3FFFF.bin<br>
+RL78_F24_Boot_loader_app\DefaultBuild\flash5000_3FFFF.hex</p>
 <hr>
 <h1 id="project--app-code-property-modifictaion---cc-rl-build-tool-setting-1">Project : app code property modifictaion - CC-RL Build Tool setting </h1>
 <p><strong>Compile Options</strong></p>
@@ -1045,7 +1498,7 @@ volatile uint32_t reset_to_bootloader;
 <ul>
 <li><strong>[Device] &gt; [Option byte values for OCD]</strong>
 <ul>
-<li>set to <code>A4</code></li>
+<li>set to <code>A5</code></li>
 <li>default will be 0xFF</li>
 </ul>
 </li>
@@ -1095,11 +1548,43 @@ volatile uint32_t reset_to_bootloader;
 <p>refer to How to Divide Boot and Flash Areas :<br>
 <strong>4.2.2  Specifying the section allocation</strong></p>
 <ul>
+<li>set <strong>Layout sections automaticallu</strong> to <mark>NO</mark></li>
 <li>app code will start from 0x5000 (RL78 F24) , and reserved branch table area (0x5200)</li>
-<li>reserve SRAM flag 0xFFE10 area <a href="#ram_flag">(ram flag)</a> , to prevent initial when power on</li>
+<li>entry editor and modify as below ( for data flash library )</li>
+<li>flash area</li>
 </ul>
-<p><img src="img/app_property_link_04_1.jpg" alt=""><br>
-<br></p>
+<pre data-role="codeBlock" data-info="" class="language-text"><code>RFD_DATA_n 
+RFD_CMN_f 
+RFD_DF_f 
+SMP_CMN_f 
+SMP_DF_f 
+
+</code></pre><ul>
+<li>ram area</li>
+</ul>
+<pre data-role="codeBlock" data-info="" class="language-text"><code>RFD_DATA_nR 
+
+</code></pre><ul>
+<li>
+<p>reserve SRAM flag 0xFF700 area <a href="#ram_flag">(ram flag)</a> , to prevent initial when power on</p>
+</li>
+<li>
+<p><strong>[Section] &gt; [ROM to RAM mapped section]</strong></p>
+<ul>
+<li>entry editor and modify as below :</li>
+</ul>
+</li>
+</ul>
+<pre data-role="codeBlock" data-info="" class="language-text"><code>.data=.dataR
+.sdata=.sdataR
+RFD_DATA_n=RFD_DATA_nR
+</code></pre><p><img src="img/app_property_link_04_3.jpg" alt=""></p>
+<ul>
+<li>set <strong>Layout sections automaticallu</strong> to <mark>YES</mark></li>
+<li>the final result :</li>
+</ul>
+<p><img src="img/app_property_link_04_2.jpg" alt=""></p>
+<br>
 <hr>
 <p><img src="img/app_property_link_05.jpg" alt=""></p>
 <ul>
@@ -1132,7 +1617,7 @@ volatile uint32_t reset_to_bootloader;
 </ul>
 </li>
 </ul>
-<pre data-role="codeBlock" data-info="" class="language-text"><code>%BuildModeName%\flash5000_3FFFF.hex=5000-3FFFF
+<pre data-role="codeBlock" data-info="c" class="language-c c"><code><span class="token operator">%</span>BuildModeName<span class="token operator">%</span>\flash5000_3FFFF<span class="token punctuation">.</span>hex<span class="token operator">=</span><span class="token number">5000</span><span class="token operator">-</span><span class="token number">3FFFF</span>
 </code></pre><hr>
 <p><img src="img/app_hex_output_02.jpg" alt=""></p>
 <ul>
