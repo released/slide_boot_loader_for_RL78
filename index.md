@@ -70,7 +70,6 @@ MCU flash will split to Boot area (boot code) and Flash area (app code)
 
 ![](img/boot_check_app_empty.jpg)
 
-
   * base on the ==flag== or ==BUTTON presssed (active LOW)== , to determine 
     * need to stay in boot code , to receive data flow from interface (ex : I2C , UART , ...) 
     * ready to jump into Flash area (app code)
@@ -93,7 +92,13 @@ MCU flash will split to Boot area (boot code) and Flash area (app code)
   * after Flash area (app code) update finish , 
     * UART (xmodem , UART1 : P74/TX , P75/RX) : reboot MCU 
     * I2C (IICA0 , P62/SCL , P63/SDA): read the CRC byte and compare to the CRC of Flash area (app code) , then leave update flow
-      * if CRC compare OK and no detect update inquiry , jump to Flash area (app code)
+
+![](img/boot_update_finish.jpg)
+
+  * if CRC compare OK and no detect update inquiry , jump to Flash area (app code)
+
+![](img/boot_comapre_ok_jump_to_app.jpg)
+
 * ==NO INTERRUPT , use POLLING== to receive interface data 
 
 
@@ -108,14 +113,23 @@ MCU flash will split to Boot area (boot code) and Flash area (app code)
 * set ==ram flag== store in ram specific area (ex : 0xFF700) 
   * change flag data and execute reset , when
     * receive interface boot command (ex : I2C , UART , ...) 
-    * any other custom user defined condition (ex : ADC , GPIO etc)
-  * use terminal (UART0 : P15/TX , P16/RX) , by press ==digit 3== ,to set ram flag and reset
-* by press ==digit 1== to write data flash 
-* by press ==digit 2== to read data flash
-* at Flash area (app code) last 4 bytes , will add ==CRC data== after ==project compile finish==
 
 ![](img/app_flag_set.jpg)
 ![](img/app_flag_set_2.jpg)
+
+  * any other custom user defined condition (ex : ADC , GPIO etc)
+  * use terminal (UART0 : P15/TX , P16/RX) , by press ==digit 3== ,to set ram flag and reset
+
+![](img/app_digit_3.jpg)
+
+* by press ==digit 1== to write data flash 
+* by press ==digit 2== to read data flash
+
+![](img/app_data_flash_wr.jpg)
+
+* at Flash area (app code) last 4 bytes , will add ==CRC data== after ==project compile finish==
+
+![](img/app_code_crc_address.jpg)
 
 ---
 
@@ -1460,6 +1474,9 @@ use RFP to download whole program : boot_app.bin(boot code + app code)
 
 ![](img/app_RFP_01.jpg)
 
+
+__boot+app binary folder__ : 
+RL78_F24_Boot_loader_app\boot_app.bin
 
 __boot code binary folder__ : 
 RL78_F24_Boot_loader_UART\DefaultBuild\boot0000_4FFF.hex

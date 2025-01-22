@@ -136,18 +136,19 @@ document no. : R20UT3475EJ0300<br>
 <li>after Flash area (app code) update finish ,
 <ul>
 <li>UART (xmodem , UART1 : P74/TX , P75/RX) : reboot MCU</li>
-<li>I2C (IICA0 , P62/SCL , P63/SDA): read the CRC byte and compare to the CRC of Flash area (app code) , then leave update flow
+<li>I2C (IICA0 , P62/SCL , P63/SDA): read the CRC byte and compare to the CRC of Flash area (app code) , then leave update flow</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p><img src="img/boot_update_finish.jpg" alt=""></p>
 <ul>
 <li>if CRC compare OK and no detect update inquiry , jump to Flash area (app code)</li>
 </ul>
-</li>
-</ul>
-</li>
-</ul>
-</li>
-<li>
-<p><mark>NO INTERRUPT , use POLLING</mark> to receive interface data</p>
-</li>
+<p><img src="img/boot_comapre_ok_jump_to_app.jpg" alt=""></p>
+<ul>
+<li><mark>NO INTERRUPT , use POLLING</mark> to receive interface data</li>
 </ul>
 <p><img src="img/boot_flag_check.jpg" alt=""></p>
 <hr>
@@ -159,18 +160,27 @@ document no. : R20UT3475EJ0300<br>
 <li>change flag data and execute reset , when
 <ul>
 <li>receive interface boot command (ex : I2C , UART , ...)</li>
-<li>any other custom user defined condition (ex : ADC , GPIO etc)</li>
 </ul>
 </li>
-<li>use terminal (UART0 : P15/TX , P16/RX) , by press <mark>digit 3</mark> ,to set ram flag and reset</li>
 </ul>
 </li>
-<li>by press <mark>digit 1</mark> to write data flash</li>
-<li>by press <mark>digit 2</mark> to read data flash</li>
-<li>at Flash area (app code) last 4 bytes , will add <mark>CRC data</mark> after <mark>project compile finish</mark></li>
 </ul>
 <p><img src="img/app_flag_set.jpg" alt=""><br>
 <img src="img/app_flag_set_2.jpg" alt=""></p>
+<ul>
+<li>any other custom user defined condition (ex : ADC , GPIO etc)</li>
+<li>use terminal (UART0 : P15/TX , P16/RX) , by press <mark>digit 3</mark> ,to set ram flag and reset</li>
+</ul>
+<p><img src="img/app_digit_3.jpg" alt=""></p>
+<ul>
+<li>by press <mark>digit 1</mark> to write data flash</li>
+<li>by press <mark>digit 2</mark> to read data flash</li>
+</ul>
+<p><img src="img/app_data_flash_wr.jpg" alt=""></p>
+<ul>
+<li>at Flash area (app code) last 4 bytes , will add <mark>CRC data</mark> after <mark>project compile finish</mark></li>
+</ul>
+<p><img src="img/app_code_crc_address.jpg" alt=""></p>
 <hr>
 <h1 id="project--boot-codeapp-code-modifictaion---ftableinc">Project : boot code/app code modifictaion - ftable.inc </h1>
 <p><a id="FALSH_TABLE" href=""></a><br>
@@ -1479,6 +1489,8 @@ RL78_F24_Boot_loader_app\src\smc_gen\r_bsp\mcu\all\cstart.asm</p>
 </code></pre><hr>
 <p>use RFP to download whole program : boot_app.bin(boot code + app code)</p>
 <p><img src="img/app_RFP_01.jpg" alt=""></p>
+<p><strong>boot+app binary folder</strong> :<br>
+RL78_F24_Boot_loader_app\boot_app.bin</p>
 <p><strong>boot code binary folder</strong> :<br>
 RL78_F24_Boot_loader_UART\DefaultBuild\boot0000_4FFF.hex</p>
 <p><strong>app code binary folder</strong> :<br>
