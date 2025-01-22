@@ -70,9 +70,13 @@ MCU flash will split to Boot area (boot code) and Flash area (app code)
 
 ![](img/boot_check_app_empty.jpg)
 
+![](img/boot_flag_check.jpg)
+
+
   * base on the ==flag== or ==BUTTON presssed (active LOW)== , to determine 
     * need to stay in boot code , to receive data flow from interface (ex : I2C , UART , ...) 
     * ready to jump into Flash area (app code)
+
 
 * __verify_application_chksum__ : 
   * compare CRC checksum when power on 
@@ -100,9 +104,6 @@ MCU flash will split to Boot area (boot code) and Flash area (app code)
 ![](img/boot_comapre_ok_jump_to_app.jpg)
 
 * ==NO INTERRUPT , use POLLING== to receive interface data 
-
-
-![](img/boot_flag_check.jpg)
 
 ---
 
