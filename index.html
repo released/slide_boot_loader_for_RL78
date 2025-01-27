@@ -725,7 +725,8 @@ CRC in app code last 4 bytes will be added after compile at <b><u>app code proje
 <p>(2) device inquiry command packet (master)<br>
 <img src="img/LA_m_2_device_inquiry_cmd_packet.jpg" alt=""></p>
 <p>(2-1) report status about device inquiry command packet (slave)<br>
-<img src="img/LA_s_2_device_inquiry_data_status_ok.jpg" alt=""></p>
+<img src="img/LA_s_2_device_inquiry_data_status_ok_0.jpg" alt=""><br>
+<img src="img/LA_s_2_device_inquiry_data_status_ok_1.jpg" alt=""></p>
 <hr>
 <h1 id="project--boot-code-modifictaion---i2c-command-flow-read_device_signature">Project : boot code modifictaion - I2C command flow (read_device_signature) </h1>
 <p>(3) obtain target device signature (master)<br>
@@ -762,11 +763,11 @@ CRC in app code last 4 bytes will be added after compile at <b><u>app code proje
 <img src="img/LA_s_6_WRITE_MEMORY_START_1.jpg" alt=""></p>
 <hr>
 <h1 id="project--boot-code-modifictaion---i2c-command-flow-terminal-operation-master--slave">Project : boot code modifictaion - I2C command flow terminal operation (master &amp; slave) </h1>
-<p>(1) set target image<br>
+<p>(1) log message at master : set target image<br>
 <img src="img/i2c_transfer_m_1_ConfigProgramInfo.jpg" alt=""></p>
-<p>(2) check slave status<br>
+<p>(2) log message at master : check slave status<br>
 <img src="img/i2c_transfer_m_2_Obtain_target_device_info.jpg" alt=""></p>
-<p>(3) program binary to slave code flash<br>
+<p>(3) log message at master : program binary to slave code flash<br>
 <img src="img/i2c_transfer_m_3_StartImageTransfer.jpg" alt=""></p>
 <p>(4) log message at slave : erase (RL78 F24)<br>
 <img src="img/i2c_transfer_s_erase.jpg" alt=""></p>

@@ -718,7 +718,8 @@ CRC in app code last 4 bytes will be added after compile at <b><u>app code proje
 ![](img/LA_m_2_device_inquiry_cmd_packet.jpg)
 
 (2-1) report status about device inquiry command packet (slave)
-![](img/LA_s_2_device_inquiry_data_status_ok.jpg)
+![](img/LA_s_2_device_inquiry_data_status_ok_0.jpg)
+![](img/LA_s_2_device_inquiry_data_status_ok_1.jpg)
 
 
 ---
@@ -774,13 +775,13 @@ CRC in app code last 4 bytes will be added after compile at <b><u>app code proje
 
 # Project : boot code modifictaion - I2C command flow terminal operation (master & slave)
 
-(1) set target image 
+(1) log message at master : set target image 
 ![](img/i2c_transfer_m_1_ConfigProgramInfo.jpg)
 
-(2) check slave status
+(2) log message at master : check slave status
 ![](img/i2c_transfer_m_2_Obtain_target_device_info.jpg)
 
-(3) program binary to slave code flash
+(3) log message at master : program binary to slave code flash
 ![](img/i2c_transfer_m_3_StartImageTransfer.jpg)
 
 (4) log message at slave : erase (RL78 F24)
