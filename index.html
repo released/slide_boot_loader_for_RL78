@@ -137,13 +137,16 @@ document no. : R20UT3475EJ0300<br>
 <li>after Flash area (app code) update finish ,
 <ul>
 <li>UART (xmodem , UART1 : P74/TX , P75/RX) : reboot MCU</li>
-<li>I2C (IICA0 , P62/SCL , P63/SDA): read the CRC byte and compare to the CRC of Flash area (app code) , then leave update flow</li>
+<li>I2C (IICA0 , P62/SCL , P63/SDA): reboot MCU</li>
 </ul>
 </li>
 </ul>
 </li>
 </ul>
-<p><img src="img/boot_update_finish.jpg" alt=""></p>
+<p>xmodem<br>
+<img src="img/boot_update_finish.jpg" alt=""></p>
+<p>I2C<br>
+<img src="img/i2c_transfer_s_program_finish.jpg" alt=""></p>
 <ul>
 <li>if CRC compare OK and no detect update inquiry , jump to Flash area (app code)</li>
 </ul>
@@ -633,14 +636,12 @@ RL78_F24_Boot_loader_UART\src\smc_gen\r_bsp\mcu\all\cstart.asm</p>
 <li>purpose:
 <ul>
 <li>condition check (check and compare app code CRC , prevent jump into corrupted app code)</li>
-<li>after update flash , check CRC and prepare jump into app code (I2C)</li>
 </ul>
 </li>
 </ul>
 <p><img src="img/crc_01.jpg" alt=""><br>
 <img src="img/crc_01_2.jpg" alt=""><br>
-<img src="img/crc_01_3.jpg" alt=""><br>
-<img src="img/crc_02.jpg" alt=""></p>
+<img src="img/crc_01_3.jpg" alt=""></p>
 <hr>
 <h1 id="project--boot-code-modifictaion---add-crc-compare-2">Project : boot code modifictaion - add CRC compare (2) </h1>
 <br>
@@ -712,6 +713,69 @@ CRC in app code last 4 bytes will be added after compile at <b><u>app code proje
 <p><img src="img/boot_i2c_01.jpg" alt=""><br>
 <img src="img/boot_i2c_02.jpg" alt=""><br>
 <img src="img/boot_i2c_03.jpg" alt=""></p>
+<hr>
+<h1 id="project--boot-code-modifictaion---i2c-command-flow-check_generic_boot_standard_interface">Project : boot code modifictaion - I2C command flow (check_generic_boot_standard_interface) </h1>
+<p>(0) send initial byte (master)<br>
+<img src="img/LA_m_0_init.jpg" alt=""></p>
+<p>(1) boot mode check command byte (master)<br>
+<img src="img/LA_m_1_init_1.jpg" alt=""></p>
+<p>(1-1) check read status (master)<br>
+<img src="img/LA_m_1_init_2.jpg" alt=""><br>
+<img src="img/LA_m_1_init_3.jpg" alt=""></p>
+<p>(2) device inquiry command packet (master)<br>
+<img src="img/LA_m_2_device_inquiry_cmd_packet.jpg" alt=""></p>
+<p>(2-1) report status about device inquiry command packet (slave)<br>
+<img src="img/LA_s_2_device_inquiry_data_status_ok.jpg" alt=""></p>
+<hr>
+<h1 id="project--boot-code-modifictaion---i2c-command-flow-read_device_signature">Project : boot code modifictaion - I2C command flow (read_device_signature) </h1>
+<p>(3) obtain target device signature (master)<br>
+<img src="img/LA_m_3_signature_request_cmd_packet_0.jpg" alt=""><br>
+<img src="img/LA_m_3_signature_request_cmd_packet_1.jpg" alt=""><br>
+<img src="img/LA_m_3_signature_request_cmd_packet_2.jpg" alt=""></p>
+<p>(3-1) report status about obtain target device signature (slave)<br>
+<img src="img/LA_s_3_SIGNATURE_RESPOND_0.jpg" alt=""><br>
+<img src="img/LA_s_3_SIGNATURE_RESPOND_1.jpg" alt=""><br>
+<img src="img/LA_s_3_SIGNATURE_RESPOND_2.jpg" alt=""></p>
+<hr>
+<h1 id="project--boot-code-modifictaion---i2c-command-flow-read_area_information">Project : boot code modifictaion - I2C command flow (read_area_information) </h1>
+<p>(4) obtain target device signature  (master)<br>
+<img src="img/LA_m_4_memory_area_info_request_cmd_packet_0.jpg" alt=""><br>
+<img src="img/LA_m_4_memory_area_info_request_cmd_packet_1.jpg" alt=""><br>
+<img src="img/LA_m_4_memory_area_info_request_cmd_packet_2.jpg" alt=""></p>
+<p>(4-1) report status about obtain target device signature  (slave)<br>
+<img src="img/LA_s_4_AREA_INFO_RESPOND_0.jpg" alt=""><br>
+<img src="img/LA_s_4_AREA_INFO_RESPOND_1.jpg" alt=""><br>
+<img src="img/LA_s_4_AREA_INFO_RESPOND_2.jpg" alt=""></p>
+<hr>
+<h1 id="project--boot-code-modifictaion---i2c-command-flow-start_device_image_transfer">Project : boot code modifictaion - I2C command flow (start_device_image_transfer) </h1>
+<p>(5) erase user code flash area (master)<br>
+<img src="img/LA_m_5_erase_cmd_packet_header_0.jpg" alt=""><br>
+<img src="img/LA_m_5_erase_cmd_packet_header_1.jpg" alt=""></p>
+<p>(5-1) report status about erase user code flash area (slave)<br>
+<img src="img/LA_s_5_ERASE_MEMORY_0.jpg" alt=""><br>
+<img src="img/LA_s_5_ERASE_MEMORY_1.jpg" alt=""></p>
+<p>(6) initiate write user code flash area (master)<br>
+<img src="img/LA_m_6_write_cmd_packet_header_0.jpg" alt=""><br>
+<img src="img/LA_m_6_write_cmd_packet_header_1.jpg" alt=""></p>
+<p>(6-1) report status about initiate write user code flash area (master)<br>
+<img src="img/LA_s_6_WRITE_MEMORY_START_0.jpg" alt=""><br>
+<img src="img/LA_s_6_WRITE_MEMORY_START_1.jpg" alt=""></p>
+<hr>
+<h1 id="project--boot-code-modifictaion---i2c-command-flow-terminal-operation-master--slave">Project : boot code modifictaion - I2C command flow terminal operation (master &amp; slave) </h1>
+<p>(1) set target image<br>
+<img src="img/i2c_transfer_m_1_ConfigProgramInfo.jpg" alt=""></p>
+<p>(2) check slave status<br>
+<img src="img/i2c_transfer_m_2_Obtain_target_device_info.jpg" alt=""></p>
+<p>(3) program binary to slave code flash<br>
+<img src="img/i2c_transfer_m_3_StartImageTransfer.jpg" alt=""></p>
+<p>(4) log message at slave : erase (RL78 F24)<br>
+<img src="img/i2c_transfer_s_erase.jpg" alt=""></p>
+<p>(5) log message at slave : programming finish (RL78 F24)<br>
+<img src="img/i2c_transfer_s_program_finish.jpg" alt=""></p>
+<p>(6) code flow at slave : WriteCodeFlash (RL78 F24)<br>
+<img src="img/i2c_transfer_s_code_1.jpg" alt=""></p>
+<p>erase per page (1K bytes) , program per 4 bytes<br>
+<img src="img/i2c_transfer_s_code_2.jpg" alt=""></p>
 <hr>
 <h1 id="project--boot-code-modifictaion---xmodem-update-flow">Project : boot code modifictaion - xmodem update flow </h1>
 <p>below is at xmodem update when g_app_required_update == 1<br>

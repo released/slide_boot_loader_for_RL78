@@ -95,9 +95,13 @@ MCU flash will split to Boot area (boot code) and Flash area (app code)
     * __KEY POINT : SAMPLE_START_SECTION_SMP_CF__
   * after Flash area (app code) update finish , 
     * UART (xmodem , UART1 : P74/TX , P75/RX) : reboot MCU 
-    * I2C (IICA0 , P62/SCL , P63/SDA): read the CRC byte and compare to the CRC of Flash area (app code) , then leave update flow
+    * I2C (IICA0 , P62/SCL , P63/SDA): reboot MCU
 
+xmodem
 ![](img/boot_update_finish.jpg)
+
+I2C
+![](img/i2c_transfer_s_program_finish.jpg)
 
   * if CRC compare OK and no detect update inquiry , jump to Flash area (app code)
 
@@ -618,12 +622,10 @@ R_RFD_FAR_FUNC e_sample_ret_t Sample_CodeFlashControl_SingleWrite(uint32_t i_u32
 * register CRC compare into Boot area (boot code) project 
 * purpose: 
   * condition check (check and compare app code CRC , prevent jump into corrupted app code)
-  * after update flash , check CRC and prepare jump into app code (I2C)
 
 ![](img/crc_01.jpg)
 ![](img/crc_01_2.jpg)
 ![](img/crc_01_3.jpg)
-![](img/crc_02.jpg)
 
 ---
 
@@ -694,6 +696,104 @@ CRC in app code last 4 bytes will be added after compile at <b><u>app code proje
 ![](img/boot_i2c_02.jpg)
 ![](img/boot_i2c_03.jpg)
 
+
+---
+
+# Project : boot code modifictaion - I2C command flow (check_generic_boot_standard_interface)
+
+(0) send initial byte (master)
+![](img/LA_m_0_init.jpg)
+
+
+(1) boot mode check command byte (master)
+![](img/LA_m_1_init_1.jpg)
+
+
+(1-1) check read status (master)
+![](img/LA_m_1_init_2.jpg)
+![](img/LA_m_1_init_3.jpg)
+
+
+(2) device inquiry command packet (master)
+![](img/LA_m_2_device_inquiry_cmd_packet.jpg)
+
+(2-1) report status about device inquiry command packet (slave)
+![](img/LA_s_2_device_inquiry_data_status_ok.jpg)
+
+
+---
+
+# Project : boot code modifictaion - I2C command flow (read_device_signature)
+
+(3) obtain target device signature (master)
+![](img/LA_m_3_signature_request_cmd_packet_0.jpg)
+![](img/LA_m_3_signature_request_cmd_packet_1.jpg)
+![](img/LA_m_3_signature_request_cmd_packet_2.jpg)
+
+(3-1) report status about obtain target device signature (slave)
+![](img/LA_s_3_SIGNATURE_RESPOND_0.jpg)
+![](img/LA_s_3_SIGNATURE_RESPOND_1.jpg)
+![](img/LA_s_3_SIGNATURE_RESPOND_2.jpg)
+
+---
+
+# Project : boot code modifictaion - I2C command flow (read_area_information)
+
+(4) obtain target device signature  (master)
+![](img/LA_m_4_memory_area_info_request_cmd_packet_0.jpg)
+![](img/LA_m_4_memory_area_info_request_cmd_packet_1.jpg)
+![](img/LA_m_4_memory_area_info_request_cmd_packet_2.jpg)
+
+(4-1) report status about obtain target device signature  (slave)
+![](img/LA_s_4_AREA_INFO_RESPOND_0.jpg)
+![](img/LA_s_4_AREA_INFO_RESPOND_1.jpg)
+![](img/LA_s_4_AREA_INFO_RESPOND_2.jpg)
+
+---
+
+# Project : boot code modifictaion - I2C command flow (start_device_image_transfer)
+
+(5) erase user code flash area (master)
+![](img/LA_m_5_erase_cmd_packet_header_0.jpg)
+![](img/LA_m_5_erase_cmd_packet_header_1.jpg)
+
+(5-1) report status about erase user code flash area (slave)
+![](img/LA_s_5_ERASE_MEMORY_0.jpg)
+![](img/LA_s_5_ERASE_MEMORY_1.jpg)
+
+
+(6) initiate write user code flash area (master)
+![](img/LA_m_6_write_cmd_packet_header_0.jpg)
+![](img/LA_m_6_write_cmd_packet_header_1.jpg)
+
+(6-1) report status about initiate write user code flash area (master)
+![](img/LA_s_6_WRITE_MEMORY_START_0.jpg)
+![](img/LA_s_6_WRITE_MEMORY_START_1.jpg)
+
+---
+
+# Project : boot code modifictaion - I2C command flow terminal operation (master & slave)
+
+(1) set target image 
+![](img/i2c_transfer_m_1_ConfigProgramInfo.jpg)
+
+(2) check slave status
+![](img/i2c_transfer_m_2_Obtain_target_device_info.jpg)
+
+(3) program binary to slave code flash
+![](img/i2c_transfer_m_3_StartImageTransfer.jpg)
+
+(4) log message at slave : erase (RL78 F24)
+![](img/i2c_transfer_s_erase.jpg)
+
+(5) log message at slave : programming finish (RL78 F24)
+![](img/i2c_transfer_s_program_finish.jpg)
+
+(6) code flow at slave : WriteCodeFlash (RL78 F24)
+![](img/i2c_transfer_s_code_1.jpg)
+
+erase per page (1K bytes) , program per 4 bytes
+![](img/i2c_transfer_s_code_2.jpg)
 
 ---
 
