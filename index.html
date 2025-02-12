@@ -63,19 +63,60 @@ document no. : R20UT3475EJ0300<br>
 <img src="img/flash_library_02.jpg" alt=""><br>
 <img src="img/flash_library_03.jpg" alt=""><br>
 <img src="img/flash_library_04.jpg" alt=""></p>
+<p><strong>code base : polling</strong></p>
 <ul>
 <li>
 <p>reference code base : boot code (RL78 F24)<br>
 <a href="https://github.com/released/RL78_F24_Boot_loader_UART">RL78_F24_Boot_loader_UART</a><br>
+<a href="https://github.com/released/RL78_F24_Boot_loader_UART_e2">RL78_F24_Boot_loader_UART_e2</a><br>
 <br></p>
 </li>
 <li>
 <p>reference code base : app code (RL78 F24)<br>
 <a href="https://github.com/released/RL78_F24_Boot_loader_app">RL78_F24_Boot_loader_app</a><br>
+<a href="https://github.com/released/RL78_F24_Boot_loader_app_e2">RL78_F24_Boot_loader_app_e2</a><br>
 <br></p>
+<ul>
+<li>interface : xmodem by UART (polling)</li>
+<li>interface : IICA0 (polling)</li>
+<li>LDROM address : 0x0000 , size : 20K</li>
+<li>APROM address : 0x5000 , size : 236K (CRC addr:3FFFC)</li>
+<li>check define as below</li>
+</ul>
 </li>
 </ul>
-<span style="color:#FF0000">
+<pre data-role="codeBlock" data-info="c" class="language-c c"><code><span class="token macro property"><span class="token directive-hash">#</span><span class="token directive keyword">define</span> <span class="token macro-name">ENABLE_UART_BL</span>                                  <span class="token expression"><span class="token punctuation">(</span><span class="token number">1</span><span class="token punctuation">)</span></span></span>
+<span class="token macro property"><span class="token directive-hash">#</span><span class="token directive keyword">define</span> <span class="token macro-name">ENALBE_IICA0_BL</span>                                 <span class="token expression"><span class="token punctuation">(</span><span class="token number">0</span><span class="token punctuation">)</span></span></span>
+</code></pre><p><strong>code base : interrupt</strong></p>
+<ul>
+<li>
+<p>reference code base : boot code (RL78 F24)<br>
+<a href="https://github.com/released/RL78_F24_Boot_loader_UART_CRC">RL78_F24_Boot_loader_UART_CRC</a><br>
+<br></p>
+</li>
+<li>
+<p>reference code base : app code (RL78 F24)<br>
+<a href="https://github.com/released/RL78_F24_Boot_loader_app_CRC">RL78_F24_Boot_loader_app_CRC</a><br>
+<br></p>
+<ul>
+<li>interface : xmodem by UART (polling) + TIMER interrupt</li>
+<li>interface : IICA0 (interrupt) + TIMER interrupt</li>
+<li>LDROM address : 0x0000 , size : 20K</li>
+<li>APROM address : 0x5000 , size : 235K (CRC addr:3FBFC)</li>
+<li>check define as below</li>
+</ul>
+</li>
+</ul>
+<pre data-role="codeBlock" data-info="c" class="language-c c"><code><span class="token macro property"><span class="token directive-hash">#</span><span class="token directive keyword">define</span> <span class="token macro-name">ENABLE_UART_PRINTF</span>                      <span class="token expression"><span class="token punctuation">(</span><span class="token number">1</span><span class="token punctuation">)</span></span></span>
+<span class="token macro property"><span class="token directive-hash">#</span><span class="token directive keyword">define</span> <span class="token macro-name">ENABLE_UART_BL</span>                          <span class="token expression"><span class="token punctuation">(</span><span class="token number">1</span><span class="token punctuation">)</span></span></span>
+
+<span class="token macro property"><span class="token directive-hash">#</span><span class="token directive keyword">define</span> <span class="token macro-name">ENALBE_TIMER_TAU0_1_IRQ</span>                 <span class="token expression"><span class="token punctuation">(</span><span class="token number">1</span><span class="token punctuation">)</span></span></span>
+
+<span class="token macro property"><span class="token directive-hash">#</span><span class="token directive keyword">define</span> <span class="token macro-name">ENALBE_IICA0_BL</span>                         <span class="token expression"><span class="token punctuation">(</span><span class="token number">0</span><span class="token punctuation">)</span></span></span>
+<span class="token macro property"><span class="token directive-hash">#</span><span class="token directive keyword">if</span> <span class="token expression">ENALBE_IICA0_BL</span></span>
+<span class="token macro property"><span class="token directive-hash">#</span><span class="token directive keyword">define</span> <span class="token macro-name">ENALBE_IICA0_BL_USE_IRQ</span>                 <span class="token expression"><span class="token punctuation">(</span><span class="token number">1</span><span class="token punctuation">)</span></span></span>
+<span class="token macro property"><span class="token directive-hash">#</span><span class="token directive keyword">endif</span></span>
+</code></pre><span style="color:#FF0000">
 <b><u>Key point</u></b><br><br>
 </span> 
 <ul>
@@ -152,8 +193,13 @@ document no. : R20UT3475EJ0300<br>
 </ul>
 <p><img src="img/boot_comapre_ok_jump_to_app.jpg" alt=""></p>
 <ul>
-<li><mark>NO INTERRUPT , use POLLING</mark> to receive interface data</li>
+<li>at project:RL78_F24_Boot_loader_UART_CRC , add timer to control reset flow
+<ul>
+<li>when entry boot code in upgrade process , count down to 30 sec and execute reboot MCU if no receive data from interface (XMODEM , IICAO0)</li>
 </ul>
+</li>
+</ul>
+<p><img src="img/boot_timer_irq_couting.jpg" alt=""></p>
 <hr>
 <p><a id="ram_flag" href=""></a></p>
 <h1 id="scenario--flash-area-app-code">Scenario : Flash area (app code) </h1>
@@ -898,6 +944,7 @@ CRC in app code last 4 bytes will be added after compile at <b><u>app code proje
 </li>
 </ul>
 <hr>
+<p><a id="vect_address" href=""></a></p>
 <ul>
 <li><strong>[Output Code] &gt; [Address setting for specified area for vector table]</strong>
 <ul>
@@ -1366,10 +1413,15 @@ RL78_F24_Boot_loader_app\src\smc_gen\r_bsp\mcu\all\cstart.asm</p>
 <li>add <a href="#ram_flag">ram flag</a> declaration</li>
 </ul>
 <pre data-role="codeBlock" data-info="c" class="language-c c"><code><span class="token macro property"><span class="token directive-hash">#</span><span class="token directive keyword">define</span> <span class="token macro-name">RESET_TO_BOOT_SIGN</span> <span class="token expression"><span class="token number">0xAA55AA55</span></span></span>
+
 <span class="token macro property"><span class="token directive-hash">#</span><span class="token directive keyword">pragma</span> <span class="token expression"><span class="token function">address</span> <span class="token punctuation">(</span>reset_to_bootloader <span class="token operator">=</span> <span class="token number">0x000FF700</span><span class="token punctuation">)</span></span></span>
 <span class="token keyword keyword-volatile">volatile</span> <span class="token class-name">uint32_t</span> reset_to_bootloader<span class="token punctuation">;</span>
+<span class="token macro property"><span class="token directive-hash">#</span><span class="token directive keyword">pragma</span> <span class="token expression"><span class="token function">address</span> <span class="token punctuation">(</span>_no_init_global <span class="token operator">=</span> <span class="token number">0x000FF710</span><span class="token punctuation">)</span></span></span>
+<span class="token keyword keyword-unsigned">unsigned</span> <span class="token keyword keyword-char">char</span> _no_init_global<span class="token punctuation">[</span>RAM_FLAG_MAX<span class="token punctuation">]</span><span class="token punctuation">;</span>
 
-</code></pre><ul>
+</code></pre><p>below is map file result<br>
+<img src="img/app_map_file.jpg" alt=""></p>
+<ul>
 <li>
 <p>add change flag data <mark>condition check</mark> and execute reset</p>
 <ul>
@@ -1708,6 +1760,73 @@ RFD_DATA_n=RFD_DATA_nR
 <u>CC-RL Compiler User's Manual</u><br>
 <u>CS+ User’s Manual: CC-RL Build Tool Operation</u><br>
 <u>Renesas Flash Driver RL78 Type 02 User’s  Manual</u></p>
+<hr>
+<h1 id="how-to-add-interrupt-at-boot-code">How to add interrupt at boot code </h1>
+<p><strong>I2C example</strong><br>
+refer to define : ENALBE_IICA0_BL_USE_IRQ in project:RL78_F24_Boot_loader_UART_CRC</p>
+<p>add interrupt vect declare in boot code</p>
+<ul>
+<li>use smart config generate driver code and move to boot_main.c</li>
+<li>use [#pragma interrupt] to declare custom interrupt</li>
+<li>vect refer to <a href="#vector_table">vector table </a></li>
+<li>use ram flag (ex:_no_init_global[RAM_FLAG_INDICATE_BOOT_APP]) to define excute which irq when in boot code / app code
+<ul>
+<li>declare ram_flag = 0xAA when in boot code</li>
+<li>declare ram_flag = 0x55 when in boot code</li>
+</ul>
+</li>
+<li>add boot code interrupt process (ex:I2C_Downloader_routine_IRQ)</li>
+<li>interrupt process in app code wll be defined as <a href="#vect_address">vector number</a></li>
+</ul>
+<p><img src="img/boot_vect_number.jpg" alt=""></p>
+<pre data-role="codeBlock" data-info="C" class="language-c C"><code><span class="token macro property"><span class="token directive-hash">#</span><span class="token directive keyword">pragma</span> <span class="token expression">interrupt <span class="token function">boot_r_Config_IICA0_interrupt</span><span class="token punctuation">(</span>vect<span class="token operator">=</span>INTIICA0<span class="token punctuation">)</span></span></span>
+<span class="token keyword keyword-void">void</span> __near <span class="token function">boot_r_Config_IICA0_interrupt</span><span class="token punctuation">(</span><span class="token keyword keyword-void">void</span><span class="token punctuation">)</span>
+<span class="token punctuation">{</span>
+	<span class="token keyword keyword-if">if</span><span class="token punctuation">(</span>_no_init_global<span class="token punctuation">[</span>RAM_FLAG_INDICATE_BOOT_APP<span class="token punctuation">]</span> <span class="token operator">==</span> <span class="token number">0xAA</span><span class="token punctuation">)</span>   <span class="token comment">// execute boot code ISR</span>
+	<span class="token punctuation">{</span>
+        <span class="token keyword keyword-if">if</span> <span class="token punctuation">(</span><span class="token number">0U</span> <span class="token operator">==</span> <span class="token punctuation">(</span>IICS0 <span class="token operator">&amp;</span> _80_IICA_STATUS_MASTER<span class="token punctuation">)</span><span class="token punctuation">)</span>
+        <span class="token punctuation">{</span>            
+            <span class="token function">I2C_Downloader_routine_IRQ</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>   <span class="token comment">// r_Config_IICA0_slave_handler();</span>
+        <span class="token punctuation">}</span>
+	<span class="token punctuation">}</span>
+	<span class="token keyword keyword-if">if</span><span class="token punctuation">(</span>_no_init_global<span class="token punctuation">[</span>RAM_FLAG_INDICATE_BOOT_APP<span class="token punctuation">]</span> <span class="token operator">==</span> <span class="token number">0x55</span><span class="token punctuation">)</span>   <span class="token comment">//user app ISR address</span>
+	<span class="token punctuation">{</span>	    	
+        <span class="token keyword keyword-if">if</span> <span class="token punctuation">(</span><span class="token number">0U</span> <span class="token operator">==</span> <span class="token punctuation">(</span>IICS0 <span class="token operator">&amp;</span> _80_IICA_STATUS_MASTER<span class="token punctuation">)</span><span class="token punctuation">)</span>
+        <span class="token punctuation">{</span>
+            <span class="token punctuation">(</span><span class="token punctuation">(</span><span class="token keyword keyword-void">void</span><span class="token punctuation">(</span><span class="token operator">*</span><span class="token punctuation">)</span><span class="token punctuation">(</span><span class="token keyword keyword-void">void</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token number">0x5050</span><span class="token punctuation">)</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>	
+        <span class="token punctuation">}</span>
+	<span class="token punctuation">}</span>
+<span class="token punctuation">}</span>
+</code></pre><p><strong>TIMER example</strong><br>
+refer to define : ENALBE_TIMER_TAU0_1_IRQ in project:RL78_F24_Boot_loader_UART_CRC</p>
+<p>add interrupt vect declare in boot code</p>
+<ul>
+<li>use smart config generate driver code and move to boot_main.c</li>
+<li>use [#pragma interrupt] to declare custom interrupt</li>
+<li>vect refer to <a href="#vector_table">vector table </a></li>
+<li>use ram flag (ex:_no_init_global[RAM_FLAG_INDICATE_BOOT_APP]) to define excute which irq when in boot code / app code
+<ul>
+<li>declare ram_flag = 0xAA when in boot code</li>
+<li>declare ram_flag = 0x55 when in boot code</li>
+</ul>
+</li>
+<li>add boot code interrupt process (ex:boot_Timer_1ms_IRQ)</li>
+<li>interrupt process in app code wll be defined as <a href="#vect_address">vector number</a></li>
+</ul>
+<p><img src="img/boot_vect_number2.jpg" alt=""></p>
+<pre data-role="codeBlock" data-info="C" class="language-c C"><code><span class="token macro property"><span class="token directive-hash">#</span><span class="token directive keyword">pragma</span> <span class="token expression">interrupt <span class="token function">boot_r_Config_TAU0_1_interrupt</span><span class="token punctuation">(</span>vect<span class="token operator">=</span>INTTM01<span class="token punctuation">)</span></span></span>
+<span class="token keyword keyword-void">void</span> __near <span class="token function">boot_r_Config_TAU0_1_interrupt</span><span class="token punctuation">(</span><span class="token keyword keyword-void">void</span><span class="token punctuation">)</span>
+<span class="token punctuation">{</span>
+	<span class="token keyword keyword-if">if</span><span class="token punctuation">(</span>_no_init_global<span class="token punctuation">[</span>RAM_FLAG_INDICATE_BOOT_APP<span class="token punctuation">]</span> <span class="token operator">==</span> <span class="token number">0xAA</span><span class="token punctuation">)</span>   <span class="token comment">// execute boot code ISR</span>
+	<span class="token punctuation">{</span>
+        <span class="token function">boot_Timer_1ms_IRQ</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+	<span class="token punctuation">}</span>
+	<span class="token keyword keyword-if">if</span><span class="token punctuation">(</span>_no_init_global<span class="token punctuation">[</span>RAM_FLAG_INDICATE_BOOT_APP<span class="token punctuation">]</span> <span class="token operator">==</span> <span class="token number">0x55</span><span class="token punctuation">)</span>   <span class="token comment">//user app ISR address</span>
+	<span class="token punctuation">{</span>	    	
+        <span class="token punctuation">(</span><span class="token punctuation">(</span><span class="token keyword keyword-void">void</span><span class="token punctuation">(</span><span class="token operator">*</span><span class="token punctuation">)</span><span class="token punctuation">(</span><span class="token keyword keyword-void">void</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token number">0x505C</span><span class="token punctuation">)</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+	<span class="token punctuation">}</span>
+<span class="token punctuation">}</span>
+</code></pre><p><img src="img/boot_timer_irq_couting2.jpg" alt=""></p>
 <hr>
 
       </div>

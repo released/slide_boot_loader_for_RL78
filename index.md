@@ -31,13 +31,54 @@
 ![](img/flash_library_03.jpg)
 ![](img/flash_library_04.jpg)
 
+__code base : polling__
 * reference code base : boot code (RL78 F24)
 [RL78_F24_Boot_loader_UART](https://github.com/released/RL78_F24_Boot_loader_UART)
+[RL78_F24_Boot_loader_UART_e2](https://github.com/released/RL78_F24_Boot_loader_UART_e2)
 <br/>
 
 * reference code base : app code (RL78 F24)
 [RL78_F24_Boot_loader_app](https://github.com/released/RL78_F24_Boot_loader_app)
+[RL78_F24_Boot_loader_app_e2](https://github.com/released/RL78_F24_Boot_loader_app_e2)
 <br/>
+
+  * interface : xmodem by UART (polling)
+  * interface : IICA0 (polling)
+  * LDROM address : 0x0000 , size : 20K
+  * APROM address : 0x5000 , size : 236K (CRC addr:3FFFC)
+  * check define as below 
+
+```c
+#define ENABLE_UART_BL                                  (1)
+#define ENALBE_IICA0_BL                                 (0)
+```
+
+__code base : interrupt__
+* reference code base : boot code (RL78 F24)
+[RL78_F24_Boot_loader_UART_CRC](https://github.com/released/RL78_F24_Boot_loader_UART_CRC)
+<br/>
+
+* reference code base : app code (RL78 F24)
+[RL78_F24_Boot_loader_app_CRC](https://github.com/released/RL78_F24_Boot_loader_app_CRC)
+<br/>
+
+  * interface : xmodem by UART (polling) + TIMER interrupt
+  * interface : IICA0 (interrupt) + TIMER interrupt
+  * LDROM address : 0x0000 , size : 20K
+  * APROM address : 0x5000 , size : 235K (CRC addr:3FBFC)
+  * check define as below 
+
+```c
+#define ENABLE_UART_PRINTF                      (1)
+#define ENABLE_UART_BL                          (1)
+
+#define ENALBE_TIMER_TAU0_1_IRQ                 (1)
+
+#define ENALBE_IICA0_BL                         (0)
+#if ENALBE_IICA0_BL
+#define ENALBE_IICA0_BL_USE_IRQ                 (1)
+#endif
+```
 
 
 <span style="color:#FF0000">
@@ -107,7 +148,10 @@ I2C
 
 ![](img/boot_comapre_ok_jump_to_app.jpg)
 
-* ==NO INTERRUPT , use POLLING== to receive interface data 
+* at project:RL78_F24_Boot_loader_UART_CRC , add timer to control reset flow
+  * when entry boot code in upgrade process , count down to 30 sec and execute reboot MCU if no receive data from interface (XMODEM , IICAO0)
+
+![](img/boot_timer_irq_couting.jpg)
 
 ---
 
@@ -917,7 +961,7 @@ copy /y/v .\DefaultBuild\RL78_F24_Boot_loader_UART.fsy ..\RL78_F24_Boot_loader_a
 <br>
 
 ---
-
+<a id="vect_address"></a>
 * __[Output Code] > [Address setting for specified area for vector table]__
   * use vect_address.xlsx under boot code project , to copy shift address
 ![](img/boot_property_link_03_1.jpg)
@@ -1365,12 +1409,16 @@ __Do not specify the vector address (vect) with the #pragma interrupt directive 
 * add [ram flag](#ram_flag) declaration
 
 ```c
-
 #define RESET_TO_BOOT_SIGN 0xAA55AA55
+
 #pragma address (reset_to_bootloader = 0x000FF700)
 volatile uint32_t reset_to_bootloader;
+#pragma address (_no_init_global = 0x000FF710)
+unsigned char _no_init_global[RAM_FLAG_MAX];
 
 ```
+below is map file result 
+![](img/app_map_file.jpg)
 
 * add change flag data ==condition check== and execute reset
 
@@ -1727,6 +1775,82 @@ __4.2.3  Specifying hex file output only to the flash area address range__
 <u>CC-RL Compiler User's Manual</u>
 <u>CS+ User’s Manual: CC-RL Build Tool Operation</u>
 <u>Renesas Flash Driver RL78 Type 02 User’s  Manual</u>
+
+
+---
+
+# How to add interrupt at boot code 
+
+__I2C example__
+refer to define : ENALBE_IICA0_BL_USE_IRQ in project:RL78_F24_Boot_loader_UART_CRC
+
+add interrupt vect declare in boot code 
+  * use smart config generate driver code and move to boot_main.c
+  * use [#pragma interrupt] to declare custom interrupt 
+  * vect refer to [vector table ](#vector_table)
+  * use ram flag (ex:_no_init_global[RAM_FLAG_INDICATE_BOOT_APP]) to define excute which irq when in boot code / app code
+    * declare ram_flag = 0xAA when in boot code
+    * declare ram_flag = 0x55 when in boot code
+  * add boot code interrupt process (ex:I2C_Downloader_routine_IRQ)
+  * interrupt process in app code wll be defined as [vector number](#vect_address)
+
+![](img/boot_vect_number.jpg)
+
+```C
+#pragma interrupt boot_r_Config_IICA0_interrupt(vect=INTIICA0)
+void __near boot_r_Config_IICA0_interrupt(void)
+{
+	if(_no_init_global[RAM_FLAG_INDICATE_BOOT_APP] == 0xAA)   // execute boot code ISR
+	{
+        if (0U == (IICS0 & _80_IICA_STATUS_MASTER))
+        {            
+            I2C_Downloader_routine_IRQ();   // r_Config_IICA0_slave_handler();
+        }
+	}
+	if(_no_init_global[RAM_FLAG_INDICATE_BOOT_APP] == 0x55)   //user app ISR address
+	{	    	
+        if (0U == (IICS0 & _80_IICA_STATUS_MASTER))
+        {
+            ((void(*)(void))0x5050)();	
+        }
+	}
+}
+```
+
+
+__TIMER example__
+refer to define : ENALBE_TIMER_TAU0_1_IRQ in project:RL78_F24_Boot_loader_UART_CRC
+
+add interrupt vect declare in boot code 
+  * use smart config generate driver code and move to boot_main.c
+  * use [#pragma interrupt] to declare custom interrupt 
+  * vect refer to [vector table ](#vector_table)
+  * use ram flag (ex:_no_init_global[RAM_FLAG_INDICATE_BOOT_APP]) to define excute which irq when in boot code / app code
+    * declare ram_flag = 0xAA when in boot code
+    * declare ram_flag = 0x55 when in boot code
+  * add boot code interrupt process (ex:boot_Timer_1ms_IRQ)
+  * interrupt process in app code wll be defined as [vector number](#vect_address)
+
+![](img/boot_vect_number2.jpg)
+
+```C
+#pragma interrupt boot_r_Config_TAU0_1_interrupt(vect=INTTM01)
+void __near boot_r_Config_TAU0_1_interrupt(void)
+{
+	if(_no_init_global[RAM_FLAG_INDICATE_BOOT_APP] == 0xAA)   // execute boot code ISR
+	{
+        boot_Timer_1ms_IRQ();
+	}
+	if(_no_init_global[RAM_FLAG_INDICATE_BOOT_APP] == 0x55)   //user app ISR address
+	{	    	
+        ((void(*)(void))0x505C)();
+	}
+}
+```
+
+
+
+![](img/boot_timer_irq_couting2.jpg)
 
 ---
 
