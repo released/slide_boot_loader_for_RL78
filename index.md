@@ -149,7 +149,7 @@ I2C
 ![](img/boot_comapre_ok_jump_to_app.jpg)
 
 * at project:RL78_F24_Boot_loader_UART_CRC , add timer to control reset flow
-  * when entry boot code in upgrade process , count down to 30 sec and execute reboot MCU if no receive data from interface (XMODEM , IICAO0)
+  * when entry boot code in upgrade process , count down to 30 sec and execute reboot MCU if no receive data from interface (XMODEM , IICA0)
 
 ![](img/boot_timer_irq_couting.jpg)
 
@@ -994,7 +994,7 @@ copy /y/v .\DefaultBuild\RL78_F24_Boot_loader_UART.fsy ..\RL78_F24_Boot_loader_a
 ![](img/boot_property_link_06.jpg)
 * __[Section] > [Section start address]__
 
-  * set __Layout sections automaticallu__ to ==NO== 
+  * set __Layout sections automatically__ to ==NO== 
   * entry editor and modify as below ( for code flash library ) 
   * flash area
   ```
@@ -1057,7 +1057,7 @@ copy /y/v .\DefaultBuild\RL78_F24_Boot_loader_UART.fsy ..\RL78_F24_Boot_loader_a
 ![](img/boot_property_link_09_1.jpg)
 
 
-  * set __Layout sections automaticallu__ to ==YES== 
+  * set __Layout sections automatically__ to ==YES== 
   * the final result : 
 ![](img/boot_property_link_07.jpg)
 ![](img/boot_property_link_09_2.jpg)
@@ -1690,7 +1690,7 @@ RL78_F24_Boot_loader_app\DefaultBuild\flash5000_3FFFF.hex
 refer to How to Divide Boot and Flash Areas :
 __4.2.2  Specifying the section allocation__
 
-  * set __Layout sections automaticallu__ to ==NO== 
+  * set __Layout sections automatically__ to ==NO== 
   * app code will start from 0x5000 (RL78 F24) , and reserved branch table area (0x5200)
   * entry editor and modify as below ( for data flash library )
   * flash area
@@ -1722,7 +1722,7 @@ __4.2.2  Specifying the section allocation__
 
 ![](img/app_property_link_04_3.jpg)
 
-  * set __Layout sections automaticallu__ to ==YES==
+  * set __Layout sections automatically__ to ==YES==
   * the final result : 
 
 ![](img/app_property_link_04_2.jpg)
@@ -1790,7 +1790,7 @@ add interrupt vect declare in boot code
   * vect refer to [vector table ](#vector_table)
   * use ram flag (ex:_no_init_global[RAM_FLAG_INDICATE_BOOT_APP]) to define excute which irq when in boot code / app code
     * declare ram_flag = 0xAA when in boot code
-    * declare ram_flag = 0x55 when in boot code
+    * declare ram_flag = 0x55 when in app code
   * add boot code interrupt process (ex:I2C_Downloader_routine_IRQ)
   * interrupt process in app code wll be defined as [vector number](#vect_address)
 

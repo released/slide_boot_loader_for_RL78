@@ -195,7 +195,7 @@ document no. : R20UT3475EJ0300<br>
 <ul>
 <li>at project:RL78_F24_Boot_loader_UART_CRC , add timer to control reset flow
 <ul>
-<li>when entry boot code in upgrade process , count down to 30 sec and execute reboot MCU if no receive data from interface (XMODEM , IICAO0)</li>
+<li>when entry boot code in upgrade process , count down to 30 sec and execute reboot MCU if no receive data from interface (XMODEM , IICA0)</li>
 </ul>
 </li>
 </ul>
@@ -998,7 +998,7 @@ CRC in app code last 4 bytes will be added after compile at <b><u>app code proje
 <li>
 <p><strong>[Section] &gt; [Section start address]</strong></p>
 <ul>
-<li>set <strong>Layout sections automaticallu</strong> to <mark>NO</mark></li>
+<li>set <strong>Layout sections automatically</strong> to <mark>NO</mark></li>
 <li>entry editor and modify as below ( for code flash library )</li>
 <li>flash area</li>
 </ul>
@@ -1060,7 +1060,7 @@ SMP_CF_f=SMP_CF_fR
 <p><img src="img/boot_property_link_09.jpg" alt=""><br>
 <img src="img/boot_property_link_09_1.jpg" alt=""></p>
 <ul>
-<li>set <strong>Layout sections automaticallu</strong> to <mark>YES</mark></li>
+<li>set <strong>Layout sections automatically</strong> to <mark>YES</mark></li>
 <li>the final result :<br>
 <img src="img/boot_property_link_07.jpg" alt=""><br>
 <img src="img/boot_property_link_09_2.jpg" alt=""><br>
@@ -1677,7 +1677,7 @@ RL78_F24_Boot_loader_app\DefaultBuild\flash5000_3FFFF.hex</p>
 <p>refer to How to Divide Boot and Flash Areas :<br>
 <strong>4.2.2  Specifying the section allocation</strong></p>
 <ul>
-<li>set <strong>Layout sections automaticallu</strong> to <mark>NO</mark></li>
+<li>set <strong>Layout sections automatically</strong> to <mark>NO</mark></li>
 <li>app code will start from 0x5000 (RL78 F24) , and reserved branch table area (0x5200)</li>
 <li>entry editor and modify as below ( for data flash library )</li>
 <li>flash area</li>
@@ -1709,7 +1709,7 @@ SMP_DF_f
 RFD_DATA_n=RFD_DATA_nR
 </code></pre><p><img src="img/app_property_link_04_3.jpg" alt=""></p>
 <ul>
-<li>set <strong>Layout sections automaticallu</strong> to <mark>YES</mark></li>
+<li>set <strong>Layout sections automatically</strong> to <mark>YES</mark></li>
 <li>the final result :</li>
 </ul>
 <p><img src="img/app_property_link_04_2.jpg" alt=""></p>
@@ -1772,7 +1772,7 @@ refer to define : ENALBE_IICA0_BL_USE_IRQ in project:RL78_F24_Boot_loader_UART_C
 <li>use ram flag (ex:_no_init_global[RAM_FLAG_INDICATE_BOOT_APP]) to define excute which irq when in boot code / app code
 <ul>
 <li>declare ram_flag = 0xAA when in boot code</li>
-<li>declare ram_flag = 0x55 when in boot code</li>
+<li>declare ram_flag = 0x55 when in app code</li>
 </ul>
 </li>
 <li>add boot code interrupt process (ex:I2C_Downloader_routine_IRQ)</li>
