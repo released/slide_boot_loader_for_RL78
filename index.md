@@ -21,6 +21,7 @@
   [RL78 FAMILY FLASH MEMORY REPROGRAMMING SOFTWARE INTRODUCTION](https://www.renesas.com/en/document/oth/rl78-family-flash-memory-reprogramming-software-introduction?r=488891)
 
     * RL78 F23/F24 : Renesas Flash Driver RL78 Type 02 (document no. : R20UT5009EJ0110)
+    [Renesas Flash Driver RL78 Type 02](https://www.renesas.com/en/document/mat/renesas-flash-driver-rl78-type-02-users-manual-rl78f23-and-rl78f24)
     * RL78 G22/G23/G24 : Renesas Flash Driver RL78 Type 01
     * RL78 G15/G16 : Renesas Flash Sample Program Type 01
     * RL78 x1x : Flash Self Programming Library Type01
@@ -30,6 +31,7 @@
 ![](img/flash_library_02.jpg)
 ![](img/flash_library_03.jpg)
 ![](img/flash_library_04.jpg)
+![](img/flash_library_05.jpg)
 
 __code base : polling__
 * reference code base : boot code (RL78 F24)
