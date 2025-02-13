@@ -1827,7 +1827,7 @@ add interrupt vect declare in boot code
   * vect refer to [vector table ](#vector_table)
   * use ram flag (ex:_no_init_global[RAM_FLAG_INDICATE_BOOT_APP]) to define excute which irq when in boot code / app code
     * declare ram_flag = 0xAA when in boot code
-    * declare ram_flag = 0x55 when in boot code
+    * declare ram_flag = 0x55 when in app code
   * add boot code interrupt process (ex:boot_Timer_1ms_IRQ)
   * interrupt process in app code wll be defined as [vector number](#vect_address)
 
