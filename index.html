@@ -3,7 +3,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
       
-      <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+      <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.21/dist/katex.min.css">
       
       
       
@@ -118,7 +118,30 @@ document no. : R20UT3475EJ0300<br>
 <span class="token macro property"><span class="token directive-hash">#</span><span class="token directive keyword">if</span> <span class="token expression">ENALBE_IICA0_BL</span></span>
 <span class="token macro property"><span class="token directive-hash">#</span><span class="token directive keyword">define</span> <span class="token macro-name">ENALBE_IICA0_BL_USE_IRQ</span>                 <span class="token expression"><span class="token punctuation">(</span><span class="token number">1</span><span class="token punctuation">)</span></span></span>
 <span class="token macro property"><span class="token directive-hash">#</span><span class="token directive keyword">endif</span></span>
-</code></pre><span style="color:#FF0000">
+</code></pre><p><strong>code base : interrupt with hardware CRC</strong></p>
+<ul>
+<li>
+<p>reference code base : boot code (RL78 F24)<br>
+<a href="https://github.com/released/RL78_F24_Boot_loader_UART_HW_CRC">RL78_F24_Boot_loader_UART_HW_CRC</a><br>
+<br></p>
+</li>
+<li>
+<p>reference code base : app code (RL78 F24)<br>
+<a href="https://github.com/released/RL78_F24_Boot_loader_app_HW_CRC">RL78_F24_Boot_loader_app_HW_CRC</a><br>
+<br></p>
+<ul>
+<li>interface : xmodem by UART (polling) + TIMER interrupt</li>
+<li>interface : IICA0 (interrupt) + TIMER interrupt</li>
+<li>LDROM address : 0x0000 , size : 20K (0x5000)</li>
+<li>APROM address : 0x5000 , size : 235K (CRC addr:3FBFB)</li>
+</ul>
+</li>
+</ul>
+<p>refer to document :<br>
+<a href="https://www.renesas.com/en/document/apn/rl78-family-rl78-hardware-crc-functions?queryID=f29102cd30aa1ffab265983af4afc4fe">RL78 Family RL78 Hardware CRC Functions (R01AN3530EU0110)</a></p>
+<p>download sample code :<br>
+<a href="https://www.renesas.com/en/document/scd/rl78-family-rl78-hardware-crc-functions?queryID=f29102cd30aa1ffab265983af4afc4fe">RL78 Family RL78 Hardware CRC Functions (R01AN3530EU0110)</a></p>
+<span style="color:#FF0000">
 <b><u>Key point</u></b><br><br>
 </span> 
 <ul>
@@ -1829,6 +1852,80 @@ refer to define : ENALBE_TIMER_TAU0_1_IRQ in project:RL78_F24_Boot_loader_UART_C
 	<span class="token punctuation">}</span>
 <span class="token punctuation">}</span>
 </code></pre><p><img src="img/boot_timer_irq_couting2.jpg" alt=""></p>
+<hr>
+<h1 id="how-to-use-hardware-crc-at-boot-code-and-app-code-project">How to use hardware CRC at boot code and app code project </h1>
+<p><strong>setting in CS+ (boot code)</strong></p>
+<pre data-role="codeBlock" data-info="c" class="language-c c"><code>Target Range <span class="token operator">:</span> <span class="token number">0000</span><span class="token operator">-</span><span class="token number">4FF</span>B
+type of CRC <span class="token operator">:</span> CRC<span class="token operator">-</span><span class="token function">CCITT</span> <span class="token punctuation">(</span>LSB<span class="token punctuation">)</span> <span class="token function">type</span> <span class="token punctuation">(</span>General<span class="token operator">-</span>purpose CRC<span class="token punctuation">)</span>
+Initial value <span class="token operator">:</span> <span class="token number">0000</span>
+Output size <span class="token operator">:</span> <span class="token number">2</span>
+CRC store address <span class="token operator">:</span> <span class="token number">0x4FFE</span>
+
+</code></pre><p><img src="img/hw_crc_boot_01.jpg" alt=""></p>
+<p><img src="img/hw_crc_boot_02.jpg" alt=""></p>
+<p><img src="img/hw_crc_boot_03.jpg" alt=""></p>
+<p><strong>setting in CS+ (app code)</strong></p>
+<pre data-role="codeBlock" data-info="c" class="language-c c"><code>Target Range <span class="token operator">:</span> <span class="token number">5000</span><span class="token operator">-</span><span class="token number">3F</span>BFB
+type of CRC <span class="token operator">:</span> CRC<span class="token operator">-</span><span class="token function">CCITT</span> <span class="token punctuation">(</span>LSB<span class="token punctuation">)</span> <span class="token function">type</span> <span class="token punctuation">(</span>General<span class="token operator">-</span>purpose CRC<span class="token punctuation">)</span>
+Initial value <span class="token operator">:</span> <span class="token number">0000</span>
+Output size <span class="token operator">:</span> <span class="token number">2</span>
+CRC store address <span class="token operator">:</span> <span class="token number">0x3FBFE</span>
+
+</code></pre><p><img src="img/hw_crc_app_01.jpg" alt=""></p>
+<p><img src="img/hw_crc_app_02.jpg" alt=""></p>
+<p><img src="img/hw_crc_app_03.jpg" alt=""></p>
+<p>for CRC compare , refer to function : <mark>verify_application_chksum</mark><br>
+and <mark>verify_bootcode_chksum</mark></p>
+<p>below is boot code , verify result</p>
+<p><img src="img/hw_crc_app_04.jpg" alt=""></p>
+<p>below is boot code , log message</p>
+<p><img src="img/hw_crc_app_05.jpg" alt=""></p>
+<p><strong>Need to modify driver , due to far pointers 16bit addressing issue</strong></p>
+<p><a href="https://community.renesas.com/mcu/rl78/f/rl78-forum/1850/read-program-flash">issue</a></p>
+<pre data-role="codeBlock" data-info="c" class="language-c c"><code><span class="token keyword keyword-void">void</span> <span class="token function">r_crc_general_hardware</span> <span class="token punctuation">(</span><span class="token class-name">uint32_t</span> start_address<span class="token punctuation">,</span> <span class="token class-name">uint32_t</span> end_address<span class="token punctuation">,</span> <span class="token class-name">uint16_t</span> initial_value<span class="token punctuation">,</span> <span class="token class-name">uint16_t</span> <span class="token operator">*</span>crc<span class="token punctuation">)</span>
+<span class="token punctuation">{</span>
+    <span class="token class-name">uint32_t</span> word_counter<span class="token punctuation">;</span>
+    <span class="token class-name">uint8_t</span> __far <span class="token operator">*</span>p_address <span class="token operator">=</span> <span class="token punctuation">(</span><span class="token class-name">uint8_t</span> __far <span class="token operator">*</span><span class="token punctuation">)</span> start_address<span class="token punctuation">;</span>
+
+    CRCD <span class="token operator">=</span> initial_value<span class="token punctuation">;</span>
+
+    <span class="token keyword keyword-if">if</span> <span class="token punctuation">(</span><span class="token punctuation">(</span>end_address <span class="token operator">&gt;=</span> <span class="token number">0x10000</span><span class="token punctuation">)</span> <span class="token operator">&amp;&amp;</span> <span class="token punctuation">(</span>start_address <span class="token operator">&lt;=</span> <span class="token number">0xFFFF</span><span class="token punctuation">)</span><span class="token punctuation">)</span>
+    <span class="token punctuation">{</span>
+        <span class="token keyword keyword-for">for</span> <span class="token punctuation">(</span>word_counter <span class="token operator">=</span> start_address<span class="token punctuation">;</span> word_counter <span class="token operator">&lt;</span> <span class="token number">0x10000</span> <span class="token punctuation">;</span> word_counter<span class="token operator">++</span><span class="token punctuation">)</span>
+        <span class="token punctuation">{</span>
+            CRCIN <span class="token operator">=</span> <span class="token operator">*</span>p_address<span class="token operator">++</span><span class="token punctuation">;</span>
+            <span class="token function">__nop</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+        <span class="token punctuation">}</span>  
+
+        p_address <span class="token operator">=</span> <span class="token punctuation">(</span><span class="token class-name">uint8_t</span> __far <span class="token operator">*</span><span class="token punctuation">)</span><span class="token number">0x10000</span><span class="token punctuation">;</span>
+        <span class="token keyword keyword-for">for</span> <span class="token punctuation">(</span>word_counter <span class="token operator">=</span> <span class="token number">0x10000</span><span class="token punctuation">;</span> word_counter <span class="token operator">&lt;</span> <span class="token punctuation">(</span>end_address <span class="token operator">+</span> <span class="token number">1</span><span class="token punctuation">)</span><span class="token punctuation">;</span> word_counter<span class="token operator">++</span><span class="token punctuation">)</span>
+        <span class="token punctuation">{</span>
+            CRCIN <span class="token operator">=</span> <span class="token operator">*</span>p_address<span class="token operator">++</span><span class="token punctuation">;</span>
+            <span class="token function">__nop</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+        <span class="token punctuation">}</span>  
+    <span class="token punctuation">}</span>
+    <span class="token keyword keyword-else">else</span>
+    <span class="token punctuation">{</span>
+        <span class="token comment">/* Read 4 bytes of data each loop until range complete */</span>
+        <span class="token keyword keyword-for">for</span> <span class="token punctuation">(</span>word_counter <span class="token operator">=</span> start_address<span class="token punctuation">;</span> word_counter <span class="token operator">&lt;</span> <span class="token punctuation">(</span>end_address <span class="token operator">+</span> <span class="token number">1</span><span class="token punctuation">)</span><span class="token punctuation">;</span> word_counter<span class="token operator">++</span><span class="token punctuation">)</span>
+        <span class="token punctuation">{</span>
+            CRCIN <span class="token operator">=</span> <span class="token operator">*</span>p_address<span class="token operator">++</span><span class="token punctuation">;</span>
+            <span class="token function">__nop</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+        <span class="token punctuation">}</span>    
+    <span class="token punctuation">}</span>
+    <span class="token function">__nop</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+    
+    <span class="token comment">/* Return value */</span>
+    <span class="token operator">*</span>crc <span class="token operator">=</span> CRCD<span class="token punctuation">;</span>
+
+    <span class="token keyword keyword-return">return</span><span class="token punctuation">;</span>
+<span class="token punctuation">}</span> <span class="token comment">/* End of function r_crc_general_hardware() */</span>
+
+</code></pre><p><strong>Reson why can not use High speed CRC</strong></p>
+<ul>
+<li>if target size not 16K/32K/48K/64K/... , unable to use HIGH SPEED CRC</li>
+<li>if address NOT START FROM 0x00 , check reg : CRC0CTL</li>
+</ul>
 <hr>
 
       </div>

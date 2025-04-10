@@ -83,6 +83,26 @@ __code base : interrupt__
 ```
 
 
+__code base : interrupt with hardware CRC__
+* reference code base : boot code (RL78 F24)
+[RL78_F24_Boot_loader_UART_HW_CRC](https://github.com/released/RL78_F24_Boot_loader_UART_HW_CRC)
+<br/>
+
+* reference code base : app code (RL78 F24)
+[RL78_F24_Boot_loader_app_HW_CRC](https://github.com/released/RL78_F24_Boot_loader_app_HW_CRC)
+<br/>
+
+  * interface : xmodem by UART (polling) + TIMER interrupt
+  * interface : IICA0 (interrupt) + TIMER interrupt
+  * LDROM address : 0x0000 , size : 20K (0x5000)
+  * APROM address : 0x5000 , size : 235K (CRC addr:3FBFB)
+
+refer to document :
+[RL78 Family RL78 Hardware CRC Functions (R01AN3530EU0110)](https://www.renesas.com/en/document/apn/rl78-family-rl78-hardware-crc-functions?queryID=f29102cd30aa1ffab265983af4afc4fe)
+
+download sample code :
+[RL78 Family RL78 Hardware CRC Functions (R01AN3530EU0110)](https://www.renesas.com/en/document/scd/rl78-family-rl78-hardware-crc-functions?queryID=f29102cd30aa1ffab265983af4afc4fe)
+
 <span style="color:#FF0000">
 <b><u>Key point</b></u><br><br>
 </span> 
@@ -90,6 +110,7 @@ __code base : interrupt__
 * project setting for boot code and app code 
 * target MCU platform flash library usage and setting
 * target interface initial and receive data 
+
 
 ---
 
@@ -1850,9 +1871,115 @@ void __near boot_r_Config_TAU0_1_interrupt(void)
 }
 ```
 
-
-
 ![](img/boot_timer_irq_couting2.jpg)
+
+
+
+---
+
+# How to use hardware CRC at boot code and app code project
+
+__setting in CS+ (boot code)__
+
+```c
+Target Range : 0000-4FFB
+type of CRC : CRC-CCITT (LSB) type (General-purpose CRC)
+Initial value : 0000
+Output size : 2
+CRC store address : 0x4FFE
+
+```
+
+![](img/hw_crc_boot_01.jpg)
+
+![](img/hw_crc_boot_02.jpg)
+
+![](img/hw_crc_boot_03.jpg)
+
+
+__setting in CS+ (app code)__
+
+
+```c
+Target Range : 5000-3FBFB
+type of CRC : CRC-CCITT (LSB) type (General-purpose CRC)
+Initial value : 0000
+Output size : 2
+CRC store address : 0x3FBFE
+
+```
+
+![](img/hw_crc_app_01.jpg)
+
+![](img/hw_crc_app_02.jpg)
+
+![](img/hw_crc_app_03.jpg)
+
+
+for CRC compare , refer to function : ==verify_application_chksum==
+and ==verify_bootcode_chksum==
+
+below is boot code , verify result 
+
+![](img/hw_crc_app_04.jpg)
+
+
+below is boot code , log message 
+
+![](img/hw_crc_app_05.jpg)
+
+
+__Need to modify driver , due to far pointers 16bit addressing issue__
+
+[issue](https://community.renesas.com/mcu/rl78/f/rl78-forum/1850/read-program-flash)
+
+```c
+void r_crc_general_hardware (uint32_t start_address, uint32_t end_address, uint16_t initial_value, uint16_t *crc)
+{
+    uint32_t word_counter;
+    uint8_t __far *p_address = (uint8_t __far *) start_address;
+
+    CRCD = initial_value;
+
+    if ((end_address >= 0x10000) && (start_address <= 0xFFFF))
+    {
+        for (word_counter = start_address; word_counter < 0x10000 ; word_counter++)
+        {
+            CRCIN = *p_address++;
+            __nop();
+        }  
+
+        p_address = (uint8_t __far *)0x10000;
+        for (word_counter = 0x10000; word_counter < (end_address + 1); word_counter++)
+        {
+            CRCIN = *p_address++;
+            __nop();
+        }  
+    }
+    else
+    {
+        /* Read 4 bytes of data each loop until range complete */
+        for (word_counter = start_address; word_counter < (end_address + 1); word_counter++)
+        {
+            CRCIN = *p_address++;
+            __nop();
+        }    
+    }
+    __nop();
+    
+    /* Return value */
+    *crc = CRCD;
+
+    return;
+} /* End of function r_crc_general_hardware() */
+
+```
+
+__Reson why can not use High speed CRC__
+
+  * if target size not 16K/32K/48K/64K/... , unable to use HIGH SPEED CRC
+  * if address NOT START FROM 0x00 , check reg : CRC0CTL
+
 
 ---
 
