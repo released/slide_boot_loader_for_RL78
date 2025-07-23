@@ -978,6 +978,9 @@ copy /y/v .\DefaultBuild\RL78_F24_Boot_loader_UART.fsy ..\RL78_F24_Boot_loader_a
 ![](img/boot_property_link_02.jpg)
 <br>
 
+* __==important notice==__
+  * [RL78/F24 Locked](https://en.na4.teamsupport.com/knowledgeBase/21225578)
+
 ![](img/boot_property_link_03.jpg)
 * __[Output Code] > [Execute start address]__
   * will be called by cstart.asm
