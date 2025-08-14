@@ -956,6 +956,8 @@ CRC in app code last 4 bytes will be added after compile at <b><u>app code proje
 <li>set to <code>A5</code></li>
 <li>default will be 0xFF<br>
 <img src="img/boot_property_link_02.jpg" alt=""><br>
+<br><br>
+<img src="img/boot_property_link_02_1.jpg" alt=""><br>
 <br></li>
 </ul>
 </li>
@@ -1936,13 +1938,202 @@ and <mark>verify_bootcode_chksum</mark></p>
 <hr>
 
       </div>
+      <div class="md-sidebar-toc">
+<div class="md-toc">
+<div class="md-toc-link-wrapper" style="padding:0;;display:list-item;list-style:square;margin-left:18px">
+          <a href="#agenda" class="md-toc-link">
+            <p>Agenda</p>
+
+          </a></div><div class="md-toc-link-wrapper" style="padding:0;;display:list-item;list-style:square;margin-left:18px">
+          <a href="#flash-architecture" class="md-toc-link">
+            <p>Flash architecture</p>
+
+          </a></div><div class="md-toc-link-wrapper" style="padding:0;;display:list-item;list-style:square;margin-left:18px">
+          <a href="#scenario--boot-area-boot-code" class="md-toc-link">
+            <p>Scenario : Boot area (boot code)</p>
+
+          </a></div><div class="md-toc-link-wrapper" style="padding:0;;display:list-item;list-style:square;margin-left:18px">
+          <a href="#scenario--flash-area-app-code" class="md-toc-link">
+            <p>Scenario : Flash area (app code)</p>
+
+          </a></div><div class="md-toc-link-wrapper" style="padding:0;;display:list-item;list-style:square;margin-left:18px">
+          <a href="#project--boot-codeapp-code-modifictaion---ftableinc" class="md-toc-link">
+            <p>Project : boot code/app code modifictaion - ftable.inc</p>
+
+          </a></div><div class="md-toc-link-wrapper" style="padding:0;;display:list-item;list-style:square;margin-left:18px">
+          <a href="#project--boot-code-modifictaion---cstartasm" class="md-toc-link">
+            <p>Project : boot code modifictaion - cstart.asm</p>
+
+          </a></div><div class="md-toc-link-wrapper" style="padding:0;;display:list-item;list-style:square;margin-left:18px">
+          <a href="#project--boot-code-modifictaion---stkinitasm" class="md-toc-link">
+            <p>Project : boot code modifictaion - stkinit.asm</p>
+
+          </a></div><div class="md-toc-link-wrapper" style="padding:0;;display:list-item;list-style:square;margin-left:18px">
+          <a href="#project--boot-code-modifictaion---project-tree" class="md-toc-link">
+            <p>Project : boot code modifictaion - project tree</p>
+
+          </a></div><div class="md-toc-link-wrapper" style="padding:0;;display:list-item;list-style:square;margin-left:18px">
+          <a href="#project--boot-code-modifictaion---add-code-flash-library" class="md-toc-link">
+            <p>Project : boot code modifictaion - add CODE FLASH library</p>
+
+          </a></div><div class="md-toc-link-wrapper" style="padding:0;;display:list-item;list-style:square;margin-left:18px">
+          <a href="#project--boot-code-modifictaion---add-crc-compare-1" class="md-toc-link">
+            <p>Project : boot code modifictaion - add CRC compare (1)</p>
+
+          </a></div><div class="md-toc-link-wrapper" style="padding:0;;display:list-item;list-style:square;margin-left:18px">
+          <a href="#project--boot-code-modifictaion---add-crc-compare-2" class="md-toc-link">
+            <p>Project : boot code modifictaion - add CRC compare (2)</p>
+
+          </a></div><div class="md-toc-link-wrapper" style="padding:0;;display:list-item;list-style:square;margin-left:18px">
+          <a href="#project--boot-code-modifictaion---use-smart-config-tool-to-generate-driver" class="md-toc-link">
+            <p>Project : boot code modifictaion - use smart config tool to generate driver</p>
+
+          </a></div><div class="md-toc-link-wrapper" style="padding:0;;display:list-item;list-style:square;margin-left:18px">
+          <a href="#project--boot-code-modifictaion---boot_mainc" class="md-toc-link">
+            <p>Project : boot code modifictaion - boot_main.c</p>
+
+          </a></div><div class="md-toc-link-wrapper" style="padding:0;;display:list-item;list-style:square;margin-left:18px">
+          <a href="#project--boot-code-modifictaion---i2c-command-flow" class="md-toc-link">
+            <p>Project : boot code modifictaion - I2C command flow</p>
+
+          </a></div><div class="md-toc-link-wrapper" style="padding:0;;display:list-item;list-style:square;margin-left:18px">
+          <a href="#project--boot-code-modifictaion---i2c-command-flow-check_generic_boot_standard_interface" class="md-toc-link">
+            <p>Project : boot code modifictaion - I2C command flow (check_generic_boot_standard_interface)</p>
+
+          </a></div><div class="md-toc-link-wrapper" style="padding:0;;display:list-item;list-style:square;margin-left:18px">
+          <a href="#project--boot-code-modifictaion---i2c-command-flow-read_device_signature" class="md-toc-link">
+            <p>Project : boot code modifictaion - I2C command flow (read_device_signature)</p>
+
+          </a></div><div class="md-toc-link-wrapper" style="padding:0;;display:list-item;list-style:square;margin-left:18px">
+          <a href="#project--boot-code-modifictaion---i2c-command-flow-read_area_information" class="md-toc-link">
+            <p>Project : boot code modifictaion - I2C command flow (read_area_information)</p>
+
+          </a></div><div class="md-toc-link-wrapper" style="padding:0;;display:list-item;list-style:square;margin-left:18px">
+          <a href="#project--boot-code-modifictaion---i2c-command-flow-start_device_image_transfer" class="md-toc-link">
+            <p>Project : boot code modifictaion - I2C command flow (start_device_image_transfer)</p>
+
+          </a></div><div class="md-toc-link-wrapper" style="padding:0;;display:list-item;list-style:square;margin-left:18px">
+          <a href="#project--boot-code-modifictaion---i2c-command-flow-terminal-operation-master--slave" class="md-toc-link">
+            <p>Project : boot code modifictaion - I2C command flow terminal operation (master &amp; slave)</p>
+
+          </a></div><div class="md-toc-link-wrapper" style="padding:0;;display:list-item;list-style:square;margin-left:18px">
+          <a href="#project--boot-code-modifictaion---xmodem-update-flow" class="md-toc-link">
+            <p>Project : boot code modifictaion - xmodem update flow</p>
+
+          </a></div><div class="md-toc-link-wrapper" style="padding:0;;display:list-item;list-style:square;margin-left:18px">
+          <a href="#project--boot-code-property-modifictaion---e2-lite-setting" class="md-toc-link">
+            <p>Project : boot code property modifictaion - E2 lite setting</p>
+
+          </a></div><div class="md-toc-link-wrapper" style="padding:0;;display:list-item;list-style:square;margin-left:18px">
+          <a href="#project--boot-code-property-modifictaion---cc-rl-build-tool-setting" class="md-toc-link">
+            <p>Project : boot code property modifictaion - CC-RL Build Tool setting</p>
+
+          </a></div><div class="md-toc-link-wrapper" style="padding:0;;display:list-item;list-style:square;margin-left:18px">
+          <a href="#project--boot-code-property-modifictaion---cc-rl-build-tool-setting-1" class="md-toc-link">
+            <p>Project : boot code property modifictaion - CC-RL Build Tool setting</p>
+
+          </a></div><div class="md-toc-link-wrapper" style="padding:0;;display:list-item;list-style:square;margin-left:18px">
+          <a href="#project--boot-code-property-modifictaion---cc-rl-build-tool-setting-2" class="md-toc-link">
+            <p>Project : boot code property modifictaion - CC-RL Build Tool setting</p>
+
+          </a></div><div class="md-toc-link-wrapper" style="padding:0;;display:list-item;list-style:square;margin-left:18px">
+          <a href="#project--boot-code-property-modifictaion---cc-rl-build-tool-setting-3" class="md-toc-link">
+            <p>Project : boot code property modifictaion - CC-RL Build Tool setting</p>
+
+          </a></div><div class="md-toc-link-wrapper" style="padding:0;;display:list-item;list-style:square;margin-left:18px">
+          <a href="#reference---rl78f23-f24-users-manual-hardware---input-source-list" class="md-toc-link">
+            <p>Reference - RL78/F23, F24 User’s Manual: Hardware - Input Source List</p>
+
+          </a></div><div class="md-toc-link-wrapper" style="padding:0;;display:list-item;list-style:square;margin-left:18px">
+          <a href="#project--rl78f23-f24-users-manual-hardware---vector-table" class="md-toc-link">
+            <p>Project : RL78/F23, F24 User’s Manual: Hardware - Vector Table</p>
+
+          </a></div><div class="md-toc-link-wrapper" style="padding:0;;display:list-item;list-style:square;margin-left:18px">
+          <a href="#project--boot-codeapp-code-modifictaion---ftableinc-1" class="md-toc-link">
+            <p>Project : boot code/app code modifictaion - ftable.inc</p>
+
+          </a></div><div class="md-toc-link-wrapper" style="padding:0;;display:list-item;list-style:square;margin-left:18px">
+          <a href="#project--app-code-modifictaion---cstartasm" class="md-toc-link">
+            <p>Project : app code modifictaion - cstart.asm</p>
+
+          </a></div><div class="md-toc-link-wrapper" style="padding:0;;display:list-item;list-style:square;margin-left:18px">
+          <a href="#project--app-code-modifictaion---ftableasm" class="md-toc-link">
+            <p>Project : app code modifictaion - ftable.asm</p>
+
+          </a></div><div class="md-toc-link-wrapper" style="padding:0;;display:list-item;list-style:square;margin-left:18px">
+          <a href="#project--app-code-modifictaion---fsy-file" class="md-toc-link">
+            <p>Project : app code modifictaion - fsy file</p>
+
+          </a></div><div class="md-toc-link-wrapper" style="padding:0;;display:list-item;list-style:square;margin-left:18px">
+          <a href="#project--app-code-modifictaion---project-tree" class="md-toc-link">
+            <p>Project : app code modifictaion - project tree</p>
+
+          </a></div><div class="md-toc-link-wrapper" style="padding:0;;display:list-item;list-style:square;margin-left:18px">
+          <a href="#project--app-code-modifictaion---add-data-flash-library" class="md-toc-link">
+            <p>Project : app code modifictaion - add DATA FLASH library</p>
+
+          </a></div><div class="md-toc-link-wrapper" style="padding:0;;display:list-item;list-style:square;margin-left:18px">
+          <a href="#project--app-code-modifictaion---use-smart-config-tool-to-generate-driver" class="md-toc-link">
+            <p>Project : app code modifictaion - use smart config tool to generate driver</p>
+
+          </a></div><div class="md-toc-link-wrapper" style="padding:0;;display:list-item;list-style:square;margin-left:18px">
+          <a href="#project--app-code-modifictaion----remove-static-and-vect-define" class="md-toc-link">
+            <p>Project : app code modifictaion -  remove static and vect define</p>
+
+          </a></div><div class="md-toc-link-wrapper" style="padding:0;;display:list-item;list-style:square;margin-left:18px">
+          <a href="#project--app-code-modifictaion---mainc" class="md-toc-link">
+            <p>Project : app code modifictaion - main.c</p>
+
+          </a></div><div class="md-toc-link-wrapper" style="padding:0;;display:list-item;list-style:square;margin-left:18px">
+          <a href="#project--app-code-property-modifictaion---e2-lite-setting" class="md-toc-link">
+            <p>Project : app code property modifictaion - E2 lite setting</p>
+
+          </a></div><div class="md-toc-link-wrapper" style="padding:0;;display:list-item;list-style:square;margin-left:18px">
+          <a href="#project--app-code-property-modifictaion---cc-rl-build-tool-setting" class="md-toc-link">
+            <p>Project : app code property modifictaion - CC-RL Build Tool setting</p>
+
+          </a></div><div class="md-toc-link-wrapper" style="padding:0;;display:list-item;list-style:square;margin-left:18px">
+          <a href="#project--app-code-property-modifictaion---cc-rl-build-tool-setting-1" class="md-toc-link">
+            <p>Project : app code property modifictaion - CC-RL Build Tool setting</p>
+
+          </a></div><div class="md-toc-link-wrapper" style="padding:0;;display:list-item;list-style:square;margin-left:18px">
+          <a href="#project--app-code-property-modifictaion---cc-rl-build-tool-setting-2" class="md-toc-link">
+            <p>Project : app code property modifictaion - CC-RL Build Tool setting</p>
+
+          </a></div><div class="md-toc-link-wrapper" style="padding:0;;display:list-item;list-style:square;margin-left:18px">
+          <a href="#project--app-code-property-modifictaion---cc-rl-build-tool-setting-3" class="md-toc-link">
+            <p>Project : app code property modifictaion - CC-RL Build Tool setting</p>
+
+          </a></div><div class="md-toc-link-wrapper" style="padding:0;;display:list-item;list-style:square;margin-left:18px">
+          <a href="#how-to-add-interrupt-at-boot-code" class="md-toc-link">
+            <p>How to add interrupt at boot code</p>
+
+          </a></div><div class="md-toc-link-wrapper" style="padding:0;;display:list-item;list-style:square;margin-left:18px">
+          <a href="#how-to-use-hardware-crc-at-boot-code-and-app-code-project" class="md-toc-link">
+            <p>How to use hardware CRC at boot code and app code project</p>
+
+          </a></div>
+</div>
+</div>
+      <a id="sidebar-toc-btn">≡</a>
+    
+    
+    
+    
+    
+    
+<script>
+
+var sidebarTOCBtn = document.getElementById('sidebar-toc-btn')
+sidebarTOCBtn.addEventListener('click', function(event) {
+  event.stopPropagation()
+  if (document.body.hasAttribute('html-show-sidebar-toc')) {
+    document.body.removeAttribute('html-show-sidebar-toc')
+  } else {
+    document.body.setAttribute('html-show-sidebar-toc', true)
+  }
+})
+</script>
       
-      
-    
-    
-    
-    
-    
-    
   
     </body></html>

@@ -977,6 +977,8 @@ copy /y/v .\DefaultBuild\RL78_F24_Boot_loader_UART.fsy ..\RL78_F24_Boot_loader_a
   * default will be 0xFF
 ![](img/boot_property_link_02.jpg)
 <br>
+![](img/boot_property_link_02_1.jpg)
+<br>
 
 * __==important notice==__
   * [RL78/F24 Locked](https://en.na4.teamsupport.com/knowledgeBase/21225578)
