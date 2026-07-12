@@ -1,9 +1,36 @@
 
-[return to index](https://released.github.io/)
+[回到知識庫總索引](https://released.github.io/)
 
 <a id="article_top"></a>
 
-# Agenda
+# RL78 Bootloader 實作指南
+
+> 以 RL78/F24 為主要範例，說明 boot code 與 application code 的 Flash 配置、啟動流程、通訊更新、CRC 驗證與專案設定。實作前請先熟悉 RL78 專案建立、linker section 與 Flash library。
+
+## 學習目標
+
+- 釐清 boot area、application area、vector table、RAM 與 data Flash 的責任邊界。
+- 能建立 boot／application 兩個可獨立編譯的專案，並產生正確的映像檔。
+- 能以 I2C 或 XMODEM 執行 erase、program、verify 與跳轉流程。
+- 能針對更新中斷、CRC 錯誤與 application 無效設計安全復原策略。
+
+## 更新流程總覽
+
+```mermaid
+flowchart TD
+    RESET["MCU Reset"] --> BOOT["Bootloader 初始化"]
+    BOOT --> CHECK{"Application 有效且無更新要求？"}
+    CHECK -->|Yes| APP["跳轉至 Application"]
+    CHECK -->|No| RECEIVE["接收 Firmware Image"]
+    RECEIVE --> ERASE["Erase Application Area"]
+    ERASE --> PROGRAM["Program Blocks"]
+    PROGRAM --> VERIFY{"CRC / Image 驗證通過？"}
+    VERIFY -->|No| RECOVERY["保留 Bootloader 並等待重試"]
+    VERIFY -->|Yes| FLAG["更新狀態與啟動旗標"]
+    FLAG --> RESET
+```
+
+## 教材目錄
 
 * Introduce boot code and app code modification for RL78 
   * In this section , use RL78 F24 as example  
