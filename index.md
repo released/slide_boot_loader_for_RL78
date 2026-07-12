@@ -7,7 +7,7 @@
 
 > 以 RL78/F24 為主要範例，說明 boot code 與 application code 的 Flash 配置、啟動流程、通訊更新、CRC 驗證與專案設定。實作前請先熟悉 RL78 專案建立、linker section 與 Flash library。
 
-## 學習目標
+## 內容範圍
 
 - 釐清 boot area、application area、vector table、RAM 與 data Flash 的責任邊界。
 - 能建立 boot／application 兩個可獨立編譯的專案，並產生正確的映像檔。
@@ -30,7 +30,7 @@ flowchart TD
     FLAG --> RESET
 ```
 
-## 教材目錄
+## 內容索引
 
 * Introduce boot code and app code modification for RL78 
   * In this section , use RL78 F24 as example  
