@@ -12,8 +12,19 @@
 精確配套版本與雜湊由交付說明提供。必要的protocol／image format／IRQ ABI
 及尚未完成的實板驗證仍須明確列出。
 
+CAN範例角色名稱為 F24 (MCU CAN host)、F13 (MCU CAN device)；後續
+F24 (MCU CAN device) 是不同專案。舊UART／I2C教材依各自拓樸判定，不一律改為host。
+
 ## 共用內容維護
 
+- Tool／F24／F13 逐層導讀連到 ISP 頁的 `#can-update-walkthrough`；原稿為 Tool
+  `docs/CAN_UPDATE_WALKTHROUGH_zh-TW.md`，由 `sync_can_update_walkthrough.ps1` 同步 ISP 頁。
+  本頁保留逐 byte 參考，不另外手抄教學複本。
+- `#flash-metadata-can-reference`：Tool的`docs/FLASH_METADATA_CAN_FRAME_GUIDE_zh-TW.md`
+  為Flash／metadata逐byte地址及CAN格式原稿；`sync_flash_reference.ps1`同步。
+  表內範例值由`generate_flash_reference.py`從選定實際BIN產生，不可手改成假想配置。
+- `#downloads`：由[Tool多匯流排指南](https://github.com/released/simple_renesas_isp_tool/blob/main/docs/MULTIBUS_TOOL_GUIDE_zh-TW.md)
+  的`PUBLIC_RESOURCES`區塊與`sync_public_resources.ps1`同步下載與六個流程入口。
 - `#boot-app-porting`：以Tool的`docs/RL78_BOOT_APP_PORTING_GUIDE_zh-TW.md`
   中`RL78_PORTING`區塊為原稿，執行`sync_rl78_porting_guide.ps1`。
 - F13 Boot→App、ENTER與timer：由`docs/F13_BOOT_UPDATE_FLOW_zh-TW.md`
@@ -26,3 +37,4 @@
 修改原稿後執行同步與`-CheckOnly`，保留既有參考連結、圖片和必要的硬體限制。
 功能變更同時更新相關MD／PDF、web與驗證狀態，不把build／mock當成實板通過。
 頁面引用與預覽可使用ISP Tool頁的`scripts/verify_local.ps1`檢查。
+同步時用`-WebRoot`或`FIRMWARE_WEB_ROOT`指定網站checkout的父目錄；不需要原作者的工作區路徑。
