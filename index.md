@@ -9,21 +9,13 @@
 
 只想把 Boot/App 架構移植到自己的專案？先讀下方
 [自訂 Bootloader／App 移植指南](#boot-app-porting)，不必先學 PC Tool。
-本機新增內容依現行 F13 format6／F24 contract3 整理，尚未發布。
+內容包含UART／I2C教材，以及F13 CAN device與F24 host bridge的分工與移植方式。
+各更新流程使用不同的映像與通訊契約，不能直接混用BIN、clock或Flash driver。
 
-2026-10-15使用者0079 log164225與UART截圖已證明一次F13 CAN500K／Host115200
-更新、END CRC1DE10DCD與reset後V2 App啟動。19224bytes／4806筆4-byte DATA
-耗時約142秒。0080僅修PC串口短回覆讀取延遲，無資料等待每次最多50ms，
-有資料即返回；該0080修正不改韌體。使用者0080 log171150同BIN的DATA約77秒、
-整體79秒；trace有缺行，不能當完整packet紀錄。
-0082改CAN Upgrade v5：64-byte區塊、8-byte raw frame、一次ACK；19224B由4806
-次改301次交易。使用者182253 log已實測19244B／301區塊／10963ms／1755B/s，
-END CRC CA0DF55C相符且無重試／CAN錯誤；較舊約79秒快約7.2倍，但BIN略有不同、
-僅單次v5結果。工程第一版固定Tool0082；新版reset後App仍需UART／INFO證據。
-F24 App升1.5.0（Boot1.2.0不變），
-F13重燒Boot/App1.5.0；保留8KiB／App2000／完整向量ABI，Boot剩餘530B。
-缺段／CRC先拒寫，最後已提交區塊重送不重寫，END仍全映像CRC後reset再驗證。
-實體高速及斷電故障矩陣仍待驗證；比較方法見[ISP Tool 操作指南](../slide_isp_tool_for_RL78/#can-upgrade-performance)。
+CAN更新採RAM區塊收齊／CRC驗證後寫入，每區塊只回一筆ACK；缺段或CRC錯誤先拒寫，
+已提交區塊重送不重寫，END仍檢查全映像CRC，reset後再由Boot驗證。
+精確版本、雜湊與單次實測數字請查閱所用交付套件的說明；效能量測方法見
+[ISP Tool 操作指南](../slide_isp_tool_for_RL78/#can-upgrade-performance)。
 
 <a id="boot-app-porting"></a>
 
@@ -49,7 +41,7 @@ protocol，或另行開發 PC target adapter；不能只修改 BIN 的 MCU 名�
 | Boot 專案 | `_Avery_Renesas/CS+/RL78_F13_Boot_loader_CAN` | `firmware/RL78_F24_Bridge_boot` |
 | App 專案 | `_Avery_Renesas/CS+/RL78_F13_Boot_loader_CAN_app` | `firmware/RL78_F24_Bridge_app` |
 | MCU | R5F10BMG，128 KiB Flash | R7F124FLJ3xFB，256 KiB Flash |
-| 現行契約 | Boot/App 1.5.0；image format6、CAN protocol5、IRQ ABI F1V1 | Boot 1.2.0／App 1.5.0；BUR1 contract3、IRQ ABI F2V1 |
+| 更新契約 | image format6、CAN protocol5、IRQ ABI F1V1；需matching Boot/App | BUR1 contract3、IRQ ABI F2V1；需matching Boot/App |
 | 更新入口 | CAN 500K，standard ID 0x700／0x701 | PC UART，Host Boot 固定115200；Tool 的 Misc |
 | Flash library | F13 FSL | F24 RFD Type02，programming-mode 路徑在 RAM 執行 |
 
@@ -334,16 +326,16 @@ flowchart TD
 
 ## CAN bus 更新：Tool / Host Bridge / Device
 
-2026-10-15新增｜Custom Transfer已有使用者benchmark；Boot/App擦寫板測待補。
+本節說明PC Tool、通用host bridge與CAN device Boot/App的責任邊界。
 
-[FirmwareUpgradeTool與MCU Bridge操作稿](../slide_isp_tool_for_RL78/)（本機準備，尚未發布）。
+[FirmwareUpgradeTool與MCU Bridge操作指南](../slide_isp_tool_for_RL78/)。
 下方既有UART/I2C教材與CAN使用不同project/metadata，不能混用其BIN/CRC/layout。
 
-### 0074：外部 Device 更新與 Host 自身更新分開
+### 外部 Device 更新與 Host 自身更新分開
 
 FirmwareUpgradeTool以1366×768單畫面為目標，CAN／I2C共用BIN、metadata、CRC、
 progress與log，主視窗不設上下捲軸；未來UART device也重用此console。
-0078修正底部長操作名稱／百分比的換行裁切，量測並預留100%寬度；
+底部操作名稱／百分比維持單行，量測並預留100%寬度；
 GDI字型／邊界測試已通過，真實更新畫面與桌面DPI仍待驗證。
 CAN／I2C／Misc TAB只位於左側INTERFACE SETTINGS；中間SHARED IMAGE / METADATA
 與右側SHARED LOG有獨立固定標題，不受TAB外框涵蓋，不另建BIN或log。
@@ -355,13 +347,12 @@ Host須宣告self-update能力並提供live descriptor；BUR1 HOST APP BIN不可
 matching boot `.mot`與app `*_flash.mot`，之後Misc載入`*_bridge_update.bin`。
 分區、RAM RFD、IRQ／BRK與CRC保護已有build／mock檢查，實板擦寫／E2 lite／
 掉電復原仍待驗證；不能把既有Transfer benchmark當成Boot/App更新成功。
-完整操作、檔案用途及待補截圖見上方ISP操作稿。每次功能變更同步MD與受影響web，
-本機編輯不代表已公開發布。
+完整操作、檔案用途及待補截圖見上方ISP操作指南。功能變更時同步MD與受影響web。
 
 目前Host Link payload128／完整frame142，不支援舊96-host。F13 image format6與
 F24 bridge contract3均固定metadata區為app offset0x100..0x1FF（256 bytes），
-前128有效core、後128填0xFF；code起點維持offset0x200。F13 paired boot/app為1.5.0，
-須重新安裝；F24同樣須安裝matching新boot/app。Flash分區沒有因本次metadata改動而搬移。
+前128有效core、後128填0xFF；code起點維持offset0x200。首次導入時F13與F24
+各自需要matching Boot/App；後續依live能力、metadata與IRQ契約判斷是否可只更新App。
 Misc透過同一STAGE_METADATA command分四次64 bytes，RAM收齊／完整驗證後BEGIN才擦除；
 READ_METADATA也分頁讀回，不把區域大小當成單包大小。有效core長度與區域容量分開定義。
 
@@ -634,21 +625,21 @@ metadata／CRC 檢查，還逐 slot 比對實際 branch 與 mapping，核對 ISR
 
 本輪 A／B 實際 CC-RL 編譯與封裝、不同 mapping／版本、輸入拒絕及 boot
 向量／MTPJ／MOT 雜湊隔離測試通過；測試沒有啟用新 IRQ，也沒有燒錄 MCU。
-先安裝本輪policy contract3 matching boot/app；之後相容的app-only IRQ改動不需重燒boot。
-本輪參考app1.5.0為42696 bytes／CRC864E811E，新增泛用CAN burst22／bit12。
-F24 Boot1.2.0不變，可用Misc115200更新此App。實板只換 app、新舊 IRQ／UART ENTER、reset／斷電
+先安裝policy contract3 matching boot/app；之後相容的app-only IRQ改動不需重燒boot。
+CAN區塊更新需要bridge宣告泛用CAN burst22／bit12，以live能力判斷，不以版號猜測。
+已有相容Boot時，可用Misc115200更新App。實板只換 app、新舊 IRQ／UART ENTER、reset／斷電
 與 E2 lite 仍待驗證。
 F13 保留既有 app-local mapping 流程；未新增 F13 I2C boot。
 
-F24 App1.4.0 重新連線時可能 INFO成功、接著0x57回BAD_COMMAND：外層分派
-漏了READ_METADATA，1.4.1已補上。不可略過metadata驗證。復原方式：
+若舊F24 App重新連線時INFO成功、接著0x57回BAD_COMMAND，可能是外層分派
+漏了READ_METADATA。應安裝包含完整metadata讀回支援的App，不可略過驗證。復原方式：
 
 1. 關閉COM，按住實體SW1（P32，LOW），同時重置／重新上電，讓既有Boot留在recovery。
-2. 開啟Tool0082，Host Baud115200，Open + Probe Host；確認live顯示BOOT。
-3. Misc重新Load Update Image，選App1.5.0的_bridge_update.bin（42696B／CRC864E811E，包含1.4.1的修正）。
-4. Update HOST APP成功後另按Run Validated Bridge App；再重新Probe並關閉／重開Tool確認App1.5.0。
+2. 開啟Tool，Host Baud115200，Open + Probe Host；確認live顯示BOOT。
+3. Misc重新Load Update Image，選交付套件中與此Boot相容的_bridge_update.bin，確認metadata及CRC。
+4. Update HOST APP成功後另按Run Validated Bridge App；再重新Probe並關閉／重開Tool確認實際App身分。
 
-Boot1.2.0、分區與IRQ契約不變，不必重燒Boot。步驟為source／mock驗證，實板復測待補。
+若Boot、分區與IRQ契約仍相容，不必重燒Boot。步驟為source／mock驗證，實板復測待補。
 <!-- F24_APP_IRQ_END -->
 
 ## 既有 UART / I2C 內容索引
@@ -2641,7 +2632,7 @@ __Reson why can not use High speed CRC__
 ---
 
 <!-- COMMON_IMAGE_POLICY_BEGIN -->
-## 共用 Metadata 與跨介面防呆（0077）
+## 共用 Metadata 與跨介面防呆
 
 Metadata固定256 bytes：前128 bytes為已定義內容（含32-byte UPD1政策），
 後128 bytes必須為0xFF；app code仍從offset0x200開始。舊core96格式不相容。
@@ -2674,17 +2665,18 @@ MCU／target／分區／protocol／IRQ ABI／最低boot版本／CRC檢查。
 UI與worker皆檢查，device boot在首次擦寫前再驗證完整metadata，不能只靠按鈕。
 切換介面不能沿用另一介面的探索結果；port／address／rate改動後必須重新確認。
 
-F13目前為boot/app1.5.0、CAN protocol5、image format6，DEVICE_APP／CAN／F1V1。
-F24 split boot1.2.0、app1.5.0、BUR1 contract3，HOST_APP／UART／F2V1。
-平台首次安裝須有matching Boot/App；本次v5需重燒F13配對，F24 Boot1.2.0不變，
-已有matching Boot可直接用Misc更新App1.5.0；Misc不更新boot本身。
+F13使用CAN protocol5、image format6，DEVICE_APP／CAN／F1V1。
+F24使用BUR1 contract3，HOST_APP／UART／F2V1。
+平台首次安裝須有matching Boot/App；不同更新協定或IRQ契約不能任意混用。
+已有matching Boot時，可用Misc更新相容的Host App；Misc不更新boot本身。
+精確配套版本與映像雜湊以交付說明、live INFO及BIN metadata為準。
 已固定的完整一般向量轉送架構不變，未來相容app新增中斷仍只更新app。
 
 G16新版I2C boot/app依使用者要求延後開發；舊範例保留參考及read-only探索，
 不提供erase／write／app jump，也不因tool新增metadata就視為可安全更新。
 
-使用者182253 log已證明單次F13 CAN v5正常更新／END CRC，19244B／301區塊／10963ms；
-不代表reset後新版App或完整故障驗收。自動測試包含錯映像、介面／目的地不符、
+正常更新／END CRC成功，不代表reset後App已執行，也不代表完整故障驗收。
+自動測試包含錯映像、介面／目的地不符、
 metadata重送／缺段／CRC錯、重設與768個模擬中斷寫入點。這不是實板斷電驗證；
 實體CAN／FSL故障、UART斷線、
 最大映像CRC耗時、debug／IRQ、斷電復原及1366×768／DPI視覺驗證仍需板測／目視。
