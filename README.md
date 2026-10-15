@@ -17,6 +17,9 @@ F24 (MCU CAN device) 是不同專案。舊UART／I2C教材依各自拓樸判定�
 
 ## 共用內容維護
 
+- `#device-metadata-vector-workshop`：F13／F24 CAN device 的 Metadata 編輯與 App IRQ
+  新增／產表教學；原稿為 Tool `docs/DEVICE_METADATA_VECTOR_WORKSHOP_zh-TW.md`，
+  執行 `sync_device_workshop.ps1` 同步兩頁。不是 F24 host 自更新章節。
 - Tool／F24／F13 逐層導讀連到 ISP 頁的 `#can-update-walkthrough`；原稿為 Tool
   `docs/CAN_UPDATE_WALKTHROUGH_zh-TW.md`，由 `sync_can_update_walkthrough.ps1` 同步 ISP 頁。
   本頁保留逐 byte 參考，不另外手抄教學複本。
