@@ -10,12 +10,16 @@ UART／I2C 範例保留各自的設定與來源。
 
 ## 主題維護
 
+編寫與驗收依據為 [公開文件編寫準則](PUBLIC_CONTENT_GUIDELINES_zh-TW.md)。
+共用原稿位於 `/web` 根目錄，適用目前與未來各類 slide；此處為獨立 repository 的同步副本。
+規範同步由 `/web/scripts/sync_public_content_guidelines.ps1` 維護，並可使用 `-CheckOnly` 檢查。
+
 原稿位於 [Tool docs](https://github.com/released/simple_renesas_isp_tool/tree/main/docs)。
 同步腳本的主題歸屬由 `scripts/web_guide_sections.json` 定義：完整內容只保留在所屬頁面，其他頁面產生簡短跳轉連結。
 
 | 本頁完整章節 | 原稿／同步腳本 |
 | --- | --- |
-| Device Metadata／App IRQ JSON 編輯與建置 | DEVICE_METADATA_VECTOR_WORKSHOP／sync_device_workshop.ps1 |
+| Device Metadata／App IRQ C header 編輯與建置 | DEVICE_METADATA_VECTOR_WORKSHOP／sync_device_workshop.ps1 |
 | F13 Boot decision／ENTER／逾時 | F13_BOOT_UPDATE_FLOW／sync_f13_boot_decision.ps1 |
 | F24 device 工程 | F24_CAN_DEVICE_DESIGN／sync_f24_device_design.ps1 |
 | Boot/App 移植 | RL78_BOOT_APP_PORTING_GUIDE／sync_rl78_porting_guide.ps1 |

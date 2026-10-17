@@ -1,0 +1,16 @@
+# Slide maintenance
+
+Read PUBLIC_CONTENT_GUIDELINES_zh-TW.md and README.md before editing this guide.
+The guidelines are a generated copy of the common /web root policy.
+Keep its neutral sharing tone, current-state wording and source/evidence rules.
+
+- This page owns MCU CAN device Boot/App, metadata, vector and porting topics.
+- F13/F24 device Boot/App are joint golden samples. Both use editable C headers
+  for image/IRQ settings; preserve common authoring/generation/validation for
+  future MCU ports. Project-specific rules stay here, not in /web root policy.
+- Edit the canonical Tool docs first; use their sync scripts and -CheckOnly.
+- Preserve stable anchors and use short links to ISP-owned topics.
+- Update affected PDFs; keep commands, byte values and safety gates unchanged
+  during editorial changes. Do not rebuild firmware or bump the Tool version.
+- Never infer Git publication or hardware acceptance from local synchronization.
+- Run the ISP scripts/verify_local.ps1 with -ToolRoot for cross-page checks.
