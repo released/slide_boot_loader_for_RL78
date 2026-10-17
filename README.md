@@ -6,7 +6,8 @@
 
 本頁提供 MCU CAN device 的 Boot/App 工程、metadata、vector、startup 與 Flash 更新說明。
 F13 與 F24 各有獨立工程，概念流程使用 MCU CAN device 名稱；型號、位址與驅動差異列於工程表格。
-UART／I2C 範例保留各自的設定與來源。
+UART／I2C 範例的設定與來源集中於 [獨立範例頁](uart_i2c/)，內容為 `uart_i2c/index.md`。
+主頁保留原章節的 anchor 及跳轉入口。
 
 ## 主題維護
 

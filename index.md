@@ -232,11 +232,25 @@ F24 device 的板端設定與建置方式見 [F24 CAN device 工程配置](https
 | 檔案 | 內容 | 編輯方式 |
 | --- | --- | --- |
 | `app_image_config.h` | App 版本、build 與映像身分核對值 | 使用者設定 |
+| Boot `image_metadata_config.h` | 格式、MCU／Flash、IRQ ABI、更新政策與 Boot 版本 | 共用映像契約；變動時核對 Boot／App、linker、封裝及 Tool |
+| Boot `can_boot_config.h` | CAN ID、速率宣告、命令與接收規則 | CAN 通訊設定；搭配實際 clock／timing 修改 |
+| Boot `boot_app_handoff.h` | 共用 RAM、IRQ owner 與一次性交接標記 | 啟動交接契約；與 linker／startup／向量產生器對應 |
+| `image_metadata.c/.h` | 執行時欄位解碼與完整 metadata 驗證 | 共用 C90 模組；Boot／App 分別編譯引用 |
+| `image_metadata_profile.c` | 工程接受的 32-word metadata core | 結合映像契約與 ISP 設定；不操作 driver register |
 | `app_irq_handlers.h` | 實體 vector → ISR 函式名稱 | 使用者設定，搭配 App 的 ISR C 檔 |
 | `.inc`、identity header、向量表 | 編譯與封裝所需資料 | 產生器輸出；檔名見 [建置產物](#device-app-build) |
 | `DefaultBuild/app_build_report.html` | 實際 BIN 的 metadata、位址、CRC、向量表 | post-build 輸出；以瀏覽器開啟，見 [編譯摘要](#device-app-build-report) |
 
 兩個 device 使用相同的 C header 欄位，產生器依各自的 Boot 契約輸出對應檔案。
+
+Metadata 的共用宣告採 `IMAGE_*` 名稱，放在獨立 header；不引用 CAN driver。
+CAN 參數仍會被記錄到 BIN，產生器及驗證端在組合欄位時讀取 `can_boot_config.h`，
+因此不需要在 metadata header 再維護一份 CAN ID／速率。
+
+日常 App 發行編輯 `app_image_config.h`；改 MCU／分區／格式時核對 `image_metadata_config.h`；
+改 CAN 通訊參數時核對 `can_boot_config.h` 與驅動。
+CS+ 專案樹已列入這些設定 header。F13 App 的同名 metadata header 只引用相鄰 Boot 契約，
+不另存一份可獨立修改的共用數值。
 
 <a id="device-app-json"></a>
 <a id="device-app-config"></a>
@@ -267,7 +281,7 @@ App 版本、Boot 版本與 minimum Boot 為不同欄位。
 | `APP_IMAGE_UPDATE_TRANSPORTS` | 允許的更新介面 bitmask，不是 App 執行時使用的周邊 | 協定 `0x01U`＝CAN、`0x02U`＝I2C、`0x04U`＝UART，`0x03U`＝CAN＋I2C；本 CAN 工程僅接受 `0x01U`，其他值不會啟用另一種更新流程 |
 | `APP_IMAGE_VERSION_CONTROL` | 已安裝有效 App 的版本政策 | `0U`＝任意版本、`1U`＝同版／新版；其他值拒絕產生；維護操作見 [force 降版](https://released.github.io/slide_isp_tool_for_RL78/#force-old-version) |
 
-Boot 自身的版本／build 位於 `can_boot_config.h` 的 `CAN_BOOT_FIRMWARE_VERSION`／`CAN_BOOT_FIRMWARE_BUILD`。
+Boot 自身的版本／build 位於 `image_metadata_config.h` 的 `IMAGE_BOOT_VERSION`／`IMAGE_BOOT_BUILD`。
 App producer 將該 Boot 版本寫成 metadata 的 minimum Boot；板上 Boot 版本須不低於此值。
 例如 Boot 1.7.0 與 App 2.1.3 可以搭配；App 版本與 Boot 版本不做相等比較。
 只更新相容的 App 時，保留 Boot 設定即可。
@@ -306,7 +320,7 @@ App producer 將該 Boot 版本寫成 metadata 的 minimum Boot；板上 Boot �
 #endif
 ```
 
-App pre-build 讀 C header 與 matching Boot 的 `can_boot_config.h`，產生 `ftable.inc`／`app_identity.h`；
+App pre-build 讀 App C header、Boot 的 `image_metadata_config.h` 及 CAN 設定，產生 `ftable.inc`／`app_identity.h`；
 `ftable_RL78_F13.asm` 依生成常數排列 App metadata，讓 App INFO 與 BIN 使用同一版本／build。
 `IMAGE_SIZE_POST_BUILD = 0xFFFFFFFF` 是封裝前的長度預留值，post-build 會填入實際大小。
 
@@ -379,11 +393,69 @@ version／build 是 App 身分設定；target／role／transport 是與 Boot 核
 
 ```mermaid
 flowchart TD
-    CONFIG["MCU CAN device App<br/>app_image_config.h"] --> PRE["pre-build 產生 metadata inc<br/>與 identity header"]
+    CONFIG["MCU CAN device App<br/>app_image_config.h"] --> PRE["App pre-build<br/>metadata INC／identity header"]
+    IMAGE["image_metadata_config.h<br/>映像格式與工程配置"] --> PRE
+    CANCFG["can_boot_config.h<br/>CAN 通訊參數"] --> PRE
     PRE --> LINK["Linker map：實際 code / data 範圍"]
     LINK --> PACK["各自 post-build<br/>產生或填入 metadata、actual size、tail CRC"]
     PACK --> BIN["封裝 update.bin<br/>不是 raw MOT / ABS"]
 ```
+
+<a id="device-metadata-parser"></a>
+
+#### B5. Metadata C 模組與移植入口
+
+兩個 device 的 Boot／App 分別編譯 `image_metadata.c`，介面由 `image_metadata.h` 宣告。
+模組不包含 CAN driver、Flash 擦寫或 reset 操作。
+App 的 INFO 欄位讀取與 Boot 的 metadata 驗證使用同一組介面。
+`image_metadata_profile.c` 定義工程的 `g_image_metadata_contract[32]`，
+由映像契約及 ISP 設定組合預期 core；CAN 分包暫存、順序／重送與 SEAL 留在 adapter。
+
+| API | 輸入與結果 | 驗證範圍 |
+| --- | --- | --- |
+| `ImageMetadataRead32(data, length, offset, &value)` | data 指向 metadata byte0；可用長度至少 256 bytes，offset 為 0..252；成功回傳 1，失敗回傳 0 並清除輸出值 | 讀取任意 LE32 window，支援未對齊 byte buffer；不代表身分或 CRC 已通過 |
+| `ImageMetadataValidate(words)` | 完整 64 個對齊的 native 32-bit words；成功為 `IMAGE_METADATA_OK` | 128-byte core、128-byte reserved FF、大小、版本編碼、build、版控值、minimum Boot、分區、身分、ISP 參數與 IRQ ABI |
+
+C90 模組要求 `unsigned long` 為 32 bits，header 會檢查寬度。
+直接映射 Flash 為 word pointer 適用於對齊的 little-endian CPU。
+Byte-oriented 或 big-endian backend 先用 `ImageMetadataRead32` 將 64 words 解碼至對齊的 native word array，再執行完整 metadata 驗證。
+長度、來源範圍及對齊由呼叫端確認；範例的 Flash metadata 與 RAM staging buffer 已依此配置。
+
+完整 metadata 驗證不包含全映像 CRC，也不取代 START 的已安裝 App 版控判斷。
+「欄位可讀」「映像契約相符」與「完整映像可啟動」分別核對。
+
+```mermaid
+flowchart TD
+    RX["ISP adapter<br/>收齊 256-byte metadata"] --> CHECK["ImageMetadataValidate"]
+    PROFILE["工程 config／profile"] --> CHECK
+    CHECK --> OK{"Metadata 契約相符？"}
+    OK -->|否| STOP["回報錯誤；拒絕更新"]
+    OK -->|是| NEXT["Boot 續行 CRC／更新狀態機<br/>與完整啟動檢查"]
+    APP["App 讀取欄位"] --> READ["ImageMetadataRead32<br/>解碼不代表映像有效"]
+```
+
+`IMAGE_METADATA_DETAILED_STATUS` 是編譯時診斷選項，不寫入 BIN metadata。
+`1U` 回報 field／policy／IRQ ABI／layout 等原因；`0U` 統一回報 BAD_IMAGE。
+兩種設定執行相同的接受／拒絕條件，並由工程的 ROM 餘裕檢查核對容量。
+
+#### 模組移植步驟
+
+1. 保留 `image_metadata.c/.h`，依實際 MCU／分區修改 `image_metadata_config.h`。
+2. 在 `image_metadata_profile.c` 組合工程接受的身分、格式與 ISP 參數。
+   換介面時對應其設定與 adapter；共用解析模組不處理通訊命令或 register。
+3. 在 Boot／App 的 CS+ 專案樹註冊 C 來源與 header；C 來源各編譯一次，不以 include 合併 C 檔。
+   範例已完成註冊，App 引用相鄰 Boot 的本機來源。
+4. Boot 在 metadata staging、已安裝映像判斷與 END 使用共用驗證；
+   CRC、向量檢查及 Flash 保護維持在 Boot 流程。
+   App 讀欄位時呼叫 `ImageMetadataRead32`，不另行複製 byte shift 或直接套用未對齊 struct。
+5. Clean rebuild 後核對 Boot map／餘裕、App metadata／CRC／向量及 HTML 編譯摘要。
+   檢查正常映像、錯誤身分／分區／IRQ、保留 bytes、短資料與更新中斷等情況。
+
+共用原稿位於 Tool repository 的 `firmware/common/device_metadata`。
+兩份 Boot repository 各自攜帶相同 C／header，日常 MCU 建置不依賴 Tool checkout。
+維護共用模組時，在 Tool repository 使用
+`scripts/sync_device_metadata.ps1 -F13Boot <Boot checkout> -F24Boot <Boot checkout>` 同步，
+加上 `-CheckOnly` 可唯讀核對；各工程 config／profile 不由此腳本覆寫。
 
 <a id="device-app-irq"></a>
 
@@ -391,7 +463,7 @@ flowchart TD
 
 本例使用兩個 device header 都定義的 `INTP1 = 0x0A`。
 其他 IRQ 的 vector 位址依各 MCU 的 device header 決定。
-vector ? 是 **實體 vector byte address**，不是 IRQ 序號、App slot 或周邊 pin。
+Vector 位址是**實體 vector byte address**，不是 IRQ 序號、App slot 或周邊 pin。
 兩者的 App slot 計算為 `0x2000 + 0x0A × 2 = 0x2014`，即 BIN offset `0x14`。
 
 #### C1. 加入一般 ISR，並在 App MTPJ 註冊來源
@@ -421,10 +493,10 @@ SC／Code Generator 重產後，核對 ISR pragma 並移除 App 的 `vect=`，�
 
 #### C2. F13 mapping：保留原有項目，新增 0x0A
 
-vector ? 的來源是此 App 的 [iodefine.h](https://github.com/released/RL78_F13_Boot_loader_CAN_app/blob/main/iodefine.h) 中的中斷定義。
+Vector 位址的來源是此 App 的 [iodefine.h](https://github.com/released/RL78_F13_Boot_loader_CAN_app/blob/main/iodefine.h) 中的中斷定義。
 硬體規格可對照 RL78/F13 硬體手冊「Interrupt functions」章節的中斷來源／向量表。
 
-| vector ? | header 定義 | ISR 名稱 | 函式來源 |
+| Vector 位址 | header 定義 | ISR 名稱 | 函式來源 |
 | --- | --- | --- | --- |
 | `0x08` | `INTP0 = 0x0008` | `r_intc0_interrupt` | [r_cg_intc_user.c](https://github.com/released/RL78_F13_Boot_loader_CAN_app/blob/main/src/code_gen/r_cg_intc_user.c) |
 | `0x0A` | `INTP1 = 0x000A` | `app_aux_irq` | 本章 C1 的 `app_extra_irq.c` |
@@ -694,7 +766,7 @@ CRC 用於完整性檢查。
 | --- | --- |
 | 只改 App version／build 或相容的一般 IRQ | 產表、重建與封裝 App；不因 ISR 名稱改動重燒 Boot |
 | 改 MCU／App start／geometry／IRQ ABI／更新協定 | 屬於共同契約變更；同步 Boot、App、producer、Tool／validator 並重新驗證 |
-| vector ? 寫 `0x2014`、IRQ index 或保留／奇數 vector | 應寫合法實體 byte address，本例為 `0x0A`；以本工程 header 核對 |
+| Vector 位址填入 `0x2014`、IRQ index 或保留／奇數 vector | 填寫合法實體 byte address，本例為 `0x0A`；以本工程 header 核對 |
 | C 檔只複製進資料夾，沒有加入 MTPJ | generator 或 linker 應拒絕；先修正專案登錄 |
 | ISR 帶 `vect=`／static／普通函式，或 symbol 拼錯 | 改成正常 global interrupt ISR，再核對 C header 與 generated table |
 | 覆蓋原有 UART／timer mappings | 先恢復仍在用的清單；新增不是替換整份 C header |
@@ -763,8 +835,10 @@ git clone https://github.com/released/RL78_F13_Boot_loader_CAN_app.git
 App 前512 bytes 由256-byte向量表與256-byte metadata 組成。
 BIN 的實際長度由 linker map 決定，尾端四位元組對齊並加上 CRC32。
 
-分區來源為各 Boot 的 `can_boot_config.h`，linker、產生器與封裝使用同一契約。
-位址與每個 byte 的欄位對照集中於 [Flash／metadata 參考](https://released.github.io/slide_boot_loader_for_RL78/#flash-metadata-can-reference)。
+各 Boot 的 `image_metadata_config.h` 定義映像契約；`can_boot_config.h` 定義 CAN，`boot_app_handoff.h` 定義 RAM 交接。
+完整編輯分工見 [設定檔與產物](https://released.github.io/slide_boot_loader_for_RL78/#device-metadata-vector-workshop)。
+獨立 `image_metadata.c/.h` 搭配工程專用 `image_metadata_profile.c`；API 與移植方式見 [Metadata C 模組](https://released.github.io/slide_boot_loader_for_RL78/#device-metadata-parser)。
+逐 byte 位址見 [Flash／metadata 參考](https://released.github.io/slide_boot_loader_for_RL78/#flash-metadata-can-reference)。
 
 ### 3. Startup、RAM 與中斷交接
 
@@ -804,7 +878,7 @@ App table 具有64個4-byte slot。
 一般 ISR 使用無 `vect=` 的 interrupt pragma，Boot 擁有實體向量。
 Reset entry 經 App startup；Physical BRK 的保留 slot 使用 RETB。
 
-vector ? 的查找來源、C 函式寫法與生成表的檢查，集中於 [IRQ 設定與來源對照](https://released.github.io/slide_boot_loader_for_RL78/#device-app-irq)。
+Vector 位址的查找來源、C 函式寫法與生成表的檢查，集中於 [IRQ 設定與來源對照](https://released.github.io/slide_boot_loader_for_RL78/#device-app-irq)。
 
 ### 5. 設定檔與建置
 
@@ -998,8 +1072,8 @@ F13 的來源符號由 ftable.inc 產生；F24 的相同欄位由 device_common.
 | 0x15 | 0x02115 | 28 | app_build[1] | 0x02115 | 28 | app_build[1] |
 | 0x16 | 0x02116 | 35 | app_build[2] | 0x02116 | 35 | app_build[2] |
 | 0x17 | 0x02117 | 01 | app_build[3] | 0x02117 | 01 | app_build[3] |
-| 0x18 | 0x02118 | 30 | image_size[0] | 0x02118 | 94 | image_size[0] |
-| 0x19 | 0x02119 | 4C | image_size[1] | 0x02119 | 0F | image_size[1] |
+| 0x18 | 0x02118 | 54 | image_size[0] | 0x02118 | 38 | image_size[0] |
+| 0x19 | 0x02119 | 4F | image_size[1] | 0x02119 | 10 | image_size[1] |
 | 0x1A | 0x0211A | 00 | image_size[2] | 0x0211A | 00 | image_size[2] |
 | 0x1B | 0x0211B | 00 | image_size[3] | 0x0211B | 00 | image_size[3] |
 | 0x1C | 0x0211C | 00 | app_start[0] | 0x0211C | 00 | app_start[0] |
@@ -1254,12 +1328,12 @@ F13 的來源符號由 ftable.inc 產生；F24 的相同欄位由 device_common.
 ### 本表範例BIN與CRC位置
 | 項目 | F13 (MCU CAN device) | F24 (MCU CAN device) |
 | --- | --- | --- |
-| image_size | 0x4C30 | 0xF94 |
-| stored image CRC32 | 0xC5CCBE1F | 0x00110089 |
-| CRC32 Flash address | 0x06C2C..0x06C2F | 0x02F90..0x02F93 |
-| metadata staging CRC32 | 0x8FB583FA | 0x21812950 |
-F13 device 範例BIN SHA-256：`3884DF62AED505B4D39F2FD145EEDEEFC45D3B141E15BC8C08217A15D43BA7E3`。
-F24 device 範例BIN SHA-256：`9B1D668EEB60E4D4101B6FD8743BF4646077FC6908991B4923FDDC7AC49093A2`。
+| image_size | 0x4F54 | 0x1038 |
+| stored image CRC32 | 0xD30CFB79 | 0x6ABF121D |
+| CRC32 Flash address | 0x06F50..0x06F53 | 0x03034..0x03037 |
+| metadata staging CRC32 | 0xAAAC5BDC | 0x3CDCA2BA |
+F13 device 範例BIN SHA-256：`8E46743D2A30389E47519EDADB63CEA34A412E9999121B3730EC65175426E633`。
+F24 device 範例BIN SHA-256：`4690E533111BEA3F709F5011D739917C07D1F920E0294EB89D63AC857B3CBF4C`。
 <!-- METADATA_BYTES_END -->
 
 ### 欄位的語意與修改限制
@@ -1285,9 +1359,10 @@ F24 device 範例BIN SHA-256：`9B1D668EEB60E4D4101B6FD8743BF4646077FC6908991B49
 | F13 metadata生成常數 | [ftable.inc](https://github.com/released/RL78_F13_Boot_loader_CAN_app/blob/main/ftable.inc) | 此檔現為生成檔；編輯App的app_image_config.h，由App-mode generator結合Boot contract產生常數；不可手改.inc |
 | F13 byte排列／policy | [ftable_RL78_F13.asm](https://github.com/released/RL78_F13_Boot_loader_CAN_app/blob/main/ftable_RL78_F13.asm) | .appmeta從APP_MANIFEST_TABLE開始，.DB4依LE放4 bytes；尾128 bytes填FF |
 | F13實際size／CRC封裝 | [generate_update_image.ps1](https://github.com/released/RL78_F13_Boot_loader_CAN_app/blob/main/generate_update_image.ps1) | 依map決定結尾、patch image_size、計算尾CRC；ExpectedTargetId等驗證亦須與新專案一致 |
-| F13 Boot驗證契約 | [can_boot_config.h](https://github.com/released/RL78_F13_Boot_loader_CAN/blob/main/can_boot_config.h)／[can_boot_metadata.inc](https://github.com/released/RL78_F13_Boot_loader_CAN/blob/main/can_boot_metadata.inc) | g_manifest_contract／MetadataValid核對欄位；不能只改App產生端 |
+| Device metadata 解碼／驗證 | [Boot 原始碼](https://github.com/released/RL78_F13_Boot_loader_CAN)內的 `image_metadata.c/.h`、`image_metadata_config.h`、`image_metadata_profile.c` | ImageMetadataRead32 解碼 LE32；ImageMetadataValidate 對照 g_image_metadata_contract；完整 API 見 [C 模組移植](https://released.github.io/slide_boot_loader_for_RL78/#device-metadata-parser) |
+| CAN metadata 暫存／SEAL | [can_boot_metadata.inc](https://github.com/released/RL78_F13_Boot_loader_CAN/blob/main/can_boot_metadata.inc) | MetadataStage 核對順序／重送；MetadataSeal 呼叫共用驗證並核對 staging CRC，不在 parser 內擦寫 Flash |
 | F13 CAN解碼與回覆 | [can_boot_transport.c](https://github.com/released/RL78_F13_Boot_loader_CAN/blob/main/can_boot_transport.c)／[can_boot_block.inc](https://github.com/released/RL78_F13_Boot_loader_CAN/blob/main/can_boot_block.inc) | CAN_BootReceive、CAN_BootSend、BlockBegin／Segment／Check |
-| F24 device 契約與封裝 | `can_boot_config.h`、`tools/device_common.ps1`、`tools/package_images.ps1`；[工程入口](https://released.github.io/slide_boot_loader_for_RL78/#f24-can-device) | Get-DeviceMetadata 產生欄位，Get-PackagedDeviceApp 核對連結內容與 CRC |
+| F24 device 契約與封裝 | `image_metadata_config.h`、`can_boot_config.h`、`tools/device_common.ps1`、`tools/package_images.ps1`；[工程入口](https://released.github.io/slide_boot_loader_for_RL78/#f24-can-device) | Get-DeviceMetadata 結合映像／CAN 設定產生欄位，Get-PackagedDeviceApp 核對連結內容與 CRC |
 | 共用政策常數 | [image_policy.h](https://github.com/released/simple_renesas_isp_tool/blob/main/firmware/common/image_policy.h) | ROLE／CAN／I2C／UART bits、IRQ ABI、core／policy長度 |
 | Tool image解析 | [firmware_update_profile.cpp](https://github.com/released/simple_renesas_isp_tool/blob/main/src/core/firmware_update_profile.cpp) | 檢查BIN、metadata、CRC及目的地 |
 | Tool CAN frame編碼 | [f13_boot_profile.cpp](https://github.com/released/simple_renesas_isp_tool/blob/main/src/core/f13_boot_profile.cpp) | BuildStartRequest、BuildBlockRequest、Client::StageMetadata／SendBlock，與下方逐byte表核對 |
@@ -1305,7 +1380,7 @@ IMAGE_MANIFEST_TARGET      .EQU 0x0001F13B
 ; metadata 0C..0F = 3B F1 01 00
 ```
 
-例如改target_id要核對F13 Boot的CAN_BOOT_TARGET_ID、App的IMAGE_MANIFEST_TARGET、
+例如改 target_id 要核對 Boot metadata header 的 IMAGE_TARGET_ID、App 的 IMAGE_MANIFEST_TARGET、
 post-build驗證及Tool live INFO，不是只修改0x0210C。改CAN ID還須保持control／response與raw720..727不重疊。
 
 ### C90示例：讀metadata而不依賴struct padding
@@ -1424,7 +1499,8 @@ Self Test不是更新協定，也沒有Byte7 CRC；需CAN analyzer觀察實際bu
 ## 5. 改成自己的專案：修改順序與驗證
 
 1. 先選定 MCU CAN device 工程，確認硬體手冊的 Flash／RAM 範圍、CAN clock 與實體向量位址。
-2. 在 Boot 的 `can_boot_config.h` 設定分區、target ID、CAN IDs、rate 與 IRQ ABI。
+2. 在 Boot 的 `image_metadata_config.h` 設定分區、target ID 與 IRQ ABI；
+   `can_boot_config.h` 設定 CAN IDs／rate，`boot_app_handoff.h` 設定共用 RAM 交接。
    Linker 的 App 起點及向量表／metadata 配置對應同一分區。
 3. 在 App 編輯 `app_image_config.h` 與 `app_irq_handlers.h`。
    F13 由 PowerShell 產生 `ftable.inc`；F24 由 `Get-DeviceMetadata` 產生 metadata INC，兩者皆由 App-local pre-build 產表。
@@ -1437,1989 +1513,126 @@ Self Test不是更新協定，也沒有Byte7 CRC；需CAN analyzer觀察實際bu
 
 <!-- FLASH_REFERENCE_END -->
 
-## UART／I2C 範例
+<a id="uart-i2c-examples"></a>
 
-* Introduce boot code and app code modification for RL78 
-  * In this section , use RL78 F24 as example  
-  <br/>
+## UART／I2C 範例入口
 
+UART／I2C 參考工程的分區、startup、向量與 CRC 操作集中於 [UART／I2C 範例](uart_i2c/)。
 
-* reference document 
-  * How to set up boot code and app project
-  [How to Divide Boot and Flash Areas](https://www.renesas.com/en/document/man/rl78-family-c-compiler-package-cc-rl-how-divide-boot-and-flash-areas?srsltid=AfmBOoopybLnK6nMIfwPclpX1SYJL0OfZ1ZD5o9odBLUk4F70ckFtVWd)
-  document no. : R20UT3475EJ0300
-  <br/>
-
-  <a id="target_MCU_flash_type"></a>
-  * How to know the MCU need use which flash library type (code flash)
-  [RL78 FAMILY FLASH MEMORY REPROGRAMMING SOFTWARE INTRODUCTION](https://www.renesas.com/en/document/oth/rl78-family-flash-memory-reprogramming-software-introduction?r=488891)
-
-    * RL78 F23/F24 : Renesas Flash Driver RL78 Type 02 (document no. : R20UT5009EJ0110)
-    [Renesas Flash Driver RL78 Type 02](https://www.renesas.com/en/document/mat/renesas-flash-driver-rl78-type-02-users-manual-rl78f23-and-rl78f24)
-    * RL78 G22/G23/G24 : Renesas Flash Driver RL78 Type 01
-    * RL78 G15/G16 : Renesas Flash Sample Program Type 01
-    * RL78 x1x : Flash Self Programming Library Type01
-  <br/>
-
-![](img/flash_library_01.jpg)
-![](img/flash_library_02.jpg)
-![](img/flash_library_03.jpg)
-![](img/flash_library_04.jpg)
-![](img/flash_library_05.jpg)
-
-__code base : polling__
-* reference code base : boot code (RL78 F24)
-[RL78_F24_Boot_loader_UART](https://github.com/released/RL78_F24_Boot_loader_UART)
-[RL78_F24_Boot_loader_UART_e2](https://github.com/released/RL78_F24_Boot_loader_UART_e2)
-<br/>
-
-* reference code base : app code (RL78 F24)
-[RL78_F24_Boot_loader_app](https://github.com/released/RL78_F24_Boot_loader_app)
-[RL78_F24_Boot_loader_app_e2](https://github.com/released/RL78_F24_Boot_loader_app_e2)
-<br/>
-
-  * interface : xmodem by UART (polling)
-  * interface : IICA0 (polling)
-  * LDROM address : 0x0000 , size : 20K
-  * APROM address : 0x5000 , size : 236K (CRC addr:3FFFC)
-  * check define as below 
-
-```c
-#define ENABLE_UART_BL                                  (1)
-#define ENALBE_IICA0_BL                                 (0)
-```
-
-__code base : interrupt__
-* reference code base : boot code (RL78 F24)
-[RL78_F24_Boot_loader_UART_CRC](https://github.com/released/RL78_F24_Boot_loader_UART_CRC)
-<br/>
-
-* reference code base : app code (RL78 F24)
-[RL78_F24_Boot_loader_app_CRC](https://github.com/released/RL78_F24_Boot_loader_app_CRC)
-<br/>
-
-  * interface : xmodem by UART (polling) + TIMER interrupt
-  * interface : IICA0 (interrupt) + TIMER interrupt
-  * LDROM address : 0x0000 , size : 20K
-  * APROM address : 0x5000 , size : 235K (CRC addr:3FBFC)
-  * check define as below 
-
-```c
-#define ENABLE_UART_PRINTF                      (1)
-#define ENABLE_UART_BL                          (1)
-
-#define ENALBE_TIMER_TAU0_1_IRQ                 (1)
-
-#define ENALBE_IICA0_BL                         (0)
-#if ENALBE_IICA0_BL
-#define ENALBE_IICA0_BL_USE_IRQ                 (1)
-#endif
-```
-
-
-__code base : interrupt with hardware CRC__
-* reference code base : boot code (RL78 F24)
-[RL78_F24_Boot_loader_UART_HW_CRC](https://github.com/released/RL78_F24_Boot_loader_UART_HW_CRC)
-<br/>
-
-* reference code base : app code (RL78 F24)
-[RL78_F24_Boot_loader_app_HW_CRC](https://github.com/released/RL78_F24_Boot_loader_app_HW_CRC)
-<br/>
-
-  * interface : xmodem by UART (polling) + TIMER interrupt
-  * interface : IICA0 (interrupt) + TIMER interrupt
-  * LDROM address : 0x0000 , size : 20K (0x5000)
-  * APROM address : 0x5000 , size : 235K (CRC addr:3FBFB)
-
-refer to document :
-[RL78 Family RL78 Hardware CRC Functions (R01AN3530EU0110)](https://www.renesas.com/en/document/apn/rl78-family-rl78-hardware-crc-functions?queryID=f29102cd30aa1ffab265983af4afc4fe)
-
-download sample code :
-[RL78 Family RL78 Hardware CRC Functions (R01AN3530EU0110)](https://www.renesas.com/en/document/scd/rl78-family-rl78-hardware-crc-functions?queryID=f29102cd30aa1ffab265983af4afc4fe)
-
-<span style="color:#FF0000">
-<b><u>Key point</b></u><br><br>
-</span> 
-
-* project setting for boot code and app code 
-* target MCU platform flash library usage and setting
-* target interface initial and receive data 
-
-
----
-
-# Flash architecture
-
-MCU flash will split to Boot area (boot code) and Flash area (app code)
-
-![](img/flash_arch.jpg)
-
-
-<u>How to Divide Boot and Flash Areas</u>
-
----
-
-# Scenario : Boot area (boot code)
-
-* use UART0 : P15/TX , P16/RX , to check terminal log meesgae
-* __condition_check__ : 
-  * detect ==flag== store in ram specific area (ex : 0xFF700) , to determine if re-boot from Flash area (app code) 
-  * if no app code in app section
-
-![](img/boot_check_app_empty.jpg)
-
-![](img/boot_flag_check.jpg)
-
-
-  * base on the ==flag== or ==BUTTON presssed (active LOW)== , to determine 
-    * need to stay in boot code , to receive data flow from interface (ex : I2C , UART , ...) 
-    * ready to jump into Flash area (app code)
-
-
-* __verify_application_chksum__ : 
-  * compare CRC checksum when power on 
-  * at Flash area (app code) last 4 bytes , will store ==CRC data==
-  * calculate the Flash area (app code) CRC byte (==caculate_crc32_checksum==) and compare to the CRC data store in last 4 bytes of Flash area (app code)
-  * if comapare error , stay in Boot area (boot code) 
-
-![](img/boot_compare_check_err.jpg)
-
-* any other custom user defined condition
-
-* __programming Flash area (app code) flow__
-  * refer the code flash sample function : Sample_CodeFlashControl and modify as : 
-    * ==Sample_CodeFlashControl_Erase==
-    * ==Sample_CodeFlashControl_SingleWrite==
-    * __KEY POINT : SAMPLE_START_SECTION_SMP_CF__
-  * after Flash area (app code) update finish , 
-    * UART (xmodem , UART1 : P74/TX , P75/RX) : reboot MCU 
-    * I2C (IICA0 , P62/SCL , P63/SDA): reboot MCU
-
-xmodem
-![](img/boot_update_finish.jpg)
-
-I2C
-![](img/i2c_transfer_s_program_finish.jpg)
-
-  * if CRC compare OK and no detect update inquiry , jump to Flash area (app code)
-
-![](img/boot_comapre_ok_jump_to_app.jpg)
-
-* at project:RL78_F24_Boot_loader_UART_CRC , add timer to control reset flow
-  * when entry boot code in upgrade process , count down to 30 sec and execute reboot MCU if no receive data from interface (XMODEM , IICA0)
-
-![](img/boot_timer_irq_couting.jpg)
-
----
-
+<a id="target_MCU_flash_type"></a>
 <a id="ram_flag"></a>
-
-# Scenario : Flash area (app code)
-
-* set ==ram flag== store in ram specific area (ex : 0xFF700) 
-  * change flag data and execute reset , when
-    * receive interface boot command (ex : I2C , UART , ...) 
-
-![](img/app_flag_set.jpg)
-![](img/app_flag_set_2.jpg)
-
-  * any other custom user defined condition (ex : ADC , GPIO etc)
-  * use terminal (UART0 : P15/TX , P16/RX) , by press ==digit 3== ,to set ram flag and reset
-
-![](img/app_digit_3.jpg)
-
-* by press ==digit 1== to write data flash 
-* by press ==digit 2== to read data flash
-
-![](img/app_data_flash_wr.jpg)
-
-* at Flash area (app code) last 4 bytes , will add ==CRC data== after ==project compile finish==
-
-![](img/app_code_crc_address.jpg)
-
----
-
-# Project : boot code/app code modifictaion - ftable.inc
-
 <a id="FALSH_TABLE"></a>
 <a id="ftable_inc"></a>
-* ==create and register== below file in __Boot area (boot code)__ and __Flash area (app code)__ project
-
-* ftable.inc 
-
-```c
-FLASH_TABLE       .EQU  0x5000 
-INTERRUPT_OFFSET  .EQU  0x100 
-```
-<br/>
-
 <a id="map_const"></a>
-* the vaule will be ==boot code size (app code start address)==
-* Due to mirror memory limitations, constant data cannot exist before mirror address - 0xF0000 (ex : 0xF5000 - 0xF0000 = 0x5000)
-* below is each RL78 platform minimum boot code code size definition , FLASH_TABLE ==MUST set bigger or equal to== definition
-
-| RL78 | const size |
-|:--:|:--:|
-| F24  | 0x5000 |
-| F23  | 0x3000 |
-| F13  | 0x2000 | 
-| G15  | 0x800 |
-| G16  | 0x800 |
-
-* below is default project map file after compile
-
-**RL78 F24**
-![](img/map_const_F24.jpg)
-**RL78 F23**
-![](img/map_const_F23.jpg)
-**RL78 F13**
-![](img/map_const_F13.jpg)
-**RL78 G15**
-![](img/map_const_G15.jpg)
-**RL78 G16**
-![](img/map_const_G16.jpg)
-
-<u>How to Divide Boot and Flash Areas</u>
-
----
-
-# Project : boot code modifictaion - cstart.asm
-
-refer to How to Divide Boot and Flash Areas :
-__3.1.1  Modifying the startup routine (cstart.asm)__
-
-* use smart config generate code
-* ==copy== cstart.asm to boot code project root folder
-* ==register== to Boot area (boot code) project , then start to ==modify==
-
-(1) 
-include [ftable.inc](#ftable_inc)
-
-![](img/cstart_01.jpg)
-
-(2)
-comment out conditional check
-
-![](img/cstart_02.jpg)
-
-(3)
-modify the section name
-
-![](img/cstart_03.jpg)
-
-(4)
-comment out conditional check and assembly instructions
-
-![](img/cstart_04.jpg)
-
-(5)
-modify main function name (__boot_main__) <a id="boot_main"></a>
-add branch instructions : [FALSH_TABLE](#FALSH_TABLE)
-
-![](img/cstart_05.jpg)
-
-(6)
-comment out .const section
-
-![](img/cstart_06.jpg)
-
-(7)
-modify bsp_init_system function name
-
-![](img/cstart_07.jpg)
-
-(8)
-modify hardware init function name (__boot_hdwinit__) <a id="boot_hdwinit"></a>
-
-![](img/cstart_08.jpg)
-
-(9)
-increase bss size to 0x500
-
-![](img/cstart_09.jpg)
-![](img/cstart_10.jpg)
-
-(10)
-add ram flag section
-
-```c
-  .SECTION .boot_info, BSS
-  .L_section_boot_info:
-```
-
-![](img/cstart_11_3.jpg)
-
-(11)
-add ==code flash library section==
-
-![](img/cstart_11.jpg)
-
-```c
-  .SECTION RFD_DATA_nR, DATA
-  .SECTION RFD_CMN_fR, TEXTF
-  .SECTION RFD_CF_fR, TEXTF
-  .SECTION SMP_CMN_fR, TEXTF
-  .SECTION SMP_CF_fR, TEXTF
-```
-
-![](img/cstart_11_1.jpg)
-
-```c
-
-	; copy RFD external variables having initial value (near)
-	MOV	ES,#HIGHW(STARTOF(RFD_DATA_n))
-	MOVW	BC,#LOWW(SIZEOF(RFD_DATA_n))
-	BR	$.L2_RFD_DATA
-.L1_RFD_DATA:
-	DECW	BC
-	MOV	A,ES:LOWW(STARTOF(RFD_DATA_n))[BC]
-	MOV	LOWW(STARTOF(RFD_DATA_nR))[BC],A
-.L2_RFD_DATA:
-	CLRW	AX
-	CMPW	AX,BC
-	BNZ	$.L1_RFD_DATA
-
-
-	; copy code to RAM (RFD_CMN)
-	MOV	C,#HIGHW(STARTOF(RFD_CMN_f))
-	MOVW	HL,#LOWW(STARTOF(RFD_CMN_f))
-	MOVW	DE,#LOWW(STARTOF(RFD_CMN_fR))
-	BR	$.L12_TEXT
-.L11_TEXT:
-	MOV	A,C
-	MOV	ES,A
-	MOV	A,ES:[HL]
-	MOV	[DE],A
-	INCW	DE
-	INCW	HL
-	CLRW	AX
-	CMPW	AX,HL
-	SKNZ
-	INC	C
-.L12_TEXT:
-	MOVW	AX,HL
-	CMPW	AX,#LOWW(STARTOF(RFD_CMN_f) + SIZEOF(RFD_CMN_f))
-	BNZ	$.L11_TEXT
-
-	; copy code to RAM (RFD_CF)
-	MOV	C,#HIGHW(STARTOF(RFD_CF_f))
-	MOVW	HL,#LOWW(STARTOF(RFD_CF_f))
-	MOVW	DE,#LOWW(STARTOF(RFD_CF_fR))
-	BR	$.L22_TEXT
-.L21_TEXT:
-	MOV	A,C
-	MOV	ES,A
-	MOV	A,ES:[HL]
-	MOV	[DE],A
-	INCW	DE
-	INCW	HL
-	CLRW	AX
-	CMPW	AX,HL
-	SKNZ
-	INC	C
-.L22_TEXT:
-	MOVW	AX,HL
-	CMPW	AX,#LOWW(STARTOF(RFD_CF_f) + SIZEOF(RFD_CF_f))
-	BNZ	$.L21_TEXT
-
-	; copy code to RAM (SMP_CMN)
-	MOV	C,#HIGHW(STARTOF(SMP_CMN_f))
-	MOVW	HL,#LOWW(STARTOF(SMP_CMN_f))
-	MOVW	DE,#LOWW(STARTOF(SMP_CMN_fR))
-	BR	$.L32_TEXT
-.L31_TEXT:
-	MOV	A,C
-	MOV	ES,A
-	MOV	A,ES:[HL]
-	MOV	[DE],A
-	INCW	DE
-	INCW	HL
-	CLRW	AX
-	CMPW	AX,HL
-	SKNZ
-	INC	C
-.L32_TEXT:
-	MOVW	AX,HL
-	CMPW	AX,#LOWW(STARTOF(SMP_CMN_f) + SIZEOF(SMP_CMN_f))
-	BNZ	$.L31_TEXT
-
-	; copy code to RAM (SMP_CF)
-	MOV	C,#HIGHW(STARTOF(SMP_CF_f))
-	MOVW	HL,#LOWW(STARTOF(SMP_CF_f))
-	MOVW	DE,#LOWW(STARTOF(SMP_CF_fR))
-	BR	$.L42_TEXT
-.L41_TEXT:
-	MOV	A,C
-	MOV	ES,A
-	MOV	A,ES:[HL]
-	MOV	[DE],A
-	INCW	DE
-	INCW	HL
-	CLRW	AX
-	CMPW	AX,HL
-	SKNZ
-	INC	C
-.L42_TEXT:
-	MOVW	AX,HL
-	CMPW	AX,#LOWW(STARTOF(SMP_CF_f) + SIZEOF(SMP_CF_f))
-	BNZ	$.L41_TEXT
-```
-
-![](img/cstart_11_2.jpg)
-
-
----
-
-boot code : Compare below file to see the difference
-after modification : 
-RL78_F24_Boot_loader_UART\cstart.asm
-https://github.com/released/RL78_F24_Boot_loader_UART/blob/main/cstart.asm
-
-code flash : 
-RL78_F24_Boot_loader_UART\RFDRL78T02\sample\RL78_F24\CF\CCRL\source\cstart.asm
-
-smart configurator original file : 
-RL78_F24_Boot_loader_UART\src\smc_gen\r_bsp\mcu\all\cstart.asm
-
-
-<u>How to Divide Boot and Flash Areas</u>
-
----
-
-# Project : boot code modifictaion - stkinit.asm
-
-refer to How to Divide Boot and Flash Areas :
-__3.1.2  Modifying hdwinit.asm and stkinit.asm__
-
-* use smart config generate code 
-* ==copy== stkinit.asm to boot code project root folder
-* ==register== to Boot area (boot code) project , then start to ==modify==
-
-- modify the section name
-
-![](img/stkinit_01.jpg)
-
-
-<u>How to Divide Boot and Flash Areas</u>
-
----
-
-# Project : boot code modifictaion - project tree
-
-* after modification , ==Boot area (boot code) project== will increse 3 files as below 
-
-![](img/boot_project_tree_01.jpg)
-
-* make sure manual register ==cstart.asm , stkinit.asm== if file ==missing== after ==generate code==
-
-![](img/boot_project_tree_02.jpg)
-
-
-<u>How to Divide Boot and Flash Areas</u>
-
----
-
-# Project : boot code modifictaion - add CODE FLASH library
-
-* base on [RL78 MCU](#target_MCU_flash_type)  , register correspond ==CODE FLASH library== into Boot area (boot code) project and exclude uncessary file (data flash , extra area)
-
-![](img/RFD_tree_file.jpg)
-
-
----
-
-* refer to RL78_F24_Boot_loader_UART\RFDRL78T02\sample\common\source\codeflash\sample_control_code_flash.c
-* __KEY POINT : SAMPLE_START_SECTION_SMP_CF__
-
-* __Sample_CodeFlashControl_Erase__
-
-```c
-R_RFD_FAR_FUNC e_sample_ret_t Sample_CodeFlashControl_Erase(uint32_t i_u32_start_addr)
-{
-    /* Local variable definition */
-    e_rfd_ret_t    l_e_rfd_ret_status;
-    e_sample_ret_t l_e_sam_ret_status;
-    e_sample_ret_t l_e_sam_ret_value;
-    bool           l_e_sam_error_flag;
-    // uint16_t       l_u16_count;
-    uint16_t       l_u16_block_number;
-    // uint32_t       l_u32_check_write_data_addr;
-    
-    /* Set local variables */
-    l_e_sam_ret_value           = SAMPLE_ENUM_RET_STS_OK;
-    l_e_sam_error_flag          = false;
-    
-    /* This expression (actual block number) never exceeds the range of casting uint16_t */
-    l_u16_block_number          = (uint16_t)(i_u32_start_addr >> SAMPLE_VALUE_U08_SHIFT_ADDR_TO_BLOCK_CF);
-    // l_u32_check_write_data_addr = i_u32_start_addr;
-    
-    /******************************************************************************************************************
-     * Set the code flash programming mode
-     *****************************************************************************************************************/
-    l_e_rfd_ret_status = R_RFD_SetFlashMemoryMode(R_RFD_ENUM_FLASH_MODE_CODE_PROGRAMMING);
-    
-    if (R_RFD_ENUM_RET_STS_OK != l_e_rfd_ret_status)
-    {
-        l_e_sam_error_flag = true;
-        l_e_sam_ret_value  = SAMPLE_ENUM_RET_ERR_MODE_MISMATCHED;
-    }
-    else
-    {
-        /* No operation */
-    }
-    
-    /******************************************************************************************************************
-     * BLANKCHECK -> ERASE
-     *****************************************************************************************************************/
-    if (false == l_e_sam_error_flag)
-    {
-        /* BLANKCHECK (1 block) */
-        R_RFD_BlankCheckCodeFlashReq(l_u16_block_number);
-        l_e_sam_ret_status = Sample_CheckCFDFSeqEnd();
-        
-        if (SAMPLE_ENUM_RET_ERR_ACT_BLANKCHECK == l_e_sam_ret_status)
-        {
-            /* ERASE (1 block) */
-            R_RFD_EraseCodeFlashReq(l_u16_block_number);
-            l_e_sam_ret_status = Sample_CheckCFDFSeqEnd();
-            
-            if (SAMPLE_ENUM_RET_STS_OK != l_e_sam_ret_status)
-            {
-                l_e_sam_error_flag = true;
-                l_e_sam_ret_value  = SAMPLE_ENUM_RET_ERR_CMD_ERASE;
-            }
-            else
-            {
-                /* No operation */
-            }
-        }
-        else if (SAMPLE_ENUM_RET_STS_OK != l_e_sam_ret_status)
-        {
-            l_e_sam_error_flag = true;
-            l_e_sam_ret_value  = SAMPLE_ENUM_RET_ERR_CMD_BLANKCHECK;
-        }
-        else
-        {
-            /* No operation */
-        }
-    }
-    else /* true == l_e_sam_error_flag */
-    {
-        /* No operation */
-    }
-        
-    /******************************************************************************************************************
-     * Set non-programmable mode
-     *****************************************************************************************************************/
-    l_e_rfd_ret_status = R_RFD_SetFlashMemoryMode(R_RFD_ENUM_FLASH_MODE_CODE_TO_NONPROGRAMMABLE);
-    
-    if (R_RFD_ENUM_RET_STS_OK != l_e_rfd_ret_status)
-    {
-        l_e_sam_error_flag = true;
-        l_e_sam_ret_value  = SAMPLE_ENUM_RET_ERR_MODE_MISMATCHED;
-    }
-    else
-    {
-        /* No operation */
-    }
-        
-    return (l_e_sam_ret_value);
-}
-```
-
-* __Sample_CodeFlashControl_SingleWrite__
-
-```c
-R_RFD_FAR_FUNC e_sample_ret_t Sample_CodeFlashControl_SingleWrite(uint32_t i_u32_start_addr,
-                                                      uint8_t __near * inp_u08_write_data)
-{
-    /* Local variable definition */
-    e_rfd_ret_t    l_e_rfd_ret_status;
-    e_sample_ret_t l_e_sam_ret_status;
-    e_sample_ret_t l_e_sam_ret_value;
-    bool           l_e_sam_error_flag;
-    uint16_t       l_u16_count = 0;
-    // uint16_t       l_u16_block_number;
-    // uint32_t       l_u32_check_write_data_addr;
-    
-    /* Set local variables */
-    l_e_sam_ret_value           = SAMPLE_ENUM_RET_STS_OK;
-    l_e_sam_error_flag          = false;
-    
-    /* This expression (actual block number) never exceeds the range of casting uint16_t */
-    // l_u16_block_number          = (uint16_t)(i_u32_start_addr >> SAMPLE_VALUE_U08_SHIFT_ADDR_TO_BLOCK_CF);
-    // l_u32_check_write_data_addr = i_u32_start_addr;
-    
-    /******************************************************************************************************************
-     * Set the code flash programming mode
-     *****************************************************************************************************************/
-    l_e_rfd_ret_status = R_RFD_SetFlashMemoryMode(R_RFD_ENUM_FLASH_MODE_CODE_PROGRAMMING);
-    
-    if (R_RFD_ENUM_RET_STS_OK != l_e_rfd_ret_status)
-    {
-        l_e_sam_error_flag = true;
-        l_e_sam_ret_value  = SAMPLE_ENUM_RET_ERR_MODE_MISMATCHED;
-    }
-    else
-    {
-        /* No operation */
-    }
-   
-    /******************************************************************************************************************
-     * WRITE
-     *****************************************************************************************************************/
-    if (false == l_e_sam_error_flag)
-    {
-        // for (l_u16_count = 0u; l_u16_count < i_u16_write_data_length; l_u16_count += 4u)
-        {
-            // R_RFD_WriteCodeFlashReq(i_u32_start_addr + l_u16_count, &inp_u08_write_data[l_u16_count]);
-            R_RFD_WriteCodeFlashReq(i_u32_start_addr , &inp_u08_write_data[l_u16_count]);
-            l_e_sam_ret_status = Sample_CheckCFDFSeqEnd();
-            
-            if (SAMPLE_ENUM_RET_STS_OK != l_e_sam_ret_status)
-            {
-                l_e_sam_error_flag = true;
-                l_e_sam_ret_value  = SAMPLE_ENUM_RET_ERR_CMD_WRITE;
-                // break;
-            }
-            else
-            {
-                /* No operation */
-            }
-        }
-    }
-    else /* true == l_e_sam_error_flag */
-    {
-        /* No operation */
-    }
-        
-    /******************************************************************************************************************
-     * Set non-programmable mode
-     *****************************************************************************************************************/
-    l_e_rfd_ret_status = R_RFD_SetFlashMemoryMode(R_RFD_ENUM_FLASH_MODE_CODE_TO_NONPROGRAMMABLE);
-    
-    if (R_RFD_ENUM_RET_STS_OK != l_e_rfd_ret_status)
-    {
-        l_e_sam_error_flag = true;
-        l_e_sam_ret_value  = SAMPLE_ENUM_RET_ERR_MODE_MISMATCHED;
-    }
-    else
-    {
-        /* No operation */
-    }
-    
-    return (l_e_sam_ret_value);
-}
-
-
-```
-
-<u>Renesas Flash Driver RL78 Type 02 User’s  Manual</u>
-
----
-
-# Project : boot code modifictaion - add CRC compare (1)
-
-* register CRC compare into Boot area (boot code) project 
-* purpose: 
-  * condition check (check and compare app code CRC , prevent jump into corrupted app code)
-
-![](img/crc_01.jpg)
-![](img/crc_01_2.jpg)
-![](img/crc_01_3.jpg)
-
----
-
-# Project : boot code modifictaion - add CRC compare (2)
-
-<br/>
-<span style="color:#FF0000">
-CRC in app code last 4 bytes will be added after compile at <b><u>app code project</u></b> by use SRecord tool<br/><br/>
-</span>
-
-
-![](img/app_hex_output_CRC.jpg)
-
----
-
-# Project : boot code modifictaion - use smart config tool to generate driver
-
-* use smart config to generate target interface drvier , to use in boot code project
-  * make sure manual register ==cstart.asm , stkinit.asm== if file ==missing== after ==generate code==
-
-![](img/boot_project_tree_02.jpg)
-
-* move those driver function into boot_main.c (to reduce boot code size and prevent duplicate function call in app code)
-* exclude the driver code (c code , asm code)
-
-![](img/boot_smc_01.jpg)
-![](img/boot_smc_02.jpg)
-![](img/boot_smc_03.jpg)
-![](img/boot_smc_04.jpg)
-![](img/boot_smc_05.jpg)
-
-
----
-
-* smart configurator system setting as below
-
-![](img/smc_system.jpg)
-
----
-
-# Project : boot code modifictaion - boot_main.c
-
-* for boot_hdwinit() , will be initialized by [cstart.asm](#boot_hdwinit)
-  * ==copy== below function from driver and ==rename== with prefix: ==boot_== in boot_main.c for boot_hdwinit
-    * bsp_init_system() 
-      * copy mcu_clock_setup()
-    * R_Config_PORT_Create
-    * if use UART for debug or download
-      * R_SAU0_Create()
-      * R_Config_UART0_Start()
-      * R_SAU1_Create()
-      * R_Config_UART1_Start()
-    * R_Config_IICA0_Create()
-    * R_Config_TAU0_0_Start , for delay function (1ms)
-* for boot_main() , will start with condition check and judge if need to start programming
-
----
-
-# Project : boot code modifictaion - I2C command flow
-
-* No READ operation
-* No Authentication operation
-
-![](img/boot_i2c_command_packet.jpg)
-![](img/boot_i2c_data_packet.jpg)
-
-![](img/boot_i2c_01.jpg)
-![](img/boot_i2c_02.jpg)
-![](img/boot_i2c_03.jpg)
-
-
----
-
-# Project : boot code modifictaion - I2C command flow (check_generic_boot_standard_interface)
-
-(0) send initial byte (master)
-![](img/LA_m_0_init.jpg)
-
-
-(1) boot mode check command byte (master)
-![](img/LA_m_1_init_1.jpg)
-
-
-(1-1) check read status (master)
-![](img/LA_m_1_init_2.jpg)
-![](img/LA_m_1_init_3.jpg)
-
-
-(2) device inquiry command packet (master)
-![](img/LA_m_2_device_inquiry_cmd_packet.jpg)
-
-(2-1) report status about device inquiry command packet (slave)
-![](img/LA_s_2_device_inquiry_data_status_ok_0.jpg)
-![](img/LA_s_2_device_inquiry_data_status_ok_1.jpg)
-
-
----
-
-# Project : boot code modifictaion - I2C command flow (read_device_signature)
-
-(3) obtain target device signature (master)
-![](img/LA_m_3_signature_request_cmd_packet_0.jpg)
-![](img/LA_m_3_signature_request_cmd_packet_1.jpg)
-![](img/LA_m_3_signature_request_cmd_packet_2.jpg)
-
-(3-1) report status about obtain target device signature (slave)
-![](img/LA_s_3_SIGNATURE_RESPOND_0.jpg)
-![](img/LA_s_3_SIGNATURE_RESPOND_1.jpg)
-![](img/LA_s_3_SIGNATURE_RESPOND_2.jpg)
-
----
-
-# Project : boot code modifictaion - I2C command flow (read_area_information)
-
-(4) obtain target device signature  (master)
-![](img/LA_m_4_memory_area_info_request_cmd_packet_0.jpg)
-![](img/LA_m_4_memory_area_info_request_cmd_packet_1.jpg)
-![](img/LA_m_4_memory_area_info_request_cmd_packet_2.jpg)
-
-(4-1) report status about obtain target device signature  (slave)
-![](img/LA_s_4_AREA_INFO_RESPOND_0.jpg)
-![](img/LA_s_4_AREA_INFO_RESPOND_1.jpg)
-![](img/LA_s_4_AREA_INFO_RESPOND_2.jpg)
-
----
-
-# Project : boot code modifictaion - I2C command flow (start_device_image_transfer)
-
-(5) erase user code flash area (master)
-![](img/LA_m_5_erase_cmd_packet_header_0.jpg)
-![](img/LA_m_5_erase_cmd_packet_header_1.jpg)
-
-(5-1) report status about erase user code flash area (slave)
-![](img/LA_s_5_ERASE_MEMORY_0.jpg)
-![](img/LA_s_5_ERASE_MEMORY_1.jpg)
-
-
-(6) initiate write user code flash area (master)
-![](img/LA_m_6_write_cmd_packet_header_0.jpg)
-![](img/LA_m_6_write_cmd_packet_header_1.jpg)
-
-(6-1) report status about initiate write user code flash area (master)
-![](img/LA_s_6_WRITE_MEMORY_START_0.jpg)
-![](img/LA_s_6_WRITE_MEMORY_START_1.jpg)
-
----
-
-# Project : boot code modifictaion - I2C command flow terminal operation (master & slave)
-
-(1) log message at master : set target image 
-![](img/i2c_transfer_m_1_ConfigProgramInfo.jpg)
-
-(2) log message at master : check slave status
-![](img/i2c_transfer_m_2_Obtain_target_device_info.jpg)
-
-(3) log message at master : program binary to slave code flash
-![](img/i2c_transfer_m_3_StartImageTransfer.jpg)
-
-(4) log message at slave : erase (RL78 F24)
-![](img/i2c_transfer_s_erase.jpg)
-
-(5) log message at slave : programming finish (RL78 F24)
-![](img/i2c_transfer_s_program_finish.jpg)
-
-(6) code flow at slave : WriteCodeFlash (RL78 F24)
-![](img/i2c_transfer_s_code_1.jpg)
-
-erase per page (1K bytes) , program per 4 bytes
-![](img/i2c_transfer_s_code_2.jpg)
-
----
-
-# Project : boot code modifictaion - xmodem update flow
-
-below is at xmodem update when g_app_required_update == 1
-![](img/xmodem_code_01.jpg)
-
-when trig update flow , will wait for xmodem from PC host
-![](img/xmodem_erase.jpg)
-
-use teraterm , to send file under xmodem
-![](img/xmodem_send.jpg)
-
-when under transmit binary file
-![](img/xmodem_under_xfer.jpg)
-
-trasmit time , update RL78 F24 app code : 236K
-* with boot code enable log message (xmodem.c , check debug3) , spent 41 sec
-![](img/xmodem_under_xfer2.jpg)
-* without boot code enable log message (xmodem.c , check debug3) , spent 40 sec
-![](img/xmodem_under_xfer3.jpg)
-
-when update app code finish
-![](img/xmodem_program_finish.jpg)
-
----
-
-# Project : boot code property modifictaion - E2 lite setting
-
-![](img/boot_e2_lite_property_flash.jpg)
-
-
-<u>CC-RL Compiler User's Manual</u>
-<u>CS+ User’s Manual: CC-RL Build Tool Operation</u>
-
-
----
-
-# Project : boot code property modifictaion - CC-RL Build Tool setting
-
-**Common Options**
-
-refer to How to Divide Boot and Flash Areas :
-__3.2.5  Specifying hex file output only to the boot area address range__
-
-
-![](img/boot_property_common_01.jpg)
-
-
-* __[Frequently Used Options (for Hex Output)] > [Division output file]__
-  * base on MCU (ex : RL78F24) , to set boot code ==start address and end address== as file name
-* file size will be different if use other platform (ex : RL78 F13 , RL78 G16 , etc)
-  * [map const define ?](#map_const)
-
-```c
-%BuildModeName%\boot0000_4FFF.hex=0000-4FFF
-```
-
-| RL78 | const size |
-|:--:|:--:|
-| F24  | 0x5000 |
-| F23  | 0x3000 |
-| F13  | 0x2000 | 
-| G15  | 0x800 |
-| G16  | 0x800 |
-
----
-
-![](img/boot_property_common_02.jpg)
-
+<a id="boot_main"></a>
+<a id="boot_hdwinit"></a>
 <a id="fsy_file"></a>
-* __[Other] > [Commands executed after build processing]__
-  * add : copy_fsy.bat
-  * copy ==boot code project fsy== file to app code project root folder
-
-```c
-copy /y/v .\DefaultBuild\RL78_F24_Boot_loader_UART.fsy ..\RL78_F24_Boot_loader_app\
-```
-
-
-![](img/boot_foloder_DefaultBuild.jpg)
-
-
-<u>How to Divide Boot and Flash Areas</u>
-<u>CC-RL Compiler User's Manual</u>
-<u>CS+ User’s Manual: CC-RL Build Tool Operation</u>
-
----
-
-# Project : boot code property modifictaion - CC-RL Build Tool setting
-
-**Compile Options**
-
-![](img/boot_property_compile_01.jpg)
-
-![](img/boot_property_compile_02.jpg)
-
-
-<u>How to Divide Boot and Flash Areas</u>
-<u>CC-RL Compiler User's Manual</u>
-<u>CS+ User’s Manual: CC-RL Build Tool Operation</u>
-
----
-
-# Project : boot code property modifictaion - CC-RL Build Tool setting
-
-**Link Options**
-
-![](img/boot_property_link_01.jpg)
-* __[Device] > [Option byte values for OCD]__
-  * set to ```A5```
-  * default will be 0xFF
-![](img/boot_property_link_02.jpg)
-<br>
-![](img/boot_property_link_02_1.jpg)
-<br>
-
-* __==important notice==__
-  * [RL78/F24 Locked](https://en.na4.teamsupport.com/knowledgeBase/21225578)
-
-![](img/boot_property_link_03.jpg)
-* __[Output Code] > [Execute start address]__
-  * will be called by cstart.asm
-<br>
-
----
 <a id="vect_address"></a>
-* __[Output Code] > [Address setting for specified area for vector table]__
-  * use vect_address.xlsx under boot code project , to copy shift address
-![](img/boot_property_link_03_1.jpg)
-
-  * entry editor and paste the shift address
-![](img/boot_property_link_03_2.jpg)  
-
-  * the final result : 
-![](img/boot_property_link_04.jpg)
-<br>
-
-
----
-
-![](img/boot_property_link_05.jpg)
-* __[List] > [Ooutput link map file]__
-  * select -SHow=ALL , will display the compile result (function , address) in map file for debug
-  * map file under /DefaultBuild
-![](img/boot_property_link_05_1.jpg)  
-
-* refer to document : 
-  * How to Divide Boot and Flash Areas (R20UT3475EJ0300) 
-    * __3.2.2  Specifying the section allocation__
-  * Renesas Flash Driver RL78 Type 02 User’s  Manual (R20UT5009EJ0110) 
-    * __6.1.3.3  Section Item Settings__
-<br>
-
----
-
-![](img/boot_property_link_06.jpg)
-* __[Section] > [Section start address]__
-
-  * set __Layout sections automatically__ to ==NO== 
-  * entry editor and modify as below ( for code flash library ) 
-  * flash area
-  ```
-  RFD_DATA_n 
-  RFD_CMN_f 
-  RFD_CF_f 
-  SMP_CMN_f 
-  SMP_CF_f 
-
-  ```
-
-  * ram area
-  ```
-  RFD_DATA_nR 
-  RFD_CMN_fR 
-  RFD_CF_fR
-  SMP_CMN_fR 
-  SMP_CF_fR  
-
-  ```
-
-  ![](img/boot_property_link_06_1.jpg)
-<br>
-
-* __[Section] > [Section that outputs external symbols to the file]__
-  * entry editor and modify as below : 
-
-  ```
-  .constf
-  .text
-  .textf
-  .bss
-  .sbss
-  .data
-  .sdata
-  .RLIB
-  .SLIB  
-  ```
-
-![](img/boot_property_link_08.jpg)
-<br>
-
-* reserve SRAM flag 0xFF700 area [(ram flag)](#ram_flag) , to prevent initial when power on
-
-* __[Section] > [ROM to RAM mapped section]__
-  * entry editor and modify as below :
-
-  ```
-  .data=.dataR
-  .sdata=.sdataR
-  RFD_DATA_n=RFD_DATA_nR 
-  RFD_CMN_f=RFD_CMN_fR 
-  RFD_CF_f=RFD_CF_fR 
-  SMP_CMN_f=SMP_CMN_fR 
-  SMP_CF_f=SMP_CF_fR
-
-  ``` 
-
-![](img/boot_property_link_09.jpg)
-![](img/boot_property_link_09_1.jpg)
-
-
-  * set __Layout sections automatically__ to ==YES== 
-  * the final result : 
-![](img/boot_property_link_07.jpg)
-![](img/boot_property_link_09_2.jpg)
-<br>
-
----
-
-* how do we know section address meaning
-
-![](img/boot_debug_monitor.jpg)
-
-  * ==flash assignment after debug area==
-    * 0x000F0 (RL78 F24 , F23)
-
----
-
-![](img/boot_map_SRAM_address_1.jpg)
-  * ==ram assignment==
-    * 0xF9F00 (RL78 F24)
-    * 0xFCF00 (RL78 F23)
-
-![](img/boot_map_SRAM_address_2.jpg)
-![](img/boot_map_SRAM_address_3.jpg)
-
-
----
-
-![](img/CCRL_Section_allocation.jpg)
-  * ==short direction address (.saddr) assignment==
-    * 0xFFE20 (RL78 F24 , F23)
-
-![](img/boot_map_saddr_address_1.jpg)
-
-
----
-
-* in case of need to modify from RL78 F24 to RL78 F23 (code flash , data flash , extra area)
-  * code flash
-  ![](img/boot_property_link_06_2.jpg)
-  * data flash
-  ![](img/boot_property_link_06_3.jpg)
-  * extra area
-  ![](img/boot_property_link_06_4.jpg)
-  * RAM
-  ![](img/boot_property_link_06_5.jpg)
-<br>
-
----
-
-![](img/boot_property_link_10.jpg)
-* __[Others] > [Display total size sections]__
-  * select -Total_size , will display the section size in output window
-  * display build code size in Output window
-![](img/boot_property_link_10_1.jpg)
-
-
-<u>How to Divide Boot and Flash Areas</u>
-<u>CC-RL Compiler User's Manual</u>
-<u>CS+ User’s Manual: CC-RL Build Tool Operation</u>
-<u>Renesas Flash Driver RL78 Type 02 User’s  Manual</u>
-
----
-
-# Project : boot code property modifictaion - CC-RL Build Tool setting
-
-**Hex Output Options**
-
-refer to How to Divide Boot and Flash Areas :
-__3.2.5  Specifying hex file output only to the boot area address range__
-
-
-![](img/boot_hex_output_01.jpg)
-
-* __[Output File] > [Division output file]__  
-  * base on MCU (ex : RL78F24) , to set boot code ==start address and end address== as file name
-* file size will be different if use other platform (ex : RL78 F13 , RL78 G16 , etc)
-  * [map const define ?](#map_const)
-
-```c
-%BuildModeName%\boot0000_4FFF.hex=0000-4FFF
-```
-
-| RL78 | const size |
-|:--:|:--:|
-| F24  | 0x5000 |
-| F23  | 0x3000 |
-| F13  | 0x2000 | 
-| G15  | 0x800 |
-| G16  | 0x800 |
-
-<br>
-
----
-
-![](img/boot_hex_output_02.jpg)
-* __[Hex Format]__  
-  * follow the setting of the picture 
-
-
-<u>How to Divide Boot and Flash Areas</u>
-<u>CC-RL Compiler User's Manual</u>
-<u>CS+ User’s Manual: CC-RL Build Tool Operation</u>
-<u>Renesas Flash Driver RL78 Type 02 User’s  Manual</u>
-
----
-
-# Reference - RL78/F23, F24 User’s Manual: Hardware - Input Source List
-
-![](img/interrupt_source_list_01.jpg)
-![](img/interrupt_source_list_02.jpg)
-![](img/interrupt_source_list_03.jpg)
-![](img/interrupt_source_list_04.jpg)
-
----
 <a id="vector_table"></a>
-# Project : RL78/F23, F24 User’s Manual: Hardware - Vector Table
+<a id="uart／i2c-範例"></a>
+<a id="flash-architecture"></a>
+<a id="scenario-boot-area-boot-code"></a>
+<a id="scenario-flash-area-app-code"></a>
+<a id="project-boot-codeapp-code-modifictaion---ftableinc"></a>
+<a id="project-boot-code-modifictaion---cstartasm"></a>
+<a id="project-boot-code-modifictaion---stkinitasm"></a>
+<a id="project-boot-code-modifictaion---project-tree"></a>
+<a id="project-boot-code-modifictaion---add-code-flash-library"></a>
+<a id="project-boot-code-modifictaion---add-crc-compare-1"></a>
+<a id="project-boot-code-modifictaion---add-crc-compare-2"></a>
+<a id="project-boot-code-modifictaion---use-smart-config-tool-to-generate-driver"></a>
+<a id="project-boot-code-modifictaion---boot_mainc"></a>
+<a id="project-boot-code-modifictaion---i2c-command-flow"></a>
+<a id="project-boot-code-modifictaion---i2c-command-flow-check_generic_boot_standard_interface"></a>
+<a id="project-boot-code-modifictaion---i2c-command-flow-read_device_signature"></a>
+<a id="project-boot-code-modifictaion---i2c-command-flow-read_area_information"></a>
+<a id="project-boot-code-modifictaion---i2c-command-flow-start_device_image_transfer"></a>
+<a id="project-boot-code-modifictaion---i2c-command-flow-terminal-operation-master-slave"></a>
+<a id="project-boot-code-modifictaion---xmodem-update-flow"></a>
+<a id="project-boot-code-property-modifictaion---e2-lite-setting"></a>
+<a id="project-boot-code-property-modifictaion---cc-rl-build-tool-setting"></a>
+<a id="project-boot-code-property-modifictaion---cc-rl-build-tool-setting-2"></a>
+<a id="project-boot-code-property-modifictaion---cc-rl-build-tool-setting-3"></a>
+<a id="project-boot-code-property-modifictaion---cc-rl-build-tool-setting-4"></a>
+<a id="reference---rl78f23-f24-user’s-manual-hardware---input-source-list"></a>
+<a id="project-rl78f23-f24-user’s-manual-hardware---vector-table"></a>
+<a id="project-boot-codeapp-code-modifictaion---ftableinc-2"></a>
+<a id="project-app-code-modifictaion---cstartasm"></a>
+<a id="project-app-code-modifictaion---ftableasm"></a>
+<a id="project-app-code-modifictaion---fsy-file"></a>
+<a id="project-app-code-modifictaion---project-tree"></a>
+<a id="project-app-code-modifictaion---add-data-flash-library"></a>
+<a id="project-app-code-modifictaion---use-smart-config-tool-to-generate-driver"></a>
+<a id="project-app-code-modifictaion---remove-static-and-vect-define"></a>
+<a id="project-app-code-modifictaion---mainc"></a>
+<a id="project-app-code-property-modifictaion---e2-lite-setting"></a>
+<a id="project-app-code-property-modifictaion---cc-rl-build-tool-setting"></a>
+<a id="project-app-code-property-modifictaion---cc-rl-build-tool-setting-2"></a>
+<a id="project-app-code-property-modifictaion---cc-rl-build-tool-setting-3"></a>
+<a id="project-app-code-property-modifictaion---cc-rl-build-tool-setting-4"></a>
+<a id="how-to-add-interrupt-at-boot-code"></a>
+<a id="how-to-use-hardware-crc-at-boot-code-and-app-code-project"></a>
+
+<details>
+<summary>UART／I2C 章節連結</summary>
+
+| 章節 | 範例頁位置 |
+| --- | --- |
+| Flash library 類型 | [閱讀章節](uart_i2c/#target_MCU_flash_type) |
+| App 返回 Boot 的 RAM marker | [閱讀章節](uart_i2c/#ram_flag) |
+| ftable.inc 分區設定 | [閱讀章節](uart_i2c/#FALSH_TABLE) |
+| ftable.inc 欄位 | [閱讀章節](uart_i2c/#ftable_inc) |
+| App 起點與 mirror 對照 | [閱讀章節](uart_i2c/#map_const) |
+| Boot main | [閱讀章節](uart_i2c/#boot_main) |
+| Boot 硬體初始化 | [閱讀章節](uart_i2c/#boot_hdwinit) |
+| Flash symbol 檔案 | [閱讀章節](uart_i2c/#fsy_file) |
+| App IRQ 向量位址 | [閱讀章節](uart_i2c/#vect_address) |
+| 硬體向量表 | [閱讀章節](uart_i2c/#vector_table) |
+| UART／I2C 範例 | [閱讀章節](uart_i2c/#uart／i2c-範例) |
+| Flash architecture | [閱讀章節](uart_i2c/#flash-architecture) |
+| Scenario : Boot area (boot code) | [閱讀章節](uart_i2c/#scenario-boot-area-boot-code) |
+| Scenario : Flash area (app code) | [閱讀章節](uart_i2c/#scenario-flash-area-app-code) |
+| Project : boot code/app code configuration - ftable.inc | [閱讀章節](uart_i2c/#project-boot-codeapp-code-modifictaion---ftableinc) |
+| Project : boot code configuration - cstart.asm | [閱讀章節](uart_i2c/#project-boot-code-modifictaion---cstartasm) |
+| Project : boot code configuration - stkinit.asm | [閱讀章節](uart_i2c/#project-boot-code-modifictaion---stkinitasm) |
+| Project : boot code configuration - project tree | [閱讀章節](uart_i2c/#project-boot-code-modifictaion---project-tree) |
+| Project : boot code configuration - add CODE FLASH library | [閱讀章節](uart_i2c/#project-boot-code-modifictaion---add-code-flash-library) |
+| Project : boot code configuration - add CRC compare (1) | [閱讀章節](uart_i2c/#project-boot-code-modifictaion---add-crc-compare-1) |
+| Project : boot code configuration - add CRC compare (2) | [閱讀章節](uart_i2c/#project-boot-code-modifictaion---add-crc-compare-2) |
+| Project : boot code configuration - use smart config tool to generate driver | [閱讀章節](uart_i2c/#project-boot-code-modifictaion---use-smart-config-tool-to-generate-driver) |
+| Project : boot code configuration - boot_main.c | [閱讀章節](uart_i2c/#project-boot-code-modifictaion---boot_mainc) |
+| Project : boot code configuration - I2C command flow | [閱讀章節](uart_i2c/#project-boot-code-modifictaion---i2c-command-flow) |
+| Project : boot code configuration - I2C command flow (check_generic_boot_standard_interface) | [閱讀章節](uart_i2c/#project-boot-code-modifictaion---i2c-command-flow-check_generic_boot_standard_interface) |
+| Project : boot code configuration - I2C command flow (read_device_signature) | [閱讀章節](uart_i2c/#project-boot-code-modifictaion---i2c-command-flow-read_device_signature) |
+| Project : boot code configuration - I2C command flow (read_area_information) | [閱讀章節](uart_i2c/#project-boot-code-modifictaion---i2c-command-flow-read_area_information) |
+| Project : boot code configuration - I2C command flow (start_device_image_transfer) | [閱讀章節](uart_i2c/#project-boot-code-modifictaion---i2c-command-flow-start_device_image_transfer) |
+| Project : boot code configuration - I2C command flow terminal operation (master & slave) | [閱讀章節](uart_i2c/#project-boot-code-modifictaion---i2c-command-flow-terminal-operation-master-slave) |
+| Project : boot code configuration - xmodem update flow | [閱讀章節](uart_i2c/#project-boot-code-modifictaion---xmodem-update-flow) |
+| Project : boot code property configuration - E2 lite setting | [閱讀章節](uart_i2c/#project-boot-code-property-modifictaion---e2-lite-setting) |
+| Project : boot code property configuration - CC-RL Build Tool setting | [閱讀章節](uart_i2c/#project-boot-code-property-modifictaion---cc-rl-build-tool-setting) |
+| Project : boot code property configuration - CC-RL Build Tool setting | [閱讀章節](uart_i2c/#project-boot-code-property-modifictaion---cc-rl-build-tool-setting-2) |
+| Project : boot code property configuration - CC-RL Build Tool setting | [閱讀章節](uart_i2c/#project-boot-code-property-modifictaion---cc-rl-build-tool-setting-3) |
+| Project : boot code property configuration - CC-RL Build Tool setting | [閱讀章節](uart_i2c/#project-boot-code-property-modifictaion---cc-rl-build-tool-setting-4) |
+| Reference - RL78/F23, F24 User’s Manual: Hardware - Input Source List | [閱讀章節](uart_i2c/#reference---rl78f23-f24-user’s-manual-hardware---input-source-list) |
+| Project : RL78/F23, F24 User’s Manual: Hardware - Vector Table | [閱讀章節](uart_i2c/#project-rl78f23-f24-user’s-manual-hardware---vector-table) |
+| Project : boot code/app code configuration - ftable.inc | [閱讀章節](uart_i2c/#project-boot-codeapp-code-modifictaion---ftableinc-2) |
+| Project : app code configuration - cstart.asm | [閱讀章節](uart_i2c/#project-app-code-modifictaion---cstartasm) |
+| Project : app code configuration - ftable.asm | [閱讀章節](uart_i2c/#project-app-code-modifictaion---ftableasm) |
+| Project : app code configuration - fsy file | [閱讀章節](uart_i2c/#project-app-code-modifictaion---fsy-file) |
+| Project : app code configuration - project tree | [閱讀章節](uart_i2c/#project-app-code-modifictaion---project-tree) |
+| Project : app code configuration - add DATA FLASH library | [閱讀章節](uart_i2c/#project-app-code-modifictaion---add-data-flash-library) |
+| Project : app code configuration - use smart config tool to generate driver | [閱讀章節](uart_i2c/#project-app-code-modifictaion---use-smart-config-tool-to-generate-driver) |
+| Project : app code configuration -  remove static and vect define | [閱讀章節](uart_i2c/#project-app-code-modifictaion---remove-static-and-vect-define) |
+| Project : app code configuration - main.c | [閱讀章節](uart_i2c/#project-app-code-modifictaion---mainc) |
+| Project : app code property configuration - E2 lite setting | [閱讀章節](uart_i2c/#project-app-code-property-modifictaion---e2-lite-setting) |
+| Project : app code property configuration - CC-RL Build Tool setting | [閱讀章節](uart_i2c/#project-app-code-property-modifictaion---cc-rl-build-tool-setting) |
+| Project : app code property configuration - CC-RL Build Tool setting | [閱讀章節](uart_i2c/#project-app-code-property-modifictaion---cc-rl-build-tool-setting-2) |
+| Project : app code property configuration - CC-RL Build Tool setting | [閱讀章節](uart_i2c/#project-app-code-property-modifictaion---cc-rl-build-tool-setting-3) |
+| Project : app code property configuration - CC-RL Build Tool setting | [閱讀章節](uart_i2c/#project-app-code-property-modifictaion---cc-rl-build-tool-setting-4) |
+| How to add interrupt at boot code | [閱讀章節](uart_i2c/#how-to-add-interrupt-at-boot-code) |
+| How to use hardware CRC at boot code and app code project | [閱讀章節](uart_i2c/#how-to-use-hardware-crc-at-boot-code-and-app-code-project) |
 
-![](img/vector_table_01.jpg)
-![](img/vector_table_02.jpg)
-
-
----
-
-# Project : boot code/app code modifictaion - ftable.inc
-
-<a id="FALSH_TABLE"></a>
-<a id="ftable_inc"></a>
-* ==create and register== below file in __Boot area (boot code)__ and __Flash area (app code)__ project
-
-* ftable.inc 
-
-```c
-FLASH_TABLE       .EQU  0x5000 
-INTERRUPT_OFFSET  .EQU  0x100 
-```
-<br/>
-
-<a id="map_const"></a>
-* the vaule will be ==boot code size (app code start address)==
-* Due to mirror memory limitations, constant data cannot exist before mirror address - 0xF0000 (ex : 0xF5000 - 0xF0000 = 0x5000)
-* below is each RL78 platform minimum boot code code size definition , FLASH_TABLE ==MUST set bigger or equal to== definition
-
-| RL78 | const size |
-|:--:|:--:|
-| F24  | 0x5000 |
-| F23  | 0x3000 |
-| F13  | 0x2000 | 
-| G15  | 0x800 |
-| G16  | 0x800 |
-
-* below is default project map file after compile
-
-**RL78 F24**
-![](img/map_const_F24.jpg)
-**RL78 F23**
-![](img/map_const_F23.jpg)
-**RL78 F13**
-![](img/map_const_F13.jpg)
-**RL78 G15**
-![](img/map_const_G15.jpg)
-**RL78 G16**
-![](img/map_const_G16.jpg)
-
-<u>How to Divide Boot and Flash Areas</u>
-
----
-
-
-# Project : app code modifictaion - cstart.asm
-
-refer to How to Divide Boot and Flash Areas :
-__4.1.1  Modifying the startup routine (cstart.asm)__
-
-* use smart config generate code
-* ==copy== cstart.asm to app code project root folder
-* ==register== to Flash area (app code) project , then start to ==modify==
-
-(1)
-comment out conditional check
-
-![](img/app_cstart_01.jpg)
-
-(2)
-add ram flag section
-
-```c
-  .SECTION .boot_info, BSS
-  .L_section_boot_info:
-```
-
-![](img/app_cstart_02.jpg)
-
-(3)
-add ==data flash library section==
-
-```c
-  .SECTION RFD_DATA_nR, DATA
-```
-
-![](img/app_cstart_03.jpg)
-
-
-```c
-	; copy RFD external variables having initial value (near)
-	MOV	ES,#HIGHW(STARTOF(RFD_DATA_n))
-	MOVW	BC,#LOWW(SIZEOF(RFD_DATA_n))
-	BR	$.L2_RFD_DATA
-.L1_RFD_DATA:
-	DECW	BC
-	MOV	A,ES:LOWW(STARTOF(RFD_DATA_n))[BC]
-	MOV	LOWW(STARTOF(RFD_DATA_nR))[BC],A
-.L2_RFD_DATA:
-	CLRW	AX
-	CMPW	AX,BC
-	BNZ	$.L1_RFD_DATA
-
-```
-
-![](img/app_cstart_04.jpg)
-
-
----
-
-app code : Compare below file to see the difference
-after modification : 
-RL78_F24_Boot_loader_app\cstart.asm
-https://github.com/released/RL78_F24_Boot_loader_app/blob/main/cstart.asm
-
-data flash : 
-RL78_F24_Boot_loader_app\RFDRL78T02\sample\RL78_F24\DF\CCRL\source\cstart.asm
-
-smart configurator original file : 
-RL78_F24_Boot_loader_app\src\smc_gen\r_bsp\mcu\all\cstart.asm
-
-
-<u>How to Divide Boot and Flash Areas</u>
-
----
-
-# Project : app code modifictaion - ftable.asm
-
-refer to How to Divide Boot and Flash Areas :
-__4.1.2  Creating a branch table program (ftable.asm)__
-
-* create ftable and register interrupt (used in app code) in proper sequence
-  * [vector table ?](#vector_table)
-
-![](img/app_ftable_01.jpg)
-
-* ==register== ftable to Flash area (app code) project
-
-![](img/app_ftable_02.jpg)
-
-* example 
-  * in app code , use UART0 TX/RX , UART1 TX/RX , TAU0_1 , IICA0 interrupt
-  * register these interrupt name with prefix !!_ 
-
-```c
-		.DB4    0xffffffff                      ; INTP13/INTCL	             	;0x0014
-		 BR     !!_r_Config_UART0_interrupt_send	; INTST0/INTCSI00/INTIIC00  ;0x0016
-		 BR     !!_r_Config_UART0_interrupt_receive	; INTSR0/INTCSI01/INTIIC01 	;0x0018
-		.DB4    0xffffffff						; INTTRD0                       ;0x001A
-    ...
-		.DB4    0xffffffff					    ; INTLIN0STA/INTLIN0	        ;0x0026
-		 BR     !!_r_Config_IICA0_interrupt	    ; INTIICA0 		                ;0x0028
-		.DB4    0xffffffff                      ; INTP8/INTRTC                  ;0x002A
-		.DB4    0xffffffff      				; INTTM00                     	;0x002C
-		 BR     !!_r_Config_TAU0_1_interrupt    ; INTTM01                       ;0x002E
-		.DB4    0xffffffff                	    ; INTTM02                       ;0x0030
-    ...
-		.DB4    0xffffffff                      ; INTP10/INTTM03H               ;0x003C
-		 BR     !!_r_Config_UART1_interrupt_send	; INTST1/INTCSI10/INTIIC10      ;0x003E
-		 BR     !!_r_Config_UART1_interrupt_receive	; INTSR1/INTCSI11/INTIIC11      ;0x0040
-		.DB4    0xffffffff					    ; INTTM04                       ;0x0042
-
-```
-
-<u>How to Divide Boot and Flash Areas</u>
-
----
-
-# Project : app code modifictaion - fsy file
-
-refer to How to Divide Boot and Flash Areas :
-__4.2.1  Registering the externally defined symbol file with the project__
-
-* when boot code build finish , will copy fsy file into app code project 
-  * [fsy file ?](#fsy_file)
-* ==register== fsy file to Flash area (app code) project
-
-![](img/app_fsy_file_01.jpg)
-
-<u>How to Divide Boot and Flash Areas</u>
-
----
-
-# Project : app code modifictaion - project tree
-
-* after modification , ==Flash area (app code) project== will increse 4 files as below 
-
-![](img/app_project_tree_01.jpg)
-
----
-
-# Project : app code modifictaion - add DATA FLASH library
-
-* base on [RL78 MCU](#target_MCU_flash_type)  , register correspond ==DATA FLASH library== into Flash area (app code) project and exclude uncessary file (code flash , extra area)
-
-![](img/RFD_tree_file2.jpg)
-
-
----
-
-# Project : app code modifictaion - use smart config tool to generate driver
-
-* exclude the driver code (c code , asm code)
-
-![](img/app_smc_01.jpg)
-
-
----
-
-* smart configurator system setting as below
-
-![](img/smc_system.jpg)
-
----
-
-
-# Project : app code modifictaion -  remove static and vect define
-
-refer to How to Divide Boot and Flash Areas :
-__Do not specify the vector address (vect) with the #pragma interrupt directive in the flash area.__
-
-* ==EVERY TIME== when use smart config tool to ==re-generate driver==
-* need to ==remove static declaration== and ==comment on vect definition== in earch drvier ==Config_xxx_user.c==
-
-![](img/app_user_interrupt_01.jpg)
-![](img/app_user_interrupt_02.jpg)
-![](img/app_user_interrupt_03.jpg)
-![](img/app_user_interrupt_04.jpg)
-
-<u>How to Divide Boot and Flash Areas</u>
-
----
-
-# Project : app code modifictaion - main.c
-
-* add [ram flag](#ram_flag) declaration
-
-```c
-#define RESET_TO_BOOT_SIGN 0xAA55AA55
-
-#pragma address (reset_to_bootloader = 0x000FF700)
-volatile uint32_t reset_to_bootloader;
-#pragma address (_no_init_global = 0x000FF710)
-unsigned char _no_init_global[RAM_FLAG_MAX];
-
-```
-below is map file result 
-![](img/app_map_file.jpg)
-
-* add change flag data ==condition check== and execute reset
-
-  * example : when receive change to boot mode command , modify the flag and reset MCU
-
-```c
-    if(g_i2c_receive_complete)
-    {
-        if(0 == memcmp(&iic_buf[0], switch_device_to_boot_mode_cmd, 6))
-        {
-            R_Config_IICA0_Slave_Send((uint8_t *)response_status_ok, 7);
-            while(!g_i2c_transmit_complete);
-
-            reset_to_bootloader = RESET_TO_BOOT_SIGN;
-            _reset_by_illegal_memory_access();
-        }
-
-        g_i2c_receive_complete = false;
-    }
-
-```
-
-```c
-void uart_rcv_process(void)
-{
-    if (FLAG_PROJ_TRIG_3)
-    {
-        FLAG_PROJ_TRIG_3 = 0;
-
-        reset_to_bootloader = RESET_TO_BOOT_SIGN;
-        printf_tiny("(app)reset_to_bootloader:0x%X",reset_to_bootloader>>16);
-        printf_tiny("%X\r\n",reset_to_bootloader&0xFFFF);
-
-        _reset_by_illegal_memory_access();        
-    }
-}
-```
-
----
-# Project : app code property modifictaion - E2 lite setting
-
-![](img/app_e2_lite_property_flash.jpg)
-
-
-<u>CC-RL Compiler User's Manual</u>
-<u>CS+ User’s Manual: CC-RL Build Tool Operation</u>
-
----
-
-# Project : app code property modifictaion - CC-RL Build Tool setting
-
-**Common Options**
-
-refer to How to Divide Boot and Flash Areas :
-__4.2.3  Specifying hex file output only to the flash area address range__
-
-
-![](img/app_property_common_01.jpg)
-
-
-* __[Frequently Used Options (for Hex Output)] > [Division output file]__
-  * base on MCU (ex : RL78F24 , 256K flash) , to ==app code start address and end address== as file name
-* file size will be different if use other platform (ex : RL78 F13 , RL78 G16 , etc)
-  * [map const define ?](#map_const)
-
-```c
-%BuildModeName%\flash5000_3FFFF.hex=5000-3FFFF
-```
-
-
----
-
-![](img/app_property_common_02.jpg)
-
-* __[Other] > [Commands executed after build processing]__
-  * add : boot_flash.bat , for RL78 F24 (256K)
-  * use srecord tool , do action as below
-    * save app code hex to back hex file
-      * 1backupHex.cmd
-    * base on app code hex , generate CRC
-      * 2generateChecksum.cmd
-    * base on app code hex (w/ CRC) , generate CRC into hex
-      * 3generateCRCHex.cmd
-    * covert app code hex (w/ CRC) to app code bin
-      * 4generateCRCBin.cmd
-    * base on app code hex (w/ CRC) , to over lap original hex
-      * 5generateCRCHexOverlap.cmd
-    * combine boot code and app code
-      * 6generateBootAppHex.cmd
-    * covert boot/app code hex (w/ CRC) to boot/app code bin
-      * 7generateBootAppBin.cmd
-
-<br>
-
-__1backupHex.cmd__
-```c
-# input file
-.\DefaultBuild\flash5000_3FFFF.hex -Intel
-
--crop 0x005000 0x40000
-
-# produce the output file
--Output
-.\DefaultBuild\flash5000_3FFFF_backup.hex -Intel
-
-```
-
-<br>
-
-__2generateChecksum.cmd__
-```c
-# input file
-.\DefaultBuild\flash5000_3FFFF.hex -Intel
-
--crop 0x5000 0x3FFFC
-
--crc32-l-e 0x3FFFC		
-
--crop 0x3FFFC 0x40000
-											
--Output 
-- 
--HEX_Dump
-
-```
-
-<br>
-
-__3generateCRCHex.cmd__
-```c
-
-# input file
-.\DefaultBuild\flash5000_3FFFF.hex -Intel
-
--crop 0x5000 0x3FFFC
-
--crc32-l-e 0x3FFFC
-
--Output
-.\DefaultBuild\flash5000_3FFFF_CRC.hex -Intel
-
-```
-
-<br>
-
-__4generateCRCBin.cmd__
-```c
-
-# input file
-.\DefaultBuild\flash5000_3FFFF_CRC.hex -Intel
-
--crop 0x005000 0x40000 -offset -0x005000
-
-# produce the output file
--Output
-.\DefaultBuild\flash5000_3FFFF.bin -binary
-
-```
-
-<br>
-
-__5generateCRCHexOverlap.cmd__
-```c
-
-# input file
-.\DefaultBuild\flash5000_3FFFF_CRC.hex -Intel
-
--crop 0x005000 0x40000
-
-# produce the output file
--Output
-.\DefaultBuild\flash5000_3FFFF.hex -intel
-
-```
-
-<br>
-
-__6generateBootAppHex.cmd__
-```c
-..\RL78_F24_Boot_loader_UART\DefaultBuild\boot0000_4FFF.hex -Intel .\DefaultBuild\flash5000_3FFFF.hex -Intel -o .\boot_app.hex -Intel -Output_Block_Size=16
-
-```
-
-<br>
-
-__7generateBootAppBin.cmd__
-```c
-
-# input file
-.\boot_app.hex -Intel
-
--crop 0x00000 0x40000
-
-# produce the output file
--Output
-.\boot_app.bin -binary
-
-```
-
----
-
-use RFP to download whole program : boot_app.bin(boot code + app code)
-
-![](img/app_RFP_01.jpg)
-
-
-__boot+app binary folder__ : 
-RL78_F24_Boot_loader_app\boot_app.bin
-
-__boot code binary folder__ : 
-RL78_F24_Boot_loader_UART\DefaultBuild\boot0000_4FFF.hex
-
-__app code binary folder__ : 
-RL78_F24_Boot_loader_app\DefaultBuild\flash5000_3FFFF.bin
-RL78_F24_Boot_loader_app\DefaultBuild\flash5000_3FFFF.hex
-
----
-
-# Project : app code property modifictaion - CC-RL Build Tool setting
-
-**Compile Options**
-
-![](img/app_property_compile_01.jpg)
-
-
-<u>How to Divide Boot and Flash Areas</u>
-<u>CC-RL Compiler User's Manual</u>
-<u>CS+ User’s Manual: CC-RL Build Tool Operation</u>
-
-
----
-
-# Project : app code property modifictaion - CC-RL Build Tool setting
-
-**Link Options**
-
-![](img/app_property_link_01.jpg)
-* __[Device] > [Option byte values for OCD]__
-  * set to ```A5```
-  * default will be 0xFF
-
-<br>
-
-![](img/app_property_link_02.jpg)
-* __[Output Code] > [Execute start address]__
-  * will be called by cstart.asm
-<br>
-
-
----
-
-![](img/app_property_link_03.jpg)
-* __[List] > [Ooutput link map file]__
-  * select -SHow=ALL , will display the compile result (function , address) in map file for debug
-  * map file under /DefaultBuild
-
-* refer to document : 
-  * How to Divide Boot and Flash Areas (R20UT3475EJ0300) 
-    * __3.2.2  Specifying the section allocation__
-  * Renesas Flash Driver RL78 Type 02 User’s  Manual (R20UT5009EJ0110) 
-    * __6.1.3.3  Section Item Settings__
-<br>
-
----
-
-![](img/app_property_link_04.jpg)
-* __[Section] > [Section start address]__
-
-refer to How to Divide Boot and Flash Areas :
-__4.2.2  Specifying the section allocation__
-
-  * set __Layout sections automatically__ to ==NO== 
-  * app code will start from 0x5000 (RL78 F24) , and reserved branch table area (0x5200)
-  * entry editor and modify as below ( for data flash library )
-  * flash area
-  ```
-  RFD_DATA_n 
-  RFD_CMN_f 
-  RFD_DF_f 
-  SMP_CMN_f 
-  SMP_DF_f 
-
-  ```
-
-  * ram area
-  ```
-  RFD_DATA_nR 
-
-  ```
-
-  * reserve SRAM flag 0xFF700 area [(ram flag)](#ram_flag) , to prevent initial when power on
-
-  * __[Section] > [ROM to RAM mapped section]__
-    * entry editor and modify as below :
-
-  ```
-  .data=.dataR
-  .sdata=.sdataR
-  RFD_DATA_n=RFD_DATA_nR
-  ``` 
-
-![](img/app_property_link_04_3.jpg)
-
-  * set __Layout sections automatically__ to ==YES==
-  * the final result : 
-
-![](img/app_property_link_04_2.jpg)
-
-<br>
-
----
-
-![](img/app_property_link_05.jpg)
-* __[Others] > [Display total size sections]__
-  * select -Total_size , will display the section size in output window
-  * display build code size in Output window
-
-
-<u>How to Divide Boot and Flash Areas</u>
-<u>CC-RL Compiler User's Manual</u>
-<u>CS+ User’s Manual: CC-RL Build Tool Operation</u>
-<u>Renesas Flash Driver RL78 Type 02 User’s  Manual</u>
-
-
----
-
-# Project : app code property modifictaion - CC-RL Build Tool setting
-
-**Hex Output Options**
-
-refer to How to Divide Boot and Flash Areas :
-__4.2.3  Specifying hex file output only to the flash area address range__
-
-
-![](img/app_hex_output_01.jpg)
-
-* __[Output File] > [Division output file]__  
-  * base on MCU (ex : RL78F24) , to set ==app code start address and end address== as file name
-* file size will be different if use other platform (ex : RL78 F13 , RL78 G16 , etc)
-  * [map const define ?](#map_const)
-
-```c
-%BuildModeName%\flash5000_3FFFF.hex=5000-3FFFF
-```
-
----
-
-![](img/app_hex_output_02.jpg)
-* __[Hex Format]__  
-  * follow the setting of the picture 
-
-
-<u>How to Divide Boot and Flash Areas</u>
-<u>CC-RL Compiler User's Manual</u>
-<u>CS+ User’s Manual: CC-RL Build Tool Operation</u>
-<u>Renesas Flash Driver RL78 Type 02 User’s  Manual</u>
-
-
----
-
-# How to add interrupt at boot code 
-
-refer to define : ENALBE_IICA0_BL_USE_IRQ in project:RL78_F24_Boot_loader_UART_CRC
-
-add interrupt vect declare in boot code 
-  * use smart config generate driver code and move to boot_main.c
-  * use [#pragma interrupt] to declare custom interrupt 
-  * vect refer to [vector table ](#vector_table)
-  * use ram flag (ex:_no_init_global[RAM_FLAG_INDICATE_BOOT_APP]) to define excute which irq when in boot code / app code
-    * declare ram_flag = 0xAA when in boot code
-    * declare ram_flag = 0x55 when in app code
-  * add boot code interrupt process (ex:I2C_Downloader_routine_IRQ)
-  * interrupt process in app code wll be defined as [vector number](#vect_address)
-
-![](img/boot_vect_number.jpg)
-
-```C
-#pragma interrupt boot_r_Config_IICA0_interrupt(vect=INTIICA0)
-void __near boot_r_Config_IICA0_interrupt(void)
-{
-	if(_no_init_global[RAM_FLAG_INDICATE_BOOT_APP] == 0xAA)   // execute boot code ISR
-	{
-        if (0U == (IICS0 & _80_IICA_STATUS_MASTER))
-        {            
-            I2C_Downloader_routine_IRQ();   // r_Config_IICA0_slave_handler();
-        }
-	}
-	if(_no_init_global[RAM_FLAG_INDICATE_BOOT_APP] == 0x55)   //user app ISR address
-	{	    	
-        if (0U == (IICS0 & _80_IICA_STATUS_MASTER))
-        {
-            ((void(*)(void))0x5050)();	
-        }
-	}
-}
-```
-
-
-__TIMER example__
-refer to define : ENALBE_TIMER_TAU0_1_IRQ in project:RL78_F24_Boot_loader_UART_CRC
-
-add interrupt vect declare in boot code 
-  * use smart config generate driver code and move to boot_main.c
-  * use [#pragma interrupt] to declare custom interrupt 
-  * vect refer to [vector table ](#vector_table)
-  * use ram flag (ex:_no_init_global[RAM_FLAG_INDICATE_BOOT_APP]) to define excute which irq when in boot code / app code
-    * declare ram_flag = 0xAA when in boot code
-    * declare ram_flag = 0x55 when in app code
-  * add boot code interrupt process (ex:boot_Timer_1ms_IRQ)
-  * interrupt process in app code wll be defined as [vector number](#vect_address)
-
-![](img/boot_vect_number2.jpg)
-
-```C
-#pragma interrupt boot_r_Config_TAU0_1_interrupt(vect=INTTM01)
-void __near boot_r_Config_TAU0_1_interrupt(void)
-{
-	if(_no_init_global[RAM_FLAG_INDICATE_BOOT_APP] == 0xAA)   // execute boot code ISR
-	{
-        boot_Timer_1ms_IRQ();
-	}
-	if(_no_init_global[RAM_FLAG_INDICATE_BOOT_APP] == 0x55)   //user app ISR address
-	{	    	
-        ((void(*)(void))0x505C)();
-	}
-}
-```
-
-![](img/boot_timer_irq_couting2.jpg)
-
-
-
----
-
-# How to use hardware CRC at boot code and app code project
-
-__setting in CS+ (boot code)__
-
-```c
-Target Range : 0000-4FFB
-type of CRC : CRC-CCITT (LSB) type (General-purpose CRC)
-Initial value : 0000
-Output size : 2
-CRC store address : 0x4FFE
-
-```
-
-![](img/hw_crc_boot_01.jpg)
-
-![](img/hw_crc_boot_02.jpg)
-
-![](img/hw_crc_boot_03.jpg)
-
-
-__setting in CS+ (app code)__
-
-
-```c
-Target Range : 5000-3FBFB
-type of CRC : CRC-CCITT (LSB) type (General-purpose CRC)
-Initial value : 0000
-Output size : 2
-CRC store address : 0x3FBFE
-
-```
-
-![](img/hw_crc_app_01.jpg)
-
-![](img/hw_crc_app_02.jpg)
-
-![](img/hw_crc_app_03.jpg)
-
-
-for CRC compare , refer to function : ==verify_application_chksum==
-and ==verify_bootcode_chksum==
-
-below is boot code , verify result 
-
-![](img/hw_crc_app_04.jpg)
-
-
-below is boot code , log message 
-
-![](img/hw_crc_app_05.jpg)
-
-
-__Need to modify driver , due to far pointers 16bit addressing issue__
-
-[issue](https://community.renesas.com/mcu/rl78/f/rl78-forum/1850/read-program-flash)
-
-```c
-void r_crc_general_hardware (uint32_t start_address, uint32_t end_address, uint16_t initial_value, uint16_t *crc)
-{
-    uint32_t word_counter;
-    uint8_t __far *p_address = (uint8_t __far *) start_address;
-
-    CRCD = initial_value;
-
-    if ((end_address >= 0x10000) && (start_address <= 0xFFFF))
-    {
-        for (word_counter = start_address; word_counter < 0x10000 ; word_counter++)
-        {
-            CRCIN = *p_address++;
-            __nop();
-        }  
-
-        p_address = (uint8_t __far *)0x10000;
-        for (word_counter = 0x10000; word_counter < (end_address + 1); word_counter++)
-        {
-            CRCIN = *p_address++;
-            __nop();
-        }  
-    }
-    else
-    {
-        /* Read 4 bytes of data each loop until range complete */
-        for (word_counter = start_address; word_counter < (end_address + 1); word_counter++)
-        {
-            CRCIN = *p_address++;
-            __nop();
-        }    
-    }
-    __nop();
-    
-    /* Return value */
-    *crc = CRCD;
-
-    return;
-} /* End of function r_crc_general_hardware() */
-
-```
-
-__Reson why can not use High speed CRC__
-
-  * if target size not 16K/32K/48K/64K/... , unable to use HIGH SPEED CRC
-  * if address NOT START FROM 0x00 , check reg : CRC0CTL
-
-
----
+</details>
 
 ## Tool 與其他操作入口
 
