@@ -21,6 +21,7 @@ UART／I2C 範例的設定與來源集中於 [獨立範例頁](uart_i2c/)，內�
 | 本頁完整章節 | 原稿／同步腳本 |
 | --- | --- |
 | Device Metadata／App IRQ C header 編輯與建置 | DEVICE_METADATA_VECTOR_WORKSHOP／sync_device_workshop.ps1 |
+| Device CAN 速率／Boot-App ISR 所有權／App counter | 同一 workshop 的 device-can-bitrate／device-irq-ownership／device-app-runtime-log |
 | F13 Boot decision／ENTER／逾時 | F13_BOOT_UPDATE_FLOW／sync_f13_boot_decision.ps1 |
 | F24 device 工程 | F24_CAN_DEVICE_DESIGN／sync_f24_device_design.ps1 |
 | Boot/App 移植 | RL78_BOOT_APP_PORTING_GUIDE／sync_rl78_porting_guide.ps1 |
