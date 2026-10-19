@@ -75,6 +75,10 @@ flowchart TD
 
 #### C. 30 秒 inactivity、START、失敗與更新成功
 
+在 Tool 完成 Enter Boot 後，若停留在選檔或確認視窗而未開始更新，原有效 App 可能因 inactivity 到期而重新執行。
+此時先 `Discover Target` 取得目前模式；若為 App，再 `Enter Boot`，確認 Boot Ready 後執行 `Start Device Update`。
+操作圖集中於 [Device App 更新操作圖](https://released.github.io/slide_isp_tool_for_RL78/#device-update-example)。
+
 | 事件 | boot 的實際結果 |
 | --- | --- |
 | 原 app 有效、ENTER 後尚未接受 START | 連續30秒沒有符合底層接收條件的 CAN request，關閉已初始化的 FSL 後返回原 app |
