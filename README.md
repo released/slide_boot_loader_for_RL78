@@ -8,6 +8,7 @@
 F13 與 F24 各有獨立工程，概念流程使用 MCU CAN device 名稱；型號、位址與驅動差異列於工程表格。
 UART／I2C 範例的設定與來源集中於 [獨立範例頁](uart_i2c/)，內容為 `uart_i2c/index.md`。
 主頁保留原章節的 anchor 及跳轉入口。
+首頁模式導覽分為 Classical CAN（F13／F24）、CAN FD（F24）及 Custom Transfer 三種範例；僅提供工程及操作跳轉。
 
 ## 主題維護
 
@@ -17,6 +18,7 @@ UART／I2C 範例的設定與來源集中於 [獨立範例頁](uart_i2c/)，內�
 
 原稿位於 [Tool docs](https://github.com/released/simple_renesas_isp_tool/tree/main/docs)。
 同步腳本的主題歸屬由 `scripts/web_guide_sections.json` 定義：完整內容只保留在所屬頁面，其他頁面產生簡短跳轉連結。
+`index.md` 的 `DEVICE_MODE_NAV` 為本站首頁導覽，連到上述原稿所屬章節，不另放完整教學。
 
 | 本頁完整章節 | 原稿／同步腳本 |
 | --- | --- |

@@ -9,16 +9,20 @@ F13、F24 各自使用獨立工程，後續 MCU 可依相同流程加入。
 
 ## MCU CAN device
 
-| Device | 工程與說明 |
-| --- | --- |
-| F13 (MCU CAN device) | [Boot 啟動與更新狀態](#f13-boot-decision) |
-| F24 (MCU CAN device) | [Boot／App 工程配置](#f24-can-device) |
+<!-- DEVICE_MODE_NAV_BEGIN -->
+Classical CAN 的 F13／F24 共用 metadata、IRQ 與更新教學，硬體設定由各自工程章節說明。
+CAN FD 使用 F24 的獨立 Boot／App 與 Transfer 工程。
+
+| 分類 | 工程／範例 | 操作入口 |
+| --- | --- | --- |
+| Classical CAN：F13／F24 | [F13 Boot 啟動與更新](#f13-boot-decision)／[F24 工程配置與建置](#f24-can-device) | [App 更新](https://released.github.io/slide_isp_tool_for_RL78/#f13-device-update) |
+| CAN FD：F24 | [Boot／App 設定、timing、metadata、IRQ 與 Flash](#can-fd-device-engineering) | [CAN FD App 更新](https://released.github.io/slide_isp_tool_for_RL78/#can-fd-update) |
+| Custom Transfer | F13／F24 Classical CAN、F24 CAN FD | [三種範例、原始碼與通訊測試](https://released.github.io/slide_isp_tool_for_RL78/#custom-transfer) |
+<!-- DEVICE_MODE_NAV_END -->
 
 - [Metadata 與 IRQ 設定](#device-metadata-vector-workshop)
 - [Boot／App 移植](#boot-app-porting)
 - [Flash／metadata 每 byte 與 CAN 格式](#flash-metadata-can-reference)
-- [CAN FD device 工程](#can-fd-device-engineering)
-- [Custom Transfer 通訊驗證](https://released.github.io/slide_isp_tool_for_RL78/#custom-transfer)
 
 ## F13 (MCU CAN device)：Boot 啟動與更新
 

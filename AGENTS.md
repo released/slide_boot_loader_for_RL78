@@ -10,6 +10,9 @@ Keep its neutral sharing tone, current-state wording and source/evidence rules.
   future MCU ports. Project-specific rules stay here, not in /web root policy.
 - Edit the canonical Tool docs first; use their sync scripts and -CheckOnly.
 - Preserve stable anchors and use short links to ISP-owned topics.
+- The page-owned DEVICE_MODE_NAV groups F13/F24 Classical CAN together and
+  F24 CAN FD separately,plus Custom Transfer across all three examples;
+  link engineering/update/Transfer chapters,not copies.
 - Update affected PDFs; keep commands, byte values and safety gates unchanged
   during editorial changes. Do not rebuild firmware or bump the Tool version.
 - Never infer Git publication or hardware acceptance from local synchronization.
