@@ -17,6 +17,7 @@ F13、F24 各自使用獨立工程，後續 MCU 可依相同流程加入。
 - [Metadata 與 IRQ 設定](#device-metadata-vector-workshop)
 - [Boot／App 移植](#boot-app-porting)
 - [Flash／metadata 每 byte 與 CAN 格式](#flash-metadata-can-reference)
+- [CAN FD device 工程](#can-fd-device-engineering)
 - [Custom Transfer 通訊驗證](https://released.github.io/slide_isp_tool_for_RL78/#custom-transfer)
 
 ## F13 (MCU CAN device)：Boot 啟動與更新
@@ -1837,3 +1838,164 @@ BIN 的更新目的地、允許介面、Boot／IRQ ABI 與 Host Link 速度，�
 App 確認、metadata 差異表、階段進度、取消、報告與實板測試表集中於 ISP Tool。
 [閱讀完整章節](https://released.github.io/slide_isp_tool_for_RL78/#update-confirmation)
 <!-- UPDATE_EVIDENCE_END -->
+
+<!-- FD_UPDATE_BEGIN -->
+<a id="can-fd-update"></a>
+
+## CAN FD App 更新操作
+
+500K／2M、BRS、64-byte FD資料幀的Tool與Host操作集中於ISP Tool。
+[閱讀完整章節](https://released.github.io/slide_isp_tool_for_RL78/#can-fd-update)
+<!-- FD_UPDATE_END -->
+
+<!-- FD_DEVICE_BEGIN -->
+<a id="can-fd-device-engineering"></a>
+
+## MCU CAN FD device 工程設定
+
+F24 device 使用獨立 `RL78_F24_Boot_loader_CAN_FD` 與
+`RL78_F24_Boot_loader_CAN_FD_app` 工程，放在同一父目錄。
+App 引用相鄰 FD Boot 的 common／metadata 來源。
+App 發行與 IRQ 編輯沿用 [C header 工作流程](https://released.github.io/slide_boot_loader_for_RL78/#device-metadata-vector-workshop)。
+
+### 設定來源
+
+| 可編輯來源 | 作用／此範例值 |
+| --- | --- |
+| App `app_image_config.h` | 版本、build、target、role、允許更新介面、版本政策 |
+| App `app_irq_handlers.h` | App-local IRQ mapping；無 vect ISR |
+| Boot `image_metadata_config.h` | Flash／metadata格式／IRQ ABI／最低Boot相容契約 |
+| Boot `can_boot_config.h` | mode2、nominal mask4、data mask2及ID |
+| Boot `common/f24_device_config.h` | 實際40MHz CAN clock timing、FD模式、64-byte RXMB及中斷來源 |
+| Boot `boot_app_handoff.h` | owner Boot=AA／App=55、no-init RAM |
+| `image_metadata_profile.c` | 由獨立metadata parser比對的工程契約 |
+| `tools/device_common.ps1` | 讀取上述C headers、產生metadata |
+
+mode mask 的 bit1 表示 CAN FD；nominal mask 的 bit2 表示500K；data mask 的 bit1表示2M。
+這些值描述已編譯的設定，不會重新設定周邊。
+變更速率時，Boot／App 的實際 timing、metadata及Tool選項需一起對應。
+
+| Timing輸入 | Nominal | Data |
+| --- | --- | --- |
+| fCAN | 40MHz | 40MHz |
+| BRP register | 3 | 1 |
+| 實際divider | 4 | 2 |
+| TSEG1／TSEG2／SJW（時間單位數） | 15／4／1 | 7／2／1 |
+| 計算 | 40M/(4×(1+15+4))=500K | 40M/(2×(1+7+2))=2M |
+| Sample point | 80% | 80% |
+
+preinclude 在SC header之後覆寫CLOE=0、FDOE=1與RXMB RMPLS=7（64bytes）。
+SC重新產生後仍需執行工程prepare及clean build，核對實際linked產物。
+硬體來源見 [Renesas F24 Target Board](https://www.renesas.com/en/design-resources/boards-kits/rtk7f124fpc01000bj)；
+4MHz resonator與周邊接線依實際板本確認。
+
+<a id="can-fd-device-rx"></a>
+
+### 接收與中斷
+
+Boot 與 App 各自連結 `common/device_can.c`，使用精簡 RXMB0 ISR 與 8 筆 RAM queue。
+主迴圈負責命令、metadata、CRC 及 Flash 流程；ISR 只核對幀的型態／長度並搬移資料，不解析更新命令、不輸出 UART，也不等待 TX。
+主迴圈不直接輪詢 RXMB0；TX 完成狀態仍使用有上限的輪詢。
+
+| 項目 | 設定與來源 |
+| --- | --- |
+| RXMB0 | `CAN_CFG_NRXMB=1`、`CAN_CFG_RMPLS=7`；RMNB=0x0701，保存完整 64-byte payload |
+| 接收規則 | Boot 接收 standard 0x700 與 0x720；App 接收 0x700；exact mask 0x7FF，只存 RXMB0 |
+| 硬體中斷 | RMIEC bit0=1；初始化完成後 RCANGRVCMK=0 |
+| Driver ISR 設定 | `CAN_CFG_INTRCANGRVC_USE=0` 只停用 driver 自帶的 vect ISR；硬體 RXMB 中斷由 `Device_CanRxIsr` 處理 |
+| 接收 FIFO | RF0／RF1 關閉，不與 RXMB0 重複存放 |
+| 向量來源 | App `iodefine.h` 的 `INTRCANGRVC=0x004C`，對應此 MCU 的硬體手冊中斷表 |
+| Boot owner=AA | Boot 的實體 vector 0x4C → 完整 dispatcher → Boot `Device_CanRxIsr` |
+| App owner=55 | 同一實體 vector → App table 的 0x2098 槽位 → App `Device_CanRxIsr` |
+| App 編輯來源 | `app_irq_handlers.h` 的 `X(0x4C, Device_CanRxIsr)`；函式使用 global、無 `vect=` 的 interrupt pragma，以 RETI 返回 |
+
+App 槽位位址為 `IMAGE_APPLICATION_START + physical_vector × 2`；此例為 `0x2000 + 0x4C × 2 = 0x2098`。
+Boot 與 App 是不同映像，可以使用相同 ISR 函式名稱。
+建置會檢查完整向量、實際 CAN ISR 槽位、RETI 及實體 vector 所有權。
+
+queue 使用 9 個儲存槽提供 8 筆容量；producer 發布 head、consumer 釋放 tail 都在完成複製後進行。
+queue 滿時丟棄新到訊息，保留原有順序。
+ISR 確認 RMND 後讀取 RXMB0，保存／還原 CAN RAM window；讀取期間若再次收到訊息，該次副本不入列。
+
+| 診斷 | 意義與取得方式 |
+| --- | --- |
+| `Device_CanRxFaults()` bit0 | queue 滿載或 CAN 尚未 ready 時的丟棄 |
+| bit1 | 讀取 RXMB0 期間發生覆寫 |
+| bit2 | 不符合 standard data／FD+BRS／支援長度的幀 |
+| `Device_CanRxDrops()` | 丟棄觀察計數，累計到 255 後飽和；不是線上所有遺失幀的精確數量 |
+| 觀察位置 | App 在 UART counter 旁顯示非零 faults／drops；Boot 可由 debugger 查看 `g_rx_faults`／`g_device_rx_drops`，位址由當次 map 查詢 |
+| 重設範圍 | 上述值只在 CAN 初始化時歸零；正常一問一答應保持 0 |
+
+### 更新區塊與 Flash 交接
+
+一個區塊的 BEGIN8、DATA64、COMMIT8 可先入 queue，再由 Boot 主迴圈依序處理。
+metadata、分區、版本政策、重送序號與區塊 CRC 檢查完成後，才允許 Flash 寫入。
+Boot 的回覆由 HAL 固定為 standard response ID、FD+BRS、8-byte payload；不從收到的幀複製回覆路由或長度。
+
+```mermaid
+flowchart TD
+    BUS["MCU CAN device / RXMB0 interrupt"] --> QUEUE["RAM queue / BEGIN8 + DATA64 + COMMIT8"]
+    QUEUE --> MAIN["Boot 主迴圈依序取出"]
+    MAIN --> GATE{"metadata / 範圍 / 序號 / CRC 通過？"}
+    GATE -->|否| REJECT["拒絕寫入 / 回覆狀態"]
+    GATE -->|是| RAM["DI / RAM-only Flash call chain"]
+    RAM --> FLASH["必要 erase / write / 有上限完成等待"]
+    FLASH --> READ["還原可讀模式 / EI"]
+    READ --> ACK["COMMIT ACK / Host 才傳下一區塊"]
+```
+
+Flash 忙碌期間，RFD 呼叫鏈及必要資料位於 RAM，全域中斷關閉；恢復可讀模式後才重新開啟中斷。
+8 筆 RAM queue 不代表 DI 期間硬體可額外保存 8 幀；RXMB0 仍只有一筆硬體容量。
+Host 在 COMMIT ACK 前等待，不連續送下一個區塊；逾時與斷線結果保持有限重送與明確失敗，不以自動重置掩蓋。
+
+
+### Flash與建置
+
+`RL78_F24_Boot_loader_CAN_FD`、`RL78_F24_Boot_loader_CAN_FD_app` 與 `RL78_F24_CAN_FD_Transfer`
+保持同層及既有名稱；App／Transfer 都需要 Boot checkout 的共用來源與 PowerShell helpers。
+詳細相依與生成路徑檢查見 [工程發佈說明](https://github.com/released/simple_renesas_isp_tool/blob/main/docs/GITHUB_PUBLISH_zh-TW.md#fd-publication-layout)。
+SC 重新生成後使用同一建置入口；`-CheckOnly` 檢查相對路徑及生成檔狀態。
+
+| 絕對address | 用途 |
+| --- | --- |
+| 0x0000..0x1FFF | 8KiB Boot與實體vectors |
+| 0x2000..0x20FF | 完整64-slot App跳轉表 |
+| 0x2100..0x217F |128-byte metadata core |
+| 0x2180..0x21FF |128-byte reservedFF |
+| 0x2200起 | App startup／code |
+| App start + image_size -4 | 全映像 CRC32 tail |
+| 0x3FC00..0x3FFFF | 保護區 |
+
+在 FD Boot 目錄執行：
+
+```powershell
+# Clean rebuild only the FD Boot/App pair.
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\build.ps1 -Kind all
+# App-only release changes.
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\build.ps1 -Kind app
+# Artifact, metadata, IRQ, ROM/RAM and CRC guards.
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\test.ps1
+```
+
+MCU建置使用CS+ CC-RL、Windows PowerShell5.1／.NET，不需Python。
+封裝維持至少512-byte Boot餘裕、完整IRQ表、RAM-only RFD與分區界線；
+App-only建置不改Boot；操作見 [CAN FD更新](https://released.github.io/slide_isp_tool_for_RL78/#can-fd-update)。
+
+| 產物 | 使用方式 |
+| --- | --- |
+| Boot `DefaultBuild/boot0000_1FFF.hex` | 燒錄器安裝 FD Boot |
+| App `DefaultBuild/flash_app_variable_CRC.hex` | 燒錄器安裝含metadata／CRC的App |
+| App `boot_app.hex` | 合併Boot/App初裝 |
+| App `DefaultBuild/RL78_F24_Boot_loader_CAN_FD_app_update.bin` | Tool CAN FD更新 |
+| App `DefaultBuild/app_build_report.html` | 實際BIN metadata／CRC／hash／IRQ報告 |
+
+<!-- FD_DEVICE_END -->
+
+<!-- FD_TRANSFER_BEGIN -->
+<a id="can-fd-custom-transfer"></a>
+
+## CAN FD Custom Transfer 通訊測試
+
+CAN FD Discover、8-byte命令、64-byte ECHO、能力與操作核對集中於ISP Tool。
+[閱讀完整章節](https://released.github.io/slide_isp_tool_for_RL78/#can-fd-custom-transfer)
+<!-- FD_TRANSFER_END -->
