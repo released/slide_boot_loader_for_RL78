@@ -25,9 +25,11 @@ UART／I2C 範例的設定與來源集中於 [獨立範例頁](uart_i2c/)，內�
 | CAN FD device timing／工程／產物 | CAN_FD_UPDATE 的 FD_DEVICE／sync_can_fd.ps1 |
 | Device Metadata／App IRQ C header 編輯與建置 | DEVICE_METADATA_VECTOR_WORKSHOP／sync_device_workshop.ps1 |
 | Device CAN 速率／Boot-App ISR 所有權／App counter | 同一 workshop 的 device-can-bitrate／device-irq-ownership／device-app-runtime-log |
+| App BIN 大小與更新耗時實測 | 同一 workshop 的 device-update-timing；ISP 頁僅放跳轉連結 |
 | F13 Boot decision／ENTER／逾時 | F13_BOOT_UPDATE_FLOW／sync_f13_boot_decision.ps1 |
 | F24 device 工程 | F24_CAN_DEVICE_DESIGN／sync_f24_device_design.ps1 |
 | Boot/App 移植 | RL78_BOOT_APP_PORTING_GUIDE／sync_rl78_porting_guide.ps1 |
+| Boot 安裝／debug monitor／119、247 KiB 與滿容量限制 | 同一 porting guide 的 device-debug-monitor；Tool operation 僅放提醒與跳轉 |
 | Flash／metadata 全部 byte／CAN frame | FLASH_METADATA_CAN_FRAME_GUIDE／sync_flash_reference.ps1 |
 
 Tool 操作、Custom Transfer、CAN 更新逐層導讀、Host App 工程、下載及更新政策集中於

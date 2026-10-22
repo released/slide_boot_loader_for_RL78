@@ -5,7 +5,7 @@
 # RL78 Bootloader 實作指南
 
 本頁整理 MCU CAN device 的 Boot／App 工程、metadata、向量與啟動流程。
-F13、F24 各自使用獨立工程，後續 MCU 可依相同流程加入。
+F13、F24 各自使用獨立工程，沿用 C header 編輯、產生與映像驗證流程。
 
 ## MCU CAN device
 
@@ -17,10 +17,11 @@ CAN FD 使用 F24 的獨立 Boot／App 與 Transfer 工程。
 | --- | --- | --- |
 | Classical CAN：F13／F24 | [F13 Boot 啟動與更新](#f13-boot-decision)／[F24 工程配置與建置](#f24-can-device) | [App 更新](https://released.github.io/slide_isp_tool_for_RL78/#f13-device-update) |
 | CAN FD：F24 | [Boot／App 設定、timing、metadata、IRQ 與 Flash](#can-fd-device-engineering) | [CAN FD App 更新](https://released.github.io/slide_isp_tool_for_RL78/#can-fd-update) |
-| Custom Transfer | F13／F24 Classical CAN、F24 CAN FD | [三種範例、原始碼與通訊測試](https://released.github.io/slide_isp_tool_for_RL78/#custom-transfer) |
+| Custom Transfer | F13／F24 Classical CAN；F24 CAN FD | [範例分類與通訊測試](https://released.github.io/slide_isp_tool_for_RL78/#custom-transfer) |
 <!-- DEVICE_MODE_NAV_END -->
 
 - [Metadata 與 IRQ 設定](#device-metadata-vector-workshop)
+- [App BIN 更新耗時參考](#device-update-timing)
 - [Boot／App 移植](#boot-app-porting)
 - [Flash／metadata 每 byte 與 CAN 格式](#flash-metadata-can-reference)
 
@@ -40,9 +41,9 @@ CAN FD 使用 F24 的獨立 Boot／App 與 Transfer 工程。
 | Metadata header | `0x2100` magic=`0x004E4143`；format6、core length128、flags=`0x0003`；protocol ID1／version5、checksum type1（CRC32）、target=`0xF13B`、Classical CAN／standard ID 格式全部匹配 |
 | Metadata reserved | 整區256 bytes 中後128 bytes（`0x2180..0x21FF`）全部為 `0xFF` |
 | Metadata policy | UPD1 version3／size32、DEVICE_APP／CAN、F1V1 IRQ ABI；minimum Boot 不高於目前 Boot；`0x74..0x77` version control 為0或1，UART baud 與其餘保留欄位為0 |
-| Image size | manifest size 含尾端 CRC4 bytes，介於516與122880 bytes，且4-byte aligned |
+| Image size | manifest size 含尾端 CRC4 bytes，介於516與121856 bytes，且4-byte aligned |
 | App version | `0x00MMmmpp`；啟動時驗證欄位有效。更新版本比較在 START 執行，依目前有效 App 的 version control 判斷；build 不參與比較 |
-| Flash layout | app start=`0x2000`、capacity=`0x1E000`、code Flash=`0x20000`、boot reserve=`0x2000`、erase=`0x400`、minimum=`0x204`，均等於 boot 編譯設定 |
+| Flash layout | app start=`0x2000`、capacity=`0x1DC00`、code Flash=`0x20000`、boot reserve=`0x2000`、erase=`0x400`、minimum=`0x204`，均等於 boot 編譯設定 |
 | CAN contract | nominal mask=`0x04`（500K）、data mask=0、request ID=`0x700`、response ID=`0x701`，均等於 boot 編譯設定 |
 | CRC32 | 對 `[app_start, app_start + image_size - 4)` 計算 CRC32，等於該 image 最後4 bytes 的 LE32 stored CRC |
 
@@ -230,7 +231,7 @@ CAN 波形量測、250K／1M、其他 IRQ、長時間壓力、取消、斷線及
 | MCU／Flash driver | R5F10BMG／FSL | R7F124FPJ5xFB／RFD，忙碌期間必要程式在 RAM |
 | Target／IRQ ABI | `0xF13B`／F1V1 | `0xF24B`／F2V1 |
 | Boot／App 起點 | 8 KiB／`0x2000` | 8 KiB／`0x2000` |
-| App capacity | `0x1E000`，120 KiB | `0x3DC00`，247 KiB；最後 1 KiB 保護 |
+| App capacity | `0x1DC00`，119 KiB；最後 1 KiB 保護 | `0x3DC00`，247 KiB；最後 1 KiB 保護 |
 | 更新契約 | App image format 6、CAN protocol 5、Classical 500K | 同樣格式／協定，但身分與 geometry 不同 |
 | 版本／build 編輯來源 | App `app_image_config.h` | App `app_image_config.h` |
 | IRQ 編輯來源 | 各 App 的 `app_irq_handlers.h`＋已註冊 ISR C 檔 | 同左 |
@@ -477,11 +478,14 @@ flowchart TD
 本例使用兩個 device header 都定義的 `INTP1 = 0x0A`。
 其他 IRQ 的 vector 位址依各 MCU 的 device header 決定。
 Vector 位址是**實體 vector byte address**，不是 IRQ 序號、App slot 或周邊 pin。
-兩者的 App slot 計算為 `0x2000 + 0x0A × 2 = 0x2014`，即 BIN offset `0x14`。
+本例對應 App slot `0x2014`，即 BIN offset `0x14`；換算方式見 [槽位位址](#device-irq-slot)。
 
 <a id="device-irq-ownership"></a>
 
-#### C0. Boot／App 中斷所有權與函式名稱
+#### C0. Boot／App 中斷所有權與向量轉送
+
+本節的 RL78 工程由固定 Boot 持有實體 vector，再由軟體 dispatcher 轉送到 App。
+App 不寫入實體 vector，而是在固定位置提供跳轉表；表內的 `BR` 指向該 App 的實際 ISR。
 
 Boot 與 App 是分開編譯、連結的映像。兩份映像可以使用相同 C ISR 名稱，
 也可以各自命名；函式名稱不決定硬體 vector 的所有權。
@@ -494,8 +498,8 @@ Boot 與 App 是分開編譯、連結的映像。兩份映像可以使用相同 
 | ISR 名稱 | 在 Boot 映像內解析為 Boot 程式位址 | 在 App 映像內解析為 App 程式位址；可與 Boot 同名 |
 | 中斷啟用 | Boot 初始化及啟用自己需要的來源 | 交接後由 App 初始化、清 pending flag、設定 priority／mask，再啟用 |
 
-目前兩份 Boot 都使用 1 ms timer，CAN 收發與診斷 UART 採 polling。
-Boot 使用過某個 timer，不會使該周邊永久保留給 Boot。
+Classical CAN 範例的兩份 Boot 都使用 1 ms timer，CAN 收發與診斷 UART 採 polling。
+CAN FD 的接收中斷配置見 [接收與中斷](https://released.github.io/slide_boot_loader_for_RL78/#can-fd-device-rx)。
 
 | Device | 實體 vector／來源 | Boot ISR | App ISR |
 | --- | --- | --- | --- |
@@ -503,20 +507,149 @@ Boot 使用過某個 timer，不會使該周邊永久保留給 Boot。
 | F24 | `0x2E`／INTTM01 | `Device_TimerIsr` | `Device_TimerIsr`，兩個專案各自編譯 |
 
 App handler 使用 global、非 static、無 `vect=` 的 interrupt pragma，並由編譯器產生 RETI。
-一般 App 新增或改名 ISR 時，修改該 App 的 C 來源、MTPJ 與 `app_irq_handlers.h` 即可。
-在 MCU、分區與 IRQ ABI 不變時，不因 Boot 已使用同一 vector 或同名 ISR 而重建 Boot。
-新增來源的操作接續 [C1](#device-app-irq)；實體地址來源與產表結果見下方 C2～C4。
+新增一般 IRQ 時，修改 App ISR、MTPJ 來源登錄及 `app_irq_handlers.h`，重新產表並建置 App；
+App 同時完成周邊初始化、priority／mask 設定與中斷旗標處理。
+在 MCU、分區與 IRQ ABI 不變時，App 使用不同 IRQ 或與 Boot 同名的 ISR，不需修改或重燒 Boot。
+新增來源的操作接續 [C1](#device-app-irq-source)；實體地址來源與產表結果見下方 C2～C4。
 
 ```mermaid
 flowchart TD
-    IRQ["MCU CAN device 普通 IRQ"] --> VECTOR["Boot 實體 vector"]
-    VECTOR --> OWNER{"IRQ owner"}
+    IRQ["MCU CAN device / CPU 接受一般 IRQ"] --> VECTOR["Boot 實體 vector"]
+    VECTOR --> DISPATCH["Boot 固定 stub / dispatcher"]
+    DISPATCH --> OWNER{"IRQ owner"}
     OWNER -->|"AA"| BOOT["Boot handler／default RETI"]
-    OWNER -->|"55"| SLOT["App slot：app start + vector × 2"]
+    OWNER -->|"55"| SLOT["App 固定跳轉槽位 / BR"]
     SLOT --> APP["App ISR → RETI"]
     BOOT --> RETURN["回到被中斷的執行點"]
     APP --> RETURN
 ```
+
+一般 IRQ 的轉送槽位涵蓋 `0x04..0x7C`，未使用來源保持 mask。
+Reset 由 Boot startup 接手，再經驗證及交接進入 App startup。
+保留的 `0x02` 與實體 BRK `0x7E` 不走一般 IRQ 轉送；App table 的 BRK 保留槽使用 RETB，與一般 ISR 的 RETI 區分。
+
+<a id="device-irq-slot"></a>
+
+##### 槽位位址與實際 ISR
+
+RL78 的實體 vector 每項為 16-bit 入口位址，直接目的地位於低 64 KiB。
+本架構將入口指向 Boot stub，再以 App table 的 far `BR` 連到實際 ISR，將硬體入口與 ISR 位置解耦。
+硬體入口的位址寬度與跳轉表用途可對照 [Renesas RL78 ISR 說明](https://www.renesas.com/en/document/apn/rl78-dual-image-bootloader-example)。
+
+實體 vector 每格 2 bytes，App table 為 64 格、每格 4-byte `BR`，共 256 bytes。
+以實體 vector 的 byte address 換算：
+
+```text
+App slot = App start + (physical vector byte address / 2) * 4
+         = App start + physical vector byte address * 2
+
+0x2000 + (0x002E / 2) * 4 = 0x205C
+```
+
+以下是 F24 device timer 的具體例子；共通 IRQ 路徑使用上方流程。
+
+| 步驟 | 位址／動作 | 對應位置 |
+| --- | --- | --- |
+| CPU 讀取實體 vector | `0x002E`，進入 Boot 固定 stub／dispatcher | App `iodefine.h` 的 `INTTM01`；Boot `f24_boot_vectors.asm` |
+| owner 選擇 App | `0x55`，轉送至 App slot `0x205C` | Boot dispatcher；槽位為 BIN offset `0x5C` |
+| 跳轉至 ISR | 該 slot 的 `BR !!_Device_TimerIsr` | App `app_irq_table.inc`；由 `X(0x2E, Device_TimerIsr)` 產生 |
+| ISR 返回 | `Device_TimerIsr` 執行後以 RETI 返回 | App 的 `common/device_board.c` |
+
+`0x205C` 是跳轉槽位，不是 ISR 本體的固定程式位址。
+產生器與 linker 依 App 的 mapping 及實際連結結果填入 `BR` 目的地，無需手動指定 ISR 位址。
+
+<a id="device-irq-dispatch-cost"></a>
+
+##### 轉送延遲、CPU 負載與 stack
+
+RL78 每次**實際接受、並進入這套一般 IRQ 入口**時，都會執行 stub／dispatcher。
+這項成本會出現在 timer、外部中斷或 CAN RX 等已啟用的來源，不只發生在 Boot→App 交接。
+未啟用的 IRQ 不執行 dispatcher；同一來源的多個事件若合併為一次 pending，也不是逐事件各執行一次。
+相較實體 vector 直達相同 ISR，額外工作包含 CALL、PUSH／POP、owner／slot 計算及 App BR。
+
+時間以 **CPU clock** 換算，不是 CAN bitrate 或 UART baud rate。
+32 MHz 的一個 clock 為31.25 ns，40 MHz 為25 ns；一條指令可能需要多個 clocks。
+完整轉送路徑累計後，本工程的 RL78 額外延遲約為 **1 µs 等級**。
+
+以下是來源組語與原廠指令表的**名義時脈估算，尚非實板量測或最差延遲保證**。
+條件為 RL78-S3、指令在 Code Flash 執行、stack／owner 在 RAM，採用
+[RL78 Software Manual](https://www.renesas.com/en/document/mah/rl78-family-users-manual-software-rev230)
+§5.5.3 Table5-7 的對應 clocks；ROM 資料讀取使用該表的 Code Flash 欄。
+來源為各 Boot 的 `f13_boot_vectors.asm`／`f24_boot_vectors.asm` 與 App 的 `app_irq_table.inc`。
+
+owner=`0x55` 的 App 路徑在三個 RL78 工程相同，執行22條指令：
+
+| 階段 | 計算內容 | CPU clocks |
+| --- | --- | --- |
+| Boot stub | `CALL !dispatcher` | 3 |
+| 暫存器保存 | 三次 PUSH，加上 `MOV A,ES` | 4 |
+| 讀取 vector、換算 slot | 設定 ES、讀取 return address、讀取 ROM literal、換算 App slot | 12 |
+| owner 分流 | RAM owner 的 CMP，加上成立的 BZ | 5 |
+| 還原並進入 slot | 寫回 return address、POP／還原 ES、RET | 11 |
+| App slot | `BR !!App_ISR` | 3 |
+| 合計 | `3 + 4 + 12 + 5 + 11 + 3` | **38** |
+
+其中 `MOV A,ES:[HL]` 讀取 Code Flash 中的 vector literal，計為5 clocks；
+成立的 BZ 為4 clocks。`.DB` 是供讀取的資料，不是執行指令。
+以上不包含 CPU 原本的硬體 IRQ 進入、編譯器 ISR 前言／結尾、ISR 本體及最後的 RETI。
+App ISR 直接以 RETI 回到被中斷的位置，不會再回 Boot dispatcher 執行第二次轉送。
+
+```text
+Extra dispatch time (us) = dispatch CPU clocks / CPU frequency (MHz)
+```
+
+| Device／執行狀態 | 採用的路徑 | 名義 clocks | 額外轉送時間估算 |
+| --- | --- | --- | --- |
+| F13，CPU32 MHz | App owner | 38 | 1.1875 µs（1187.5 ns） |
+| F24 Classical／FD，CPU40 MHz | App owner | 38 | 0.950 µs（950 ns） |
+| F13，CPU32 MHz | Boot owner，timer | 43 | 1.34375 µs |
+| F24 Classical／FD，CPU40 MHz | Boot owner，timer | 40 | 1.000 µs |
+| F24 FD，CPU40 MHz | Boot owner，CAN RX | 45 | 1.125 µs |
+
+這些路徑由 owner 與來源決定，不是逐一搜尋全部 IRQ。
+單純增加 App IRQ mapping 數量、App BIN 長度或 metadata 內容，不會讓每次轉送多跑一輪 table 搜尋。
+更改 dispatcher、MCU、時脈、記憶體配置或等待條件時，重新依組譯結果與量測核對。
+
+**範例：F24 App 的 `Device_TimerIsr`。**
+timer 的實體 vector `0x2E` 經 App slot `0x205C` 進入 ISR，路徑見 [槽位例子](#device-irq-slot)。
+目前1 ms tick 為每秒1000次 IRQ，僅轉送部分約使用每秒0.95 ms CPU，即0.095%。
+若同一類 IRQ 改成較高頻率，估算如下；這些頻率是負載試算，不代表已設定或測過。
+
+| 實際 IRQ 進入頻率 | 平均間隔 | 每秒額外轉送時間 | 僅 dispatch 的 CPU 比例 |
+| --- | --- | --- | --- |
+| 1000次／秒 | 1 ms | 0.95 ms | 0.095% |
+| 10000次／秒 | 100 µs | 9.5 ms | 0.95% |
+| 100000次／秒 | 10 µs | 95 ms | 9.5% |
+
+CPU 比例為 `IRQ entries/second × extra dispatch seconds × 100%`。
+例如 ISR 的前言／本體／結尾（含 RETI）合計另需2 µs，1 ms tick 的合計軟體時間約為2.95 µs；
+硬體 IRQ 接受時間與其他阻塞仍另外計算。
+CAN FIFO 一次 IRQ 可處理多幀，估算時採用實際 IRQ 次數，不直接以 CAN frame 數代入。
+
+**反應延遲與量測。**
+外部事件到 App ISR 動作的時間，包含 IRQ mask／高優先來源等待、當前指令完成、硬體 IRQ 接受、dispatcher、
+編譯器保存與 ISR 在該動作之前的指令。
+dispatcher 期間沒有開啟 IE，因此這段時間也納入中斷可接受時機的預算。
+固定路徑的名義成本與系統阻塞造成的 jitter 分別記錄。
+
+可在獨立量測工程使用同一個外部週期訊號，於 ISR 第一個可觀察位置切換 GPIO，
+比較「實體 vector 直達相同 ISR」與「Boot dispatcher→App slot→相同 ISR」兩組波形。
+兩組使用相同 CPU clock、priority、GPIO 動作及負載，記錄多次樣本的最小／最大值。
+事件到 GPIO 是整體反應延遲；兩組差值近似額外轉送成本，另核對 GPIO、前言與取指配置的差異。
+只量 ISR 內 GPIO pulse 的寬度，涵蓋的是 pulse 之間的程式，不包含進入 ISR 前的 dispatcher。
+
+**Stack。**
+轉送階段額外暫用10 bytes：CALL return address 4 bytes，加三次 PUSH 共6 bytes。
+這10 bytes 在進入 App ISR 前已釋放；硬體 IRQ frame、ISR 自身保存／區域變數與巢狀 IRQ 另計，
+整體 stack 依各執行階段的最大使用量核對。
+
+##### 移植範圍
+
+此轉送架構不依賴硬體 boot swap，可作為其他 RL78 工程的移植基準。
+共用的是設計與產表流程；各 MCU 的向量、Flash、startup 與 RAM 配置仍需建立對應的 Boot／App。
+跨 MCU 與 Flash 擦寫期間的中斷條件集中於 [移植核對表](https://released.github.io/slide_boot_loader_for_RL78/#device-irq-porting)。
+
+<a id="device-app-irq-source"></a>
 
 #### C1. 加入一般 ISR，並在 App MTPJ 註冊來源
 
@@ -537,8 +670,7 @@ void __near app_aux_irq(void)
 }
 ```
 
-ISR 使用 global、非 static、無 `vect=` 的 interrupt 函式，由編譯器產生 RETI。
-實體 `.VECTOR` 與 `-VECTN` 由 Boot 管理，App 使用固定轉送表連到 ISR。
+ISR 宣告與返回規則沿用 [中斷所有權](#device-irq-ownership)。
 啟用中斷之前，另依實際板子完成 pin／edge／priority／pending flag／mask 初始化；
 範例未提供可直接接線使用的 INTP1 pin 設定。未用 IRQ 應保持 mask。
 SC／Code Generator 重產後，核對 ISR pragma 並移除 App 的 `vect=`，保留 Boot 的實體向量所有權。
@@ -781,6 +913,141 @@ F24 device 的 hash 命令使用 `RL78_F24_Boot_loader_CAN_app_update.bin`。
 編譯摘要不連接 MCU，不代表 Flash 已寫入或 App 已啟動。
 Tool 的更新報告也不取代編譯產物檢查；板上啟動與 IRQ 行為另外依 [驗證步驟](#device-app-validation) 核對。
 
+<a id="device-test-images"></a>
+
+#### 由現有 App BIN 產生 FF 填充測試映像
+
+F13 Classical CAN、F24 Classical CAN 與 F24 CAN FD 的 App 根目錄皆提供
+`generate_test_bins.bat`／`generate_test_bins.ps1`。
+先完成一般 App 建置，再雙擊 batch，或在該 App 根目錄執行：
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\generate_test_bins.ps1
+```
+
+腳本使用 Windows PowerShell／.NET 及相鄰配對 Boot 的 `app_config.ps1`，
+讀取 `DefaultBuild/*_update.bin`，不重新編譯或修改 Boot／App 原始碼。
+來源的 metadata、CRC、向量範圍與 App C header 身分先通過檢查，才建立測試檔。
+
+| 產物／處理 | 內容 |
+| --- | --- |
+| `test_bins/<batch>/*.bin` | 每次建立新批次；檔名同時標示 Boot＋App 的 Flash 級距與實際 App BIN 大小 |
+| 預設 Flash 級距 | 16／32／64／128／256／512 KiB；扣除來源 metadata 的 Boot reserve，並限制於 App capacity |
+| `0xFF` 填充 | 保留原本可執行 App 與向量表；從原 CRC 位置填到新 CRC 前，不截短程式 |
+| 長度與 CRC | 更新 BIN `0x118..0x11B` 的 image_size；最後 4 bytes 為重新計算的 little-endian CRC32 |
+| `manifest.csv` | 實際 bytes、CRC、SHA-256、來源雜湊、版本、build、CAN mode 與填充值 |
+| `skipped.csv` | 說明超出實體 Flash 或現有 App 放不下的級距 |
+
+1 KiB 為 1024 bytes。F13 App 上限 119 KiB；F24 兩種 CAN 模式均為 247 KiB，保留末端 1 KiB。
+需要完整 120／248 KiB 時，工程設定與 RFP 安裝限制見 [Flash 尾端保護的重要事項](https://released.github.io/slide_boot_loader_for_RL78/#device-debug-monitor)。
+既有 App 若變大，放不下的級距會略過；其他有效檔案仍可產生。
+輸出目錄由 Git 排除，腳本隨專案分享，來源 App 更新後可再次產生對應測試檔。
+
+版本、build、minimum Boot 與更新政策沿用來源，Tool 仍依板上資訊執行原有檢查。
+測試檔依其 CAN mode 使用既有 [Device 更新操作](https://released.github.io/slide_isp_tool_for_RL78/#mcu-can-device)，
+實際結果保留在 [Tool JSON 更新報告](https://released.github.io/slide_isp_tool_for_RL78/#update-confirmation)。
+`0xFF` 填充描述這一種資料內容；離線檢查不代表實板更新或任意資料的寫入效能已驗證。
+
+<a id="device-update-timing"></a>
+
+#### App BIN 更新耗時參考
+
+以下為單次實板更新的粗略等待時間參考，以 Tool 報告的 `elapsed_ms` 換算為秒，顯示至小數一位。
+總時間包含更新流程的檢查、傳輸與 Flash 擦寫、END CRC、App 啟動確認及收尾，不是純 Flash 寫入速度。
+實際時間也會受 Host Link UART、電腦與通訊狀態影響。
+
+Classical CAN 使用 **500 kbit/s**。
+CAN FD 欄位使用 **nominal 500 kbit/s／data 2 Mbit/s／BRS 開啟**，不是全程以 500 kbit/s 傳輸。
+
+| App BIN | F13 device：Classical CAN 500K | F24 device：Classical CAN 500K | F24 device：CAN FD 500K／2M、BRS |
+| --- | --- | --- | --- |
+| 原始 App（未填充） | 20,308 bytes／— | 4,224 bytes／約 5.2 秒 | 4,756 bytes／約 5.5 秒 |
+| 8 KiB（8,192 bytes） | 不適用 | 約 7.3 秒 | 約 7.2 秒 |
+| 24 KiB（24,576 bytes） | 約 15.8 秒 | 約 15.6 秒 | 約 15.6 秒 |
+| 56 KiB（57,344 bytes） | 約 32.3 秒 | 約 32.2 秒 | 約 32.2 秒 |
+| 119 KiB（121,856 bytes） | 約 65.8 秒 | — | — |
+| 120 KiB（122,880 bytes） | 不適用 | 約 65.5 秒 | 約 65.5 秒 |
+| 247 KiB（252,928 bytes） | 不適用 | 約 136.2 秒 | 約 134.2 秒 |
+
+「—」表示沒有該欄對應的量測資料，不代表更新失敗；原始 App 列分別列出 BIN 大小與已有的量測時間。
+「不適用」表示測試映像小於來源 App，或超過目前預設 App 容量。
+各列均指實際 App BIN 長度，包含向量表、metadata、程式／填充與 CRC；1 KiB＝1024 bytes。
+
+##### F13 量測條件與來源
+
+| 項目 | 本表使用的實測條件 |
+| --- | --- |
+| 日期／MCU | 2026-10-22／RL78/F13 R5F10BMG |
+| Host Link UART／CAN | 115200 baud／Classical CAN 500 kbit/s |
+| Detailed trace | 關閉 |
+| Tool／Host firmware | 0.1.0.0097／1.7.0，Host build 20261019 |
+| Device Boot／App | Boot 1.7.2、build 20261022／App 1.6.1、build 20261017 |
+| 測試映像內容 | 由原始 App BIN 延伸，以 `0xFF` 填充並更新長度與 CRC32 |
+| 更新結果 | 三份均 PASS，END CRC 通過、APP_READY 與 live image 比對通過 |
+| 重試／已記錄的 Host 錯誤 | 三份 `link_retries=0`；UART overflow、CAN lost／warning／passive／bus-off／recovery／TX failure 差值均為 0 |
+
+來源為 Tool 的 JSON／HTML 更新報告；下表報告識別前加 `update_20261022_`，副檔名為 `.json`／`.html`。
+對應 Log 為 `firmware_upgrade_tool_20261022_172301.log`。
+
+| 報告識別 | App BIN | elapsed_ms | Image CRC32 |
+| --- | --- | --- | --- |
+| `092335_621_54044_695182765_1` | 24 KiB | 15845 | `0xCA0DE29D` |
+| `092427_590_54044_695234734_2` | 56 KiB | 32281 | `0x8BF223B3` |
+| `092553_622_54044_695320765_3` | 119 KiB | 65793 | `0x7A2A9624` |
+
+##### F24 Classical CAN 量測條件與來源
+
+| 項目 | 本表使用的實測條件 |
+| --- | --- |
+| 日期／MCU | 2026-10-22／RL78/F24 R7F124FPJ5xFB |
+| Host Link UART／CAN | 115200 baud／Classical CAN 500 kbit/s |
+| 逐幀記錄 | 對應 Log 未包含 `TRACE UART`／`TRACE CAN` 記錄 |
+| Tool／Host firmware | 0.1.0.0098／1.7.0，Host build 20261019 |
+| Device Boot／App | Boot 1.1.1、build 20261022／App 1.0.3、build 20261019 |
+| 測試映像內容 | 原始 App，以及由其延伸、以 `0xFF` 填充並更新長度與 CRC32 的測試 BIN |
+| 更新完成條件 | 六次均完成 END CRC、APP_READY／live image 比對及 CAN_STOP 確認 |
+
+來源為 Tool 的 JSON／HTML 更新報告；下表報告識別前加 `update_20261022_`，副檔名為 `.json`／`.html`。
+對應 Log 為 `firmware_upgrade_tool_20261022_180801.log`；表格列出整次操作的實際耗時，診斷細節保留於原始報告。
+
+| 報告識別 | App BIN | elapsed_ms | Image CRC32 |
+| --- | --- | --- | --- |
+| `100929_089_55528_697936171_1` | 原始 App，4,224 bytes | 5222 | `0x4837111E` |
+| `101010_155_55528_697977234_2` | 8 KiB | 7272 | `0x04D5ED74` |
+| `101047_098_55528_698014187_3` | 24 KiB | 15556 | `0xBF72D477` |
+| `101148_050_55528_698075140_4` | 56 KiB | 32198 | `0x9A0D4CAA` |
+| `101320_919_55528_698168000_5` | 120 KiB | 65453 | `0x1F248CFA` |
+| `101601_871_55528_698328953_6` | 247 KiB | 136242 | `0x3274CC2A` |
+
+##### F24 CAN FD 量測條件與來源
+
+2026-10-22，RL78/F24 R7F124FPJ5xFB；Host Link UART 115200 baud，CAN FD nominal 500 kbit/s、data 2 Mbit/s、BRS 開啟。
+Tool 0.1.0.0099，Host firmware 1.7.0／build 20261019，Device Boot 1.2.1／App 1.0.4。
+
+測試映像為原始 App，以及由其延伸、以 `0xFF` 填充並更新長度與 CRC32 的 BIN。
+六次均完成 END CRC、APP_READY／live image 比對及 CAN_STOP 確認；對應 Log 未包含 `TRACE UART`／`TRACE CAN` 逐幀記錄。
+
+來源為 Tool 的 JSON／HTML 更新報告；下表報告識別前加 `update_20261022_`，副檔名為 `.json`／`.html`。
+對應 Log 為 `firmware_upgrade_tool_20261022_182748.log`。
+表格保留各次操作的實際總時間，包含重試與收尾；結果分類與 counter 細節保留於原始報告。
+量測條件以上述 Tool 與 firmware 為準；不同設定需各自量測。
+
+| 報告識別 | App BIN | elapsed_ms | Image CRC32 |
+| --- | --- | --- | --- |
+| `102840_499_88416_699087546_1` | 原始 App，4,756 bytes | 5516 | `0x2244D36A` |
+| `102911_331_88416_699118375_2` | 8 KiB | 7240 | `0x3FCC99E2` |
+| `102956_261_88416_699163312_3` | 24 KiB | 15559 | `0x688C8587` |
+| `103045_317_88416_699212359_4` | 56 KiB | 32188 | `0x5ED8A374` |
+| `103238_863_88416_699325906_5` | 120 KiB | 65515 | `0x2B5ADB06` |
+| `103540_647_88416_699507687_6` | 247 KiB | 134185 | `0x325DBF76` |
+
+##### 相關說明
+
+- [CAN 更新協定與逐 byte 封包格式](https://released.github.io/slide_boot_loader_for_RL78/#flash-metadata-can-reference)
+- [Boot 完整 IRQ table 與 App software dispatch](https://released.github.io/slide_boot_loader_for_RL78/#device-irq-ownership)
+- [Software dispatch 的時間與 stack 成本](https://released.github.io/slide_boot_loader_for_RL78/#device-irq-dispatch-cost)
+- [Boot 燒錄方式與 Flash 尾端保護](https://released.github.io/slide_boot_loader_for_RL78/#device-debug-monitor)：CS+ 安裝 Boot 時，App 上限為 119／247 KiB，最後 1 KiB 保留給 debug monitor 所在的擦除區塊。需要完整 120／248 KiB 時，須調整配對工程，且 **Boot 只能由 RFP 安裝**。
+
 <a id="device-app-runtime-log"></a>
 
 #### D4. App 執行標籤與每秒 counter
@@ -993,12 +1260,12 @@ git clone https://github.com/released/RL78_F13_Boot_loader_CAN_app.git
 | 區域 | F13 device | F24 device |
 | --- | --- | --- |
 | Boot | 0x0000..0x1FFF，8 KiB | 0x0000..0x1FFF，8 KiB |
-| App 可用區 | 0x2000..0x1FFFF | 0x2000..0x3FBFF |
+| App 可用區 | 0x2000..0x1FBFF，119 KiB | 0x2000..0x3FBFF，247 KiB |
 | App 跳轉表 | 0x2000..0x20FF | 0x2000..0x20FF |
 | Metadata core | 0x2100..0x217F | 0x2100..0x217F |
 | Metadata reserved FF | 0x2180..0x21FF | 0x2180..0x21FF |
 | App code 起點 | 0x2200 | 0x2200 |
-| 其他保留區 | debug trace RAM | Flash最後1 KiB |
+| Flash 尾端保護 | 0x1FC00..0x1FFFF，1 KiB | 0x3FC00..0x3FFFF，1 KiB |
 | Image CRC32 | 實際 BIN 最後4 bytes、LE32 | 實際 BIN 最後4 bytes、LE32 |
 
 App 前512 bytes 由256-byte向量表與256-byte metadata 組成。
@@ -1008,6 +1275,40 @@ BIN 的實際長度由 linker map 決定，尾端四位元組對齊並加上 CRC
 完整編輯分工見 [設定檔與產物](https://released.github.io/slide_boot_loader_for_RL78/#device-metadata-vector-workshop)。
 獨立 `image_metadata.c/.h` 搭配工程專用 `image_metadata_profile.c`；API 與移植方式見 [Metadata C 模組](https://released.github.io/slide_boot_loader_for_RL78/#device-metadata-parser)。
 逐 byte 位址見 [Flash／metadata 參考](https://released.github.io/slide_boot_loader_for_RL78/#flash-metadata-can-reference)。
+
+<a id="device-debug-monitor"></a>
+
+#### 重要事項：Boot 燒錄方式與 Flash 尾端保護
+
+**若 App 需要用滿 F13 的 120 KiB／F24 的 248 KiB，Boot 只能使用 Renesas Flash Programmer（RFP）安裝。**
+**不可使用 CS+「下載並除錯」安裝 Boot 後，再執行滿容量 App 更新；更新可能通過 END CRC，但 App 啟動、UART Log 或 CAN 連線仍出現異常。**
+
+CS+ Debug 下載會在 Code Flash 尾端放入 debug monitor，並使用除錯啟動路徑。
+移除 E2 Lite 或離開 Debug mode，並不代表 Flash 中的 monitor 已移除。
+更新若擦寫到該區，會破壞除錯啟動所需的內容；不能只憑 END CRC 通過判定重啟一定正常。
+
+| 配置 | F13 device | F24 device（Classical CAN／CAN FD） |
+| --- | --- | --- |
+| Code Flash／Boot | 128／8 KiB | 256／8 KiB |
+| 目前 CS+ monitor 範圍 | `0x1FE00..0x1FFFF`，512 bytes | `0x3FF00..0x3FFFF`，256 bytes |
+| 預設保護範圍 | `0x1FC00..0x1FFFF`，1 KiB | `0x3FC00..0x3FFFF`，1 KiB |
+| 預設 App 最大 BIN | **119 KiB**（121856 bytes） | **247 KiB**（252928 bytes） |
+| 預設配置的 Boot 安裝方式 | CS+ Debug 下載或 RFP | CS+ Debug 下載或 RFP |
+| 自訂滿容量 App BIN | **120 KiB：僅限 RFP 安裝 Boot** | **248 KiB：僅限 RFP 安裝 Boot** |
+
+Monitor 大小會隨 MCU 與除錯選項改變；表中是目前工程的設定。
+Flash 擦除單位為 1 KiB，因此保留完整末端區塊，而非只扣除 monitor 的 256／512 bytes。
+App BIN 容量包含向量表、metadata、程式／填充與最後 4 bytes CRC32；1 KiB＝1024 bytes。
+
+需要滿容量時，工程配置與安裝方式須一起調整：
+
+1. 在 Boot 的 `image_metadata_config.h` 設定 `IMAGE_APPLICATION_CAPACITY`：F13 為 `0x1E000`，F24 為 `0x3E000`。
+2. 重新建置配對的 Boot 與 App，確認 Flash 擦寫邊界、產生的 metadata、封裝範圍與 Tool live capacity 一致；重新產生測試 BIN。
+3. **使用 RFP 安裝配對的 Boot HEX**，再以 Tool 更新 App BIN；不可將 CS+ Debug 下載當作這一步的替代方式。
+4. 若之後再次使用 CS+ Debug 下載，滿容量更新前須重新以 RFP 安裝 Boot。
+
+僅改用 RFP、不修改配對工程，預設 Boot 仍只接受 119／247 KiB 以內的 App。
+目前操作依據可參閱 Renesas [E1／E20／E2／E2 Lite RL78 附加手冊](https://www.renesas.com/en/document/mat/e1e20e2-emulator-e2-emulator-lite-additional-document-users-manual-notes-connection-rl78) §3.3.1（monitor 區域）、§3.5.1（self-programming）及 §3.8.2（離開除錯後獨立運作）。
 
 ### 3. Startup、RAM 與中斷交接
 
@@ -1031,23 +1332,25 @@ F24 的 `common` 與 startup projection 負責板端初始化及 RFD RAM 配置�
 
 ### 4. 固定向量介面
 
-```mermaid
-flowchart TD
-    IRQ["MCU CAN device 硬體 IRQ"] --> BOOT["Boot 固定向量與 owner 分流"]
-    BOOT -->|Boot owner| BISR["Boot ISR 或 default"]
-    BOOT -->|App owner| SLOT["App slot = app start + vector address × 2"]
-    CONFIG["App IRQ header 與 ISR 來源"] --> GEN["App pre-build 產表"]
-    GEN --> SLOT
-    SLOT --> ISR["App ISR；RETI 返回"]
-```
+一般 IRQ 的 owner 分流、16-bit 實體入口、App 槽位換算及轉送成本集中於
+[Boot／App 中斷所有權](https://released.github.io/slide_boot_loader_for_RL78/#device-irq-ownership)。
+新增 App ISR 的操作與來源查找見 [IRQ 設定與來源對照](https://released.github.io/slide_boot_loader_for_RL78/#device-app-irq)。
 
-App table 具有64個4-byte slot。
-例如 vector `0x0A` 的 slot 是 `0x2000 + 0x0A × 2 = 0x2014`。
+<a id="device-irq-porting"></a>
 
-一般 ISR 使用無 `vect=` 的 interrupt pragma，Boot 擁有實體向量。
-Reset entry 經 App startup；Physical BRK 的保留 slot 使用 RETB。
+固定 Boot 與 App 跳轉表可沿用同一設計概念；跨 MCU 時，依目標硬體與編譯器建立工程配置。
 
-Vector 位址的查找來源、C 函式寫法與生成表的檢查，集中於 [IRQ 設定與來源對照](https://released.github.io/slide_boot_loader_for_RL78/#device-app-irq)。
+| 項目 | 需要依 MCU 核對的內容 | 來源與核對結果 |
+| --- | --- | --- |
+| IRQ 配置 | 有效 vector、保留槽位、特殊中斷與返回方式 | 硬體手冊 Interrupt Functions、工程 `iodefine.h`、生成表及實際 RETI／RETB |
+| Flash 分區 | Boot 大小、App 起點、擦除單位與保護範圍 | 硬體手冊、`image_metadata_config.h`、linker map 與封裝映像範圍 |
+| startup／linker | 區段位置、近／遠跳轉、ISR 編譯規則 | startup、MTPJ 選項、Boot stub 的低位址範圍及 App BR 的實際目的地 |
+| RAM／交接 | owner、stack、周邊停止與待處理中斷清除 | `boot_app_handoff.h`、no-init 區段、交接函式與 App 初始化 |
+| Flash 更新 | 對應 Flash library、RAM 執行要求及擦寫期間的中斷條件 | 該 MCU 的 FSL／RFD 手冊、RAM copy 範圍、DI／EI 與 Flash 呼叫路徑 |
+
+軟體向量轉送決定一般 IRQ 的執行目的地；Flash 擦寫期間能否取指、讀取常數或處理中斷，
+仍依 MCU 與 Flash library 的限制配置。
+若擦寫期間需要啟用中斷，另核對從實體 vector、stub、dispatcher 到 handler 與資料的完整路徑是否仍可存取。
 
 ### 5. 設定檔與建置
 
@@ -1135,13 +1438,13 @@ crc_bin_offset = image_size - 4
 | --- | --- | --- |
 | Code Flash | 0x00000..0x1FFFF | 0x00000..0x3FFFF |
 | Boot | 0x00000..0x01FFF | 0x00000..0x01FFF |
-| App 可用範圍 | 0x02000..0x1FFFF | 0x02000..0x3FBFF |
+| App 可用範圍 | 0x02000..0x1FBFF | 0x02000..0x3FBFF |
 | App 固定跳轉表 | 0x02000..0x020FF | 0x02000..0x020FF |
 | Metadata 整區 | 0x02100..0x021FF | 0x02100..0x021FF |
 | 已定義 core／含 UPD1 | 0x02100..0x0217F | 0x02100..0x0217F |
 | Reserved FF | 0x02180..0x021FF | 0x02180..0x021FF |
 | Linked code 起點 | 0x02200 | 0x02200 |
-| 額外保留 | debug trace RAM | Flash 0x3FC00..0x3FFFF |
+| Flash 尾端保護 | 0x1FC00..0x1FFFF | 0x3FC00..0x3FFFF |
 | Image CRC32 | 實際 BIN 最後4 bytes | 實際 BIN 最後4 bytes |
 
 ### CRC 類型、計算範圍與用途
@@ -1158,6 +1461,34 @@ crc_bin_offset = image_size - 4
 
 Image／metadata／block採CRC32/ISO-HDLC，reflected polynomial0xEDB88320，init及xorout0xFFFFFFFF。
 CRC提供完整性，不是簽章、認證或防回滾。image_size隨linker結果改變，所以CRC實際address必須重新計算。
+
+<a id="image-crc-linear-address"></a>
+
+### CRC 的連續 Flash 位址
+
+Boot 在 END 與啟動判斷時，依 metadata 的 `image_size` 讀取整個 App 映像並計算 CRC32。
+讀取範圍可以跨越多個 64 KiB 區域；末端四個 CRC bytes 不參與計算。
+
+| 範例映像 | 映像 Flash 範圍 | CRC32 儲存位址 |
+| --- | --- | --- |
+| App 24 KiB | `0x02000..0x07FFF` | `0x07FFC..0x07FFF` |
+| App 56 KiB | `0x02000..0x0FFFF` | `0x0FFFC..0x0FFFF` |
+| App 119 KiB | `0x02000..0x1FBFF` | `0x1FBFC..0x1FBFF` |
+| App 247 KiB | `0x02000..0x3FBFF` | `0x3FBFC..0x3FBFF` |
+
+表中的 App 起點為 `0x2000`；可用容量仍由各工程的 Flash 配置決定。
+滿容量 120／248 KiB 的 RFP 安裝條件，見 [Flash 尾端保護的重要事項](https://released.github.io/slide_boot_loader_for_RL78/#device-debug-monitor)。
+
+CC-RL 的 `__far` 指標加法只更新低 16 位。
+連續讀取使用 32-bit 整數位址運算，再轉回 `__far` 指標，讓 `0x0FFFF` 的下一個 byte 為 `0x10000`。
+此規則也適用於後續的 `0x1FFFF`、`0x2FFFF` 邊界。
+來源為 [CC-RL 記憶體配置與 Pointer operation](https://tool-support.renesas.com/autoupdate/support/onlinehelp/csp/V8.15.00/CS%2B.chm/Compiler-CCRL.chm/Output/ccrl04c0206y0003.html)。
+
+各 Boot 工程的 `sw_crc32.c` 以 `F13_Crc32Bytes()` 實作上述讀取及 CRC 運算，
+`caculate_crc32_checksum()` 提供 Flash 起點／長度入口。
+移植時一併核對目標編譯器的整數寬度、指標運算與可讀 Flash 範圍。
+實板驗證可使用[各 App 的測試 BIN 產生流程](https://released.github.io/slide_boot_loader_for_RL78/#device-test-images)，
+分別檢查跨界映像的 END CRC 與重啟後 APP_READY；離線 CRC 測試不代替 Flash 擦寫驗證。
 
 ## 2. 每個metadata byte：address、範例值與來源
 
@@ -1233,15 +1564,15 @@ F13 的來源符號由 ftable.inc 產生；F24 的相同欄位由 device_common.
 | 0x0D | 0x0210D | F1 | target_id[1] | 0x0210D | F2 | target_id[1] |
 | 0x0E | 0x0210E | 01 | can_mode_mask[0] | 0x0210E | 01 | can_mode_mask[0] |
 | 0x0F | 0x0210F | 00 | can_id_format[0] | 0x0210F | 00 | can_id_format[0] |
-| 0x10 | 0x02110 | 01 | app_version[0] | 0x02110 | 02 | app_version[0] |
+| 0x10 | 0x02110 | 01 | app_version[0] | 0x02110 | 03 | app_version[0] |
 | 0x11 | 0x02111 | 06 | app_version[1] | 0x02111 | 00 | app_version[1] |
 | 0x12 | 0x02112 | 01 | app_version[2] | 0x02112 | 01 | app_version[2] |
 | 0x13 | 0x02113 | 00 | app_version[3] | 0x02113 | 00 | app_version[3] |
-| 0x14 | 0x02114 | 99 | app_build[0] | 0x02114 | 99 | app_build[0] |
+| 0x14 | 0x02114 | 99 | app_build[0] | 0x02114 | 9B | app_build[0] |
 | 0x15 | 0x02115 | 28 | app_build[1] | 0x02115 | 28 | app_build[1] |
 | 0x16 | 0x02116 | 35 | app_build[2] | 0x02116 | 35 | app_build[2] |
 | 0x17 | 0x02117 | 01 | app_build[3] | 0x02117 | 01 | app_build[3] |
-| 0x18 | 0x02118 | 54 | image_size[0] | 0x02118 | 38 | image_size[0] |
+| 0x18 | 0x02118 | 54 | image_size[0] | 0x02118 | 80 | image_size[0] |
 | 0x19 | 0x02119 | 4F | image_size[1] | 0x02119 | 10 | image_size[1] |
 | 0x1A | 0x0211A | 00 | image_size[2] | 0x0211A | 00 | image_size[2] |
 | 0x1B | 0x0211B | 00 | image_size[3] | 0x0211B | 00 | image_size[3] |
@@ -1253,7 +1584,7 @@ F13 的來源符號由 ftable.inc 產生；F24 的相同欄位由 device_common.
 | offset | F13 device address | value | F13欄位[byte] | F24 device address | value | F24欄位[byte] |
 | --- | --- | --- | --- | --- | --- | --- |
 | 0x20 | 0x02120 | 00 | app_capacity[0] | 0x02120 | 00 | app_capacity[0] |
-| 0x21 | 0x02121 | E0 | app_capacity[1] | 0x02121 | DC | app_capacity[1] |
+| 0x21 | 0x02121 | DC | app_capacity[1] | 0x02121 | DC | app_capacity[1] |
 | 0x22 | 0x02122 | 01 | app_capacity[2] | 0x02122 | 03 | app_capacity[2] |
 | 0x23 | 0x02123 | 00 | app_capacity[3] | 0x02123 | 00 | app_capacity[3] |
 | 0x24 | 0x02124 | 00 | flash_size[0] | 0x02124 | 00 | flash_size[0] |
@@ -1334,7 +1665,7 @@ F13 的來源符號由 ftable.inc 產生；F24 的相同欄位由 device_common.
 | 0x69 | 0x02169 | 31 | irq_abi[1] | 0x02169 | 32 | irq_abi[1] |
 | 0x6A | 0x0216A | 56 | irq_abi[2] | 0x0216A | 56 | irq_abi[2] |
 | 0x6B | 0x0216B | 31 | irq_abi[3] | 0x0216B | 31 | irq_abi[3] |
-| 0x6C | 0x0216C | 00 | minimum_boot[0] | 0x0216C | 00 | minimum_boot[0] |
+| 0x6C | 0x0216C | 02 | minimum_boot[0] | 0x0216C | 01 | minimum_boot[0] |
 | 0x6D | 0x0216D | 07 | minimum_boot[1] | 0x0216D | 01 | minimum_boot[1] |
 | 0x6E | 0x0216E | 01 | minimum_boot[2] | 0x0216E | 01 | minimum_boot[2] |
 | 0x6F | 0x0216F | 00 | minimum_boot[3] | 0x0216F | 00 | minimum_boot[3] |
@@ -1497,12 +1828,12 @@ F13 的來源符號由 ftable.inc 產生；F24 的相同欄位由 device_common.
 ### 本表範例BIN與CRC位置
 | 項目 | F13 (MCU CAN device) | F24 (MCU CAN device) |
 | --- | --- | --- |
-| image_size | 0x4F54 | 0x1038 |
-| stored image CRC32 | 0xD30CFB79 | 0x6ABF121D |
-| CRC32 Flash address | 0x06F50..0x06F53 | 0x03034..0x03037 |
-| metadata staging CRC32 | 0xAAAC5BDC | 0x3CDCA2BA |
-F13 device 範例BIN SHA-256：`8E46743D2A30389E47519EDADB63CEA34A412E9999121B3730EC65175426E633`。
-F24 device 範例BIN SHA-256：`4690E533111BEA3F709F5011D739917C07D1F920E0294EB89D63AC857B3CBF4C`。
+| image_size | 0x4F54 | 0x1080 |
+| stored image CRC32 | 0x0C297B5E | 0x4837111E |
+| CRC32 Flash address | 0x06F50..0x06F53 | 0x0307C..0x0307F |
+| metadata staging CRC32 | 0x6305ABC5 | 0x1EFB688C |
+F13 device 範例BIN SHA-256：`EBF2B63264968F7D9609C9D99EE4F23DD5AE49F4AB9D15CD4EE2B8FEC136B125`。
+F24 device 範例BIN SHA-256：`CD2B4A51038888FF7E35C0C70A250C598BFCBE1A5760530645C5B6F91E36388C`。
 <!-- METADATA_BYTES_END -->
 
 ### 欄位的語意與修改限制
@@ -1913,8 +2244,8 @@ Boot 與 App 各自連結 `common/device_can.c`，使用精簡 RXMB0 ISR 與 8 �
 | App owner=55 | 同一實體 vector → App table 的 0x2098 槽位 → App `Device_CanRxIsr` |
 | App 編輯來源 | `app_irq_handlers.h` 的 `X(0x4C, Device_CanRxIsr)`；函式使用 global、無 `vect=` 的 interrupt pragma，以 RETI 返回 |
 
-App 槽位位址為 `IMAGE_APPLICATION_START + physical_vector × 2`；此例為 `0x2000 + 0x4C × 2 = 0x2098`。
-Boot 與 App 是不同映像，可以使用相同 ISR 函式名稱。
+槽位換算、Boot／App ISR 名稱及一般 IRQ 轉送規則見
+[中斷所有權與向量轉送](https://released.github.io/slide_boot_loader_for_RL78/#device-irq-ownership)。
 建置會檢查完整向量、實際 CAN ISR 槽位、RETI 及實體 vector 所有權。
 
 queue 使用 9 個儲存槽提供 8 筆容量；producer 發布 head、consumer 釋放 tail 都在完成複製後進行。
@@ -2003,3 +2334,7 @@ App-only建置不改Boot；操作見 [CAN FD更新](https://released.github.io/s
 CAN FD Discover、8-byte命令、64-byte ECHO、能力與操作核對集中於ISP Tool。
 [閱讀完整章節](https://released.github.io/slide_isp_tool_for_RL78/#can-fd-custom-transfer)
 <!-- FD_TRANSFER_END -->
+
+
+<!-- RH850_DEVICE_BEGIN -->
+<!-- RH850_DEVICE_END -->
