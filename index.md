@@ -1377,10 +1377,10 @@ F24 在 Code Flash programming mode 期間無法從 Code Flash 取指或讀取�
 ```mermaid
 flowchart TD
     ROM["Boot ROM：保存 RAM 程式初始 bytes"] --> COPY["Startup：複製程式／資料到 RAM"]
-    COPY --> PREP["準備 RAM buffer；保存並限制中斷狀態"]
+    COPY --> PREP["準備 RAM buffer；限制中斷"]
     PREP --> RAM["RAM：切換模式 → erase/write → 等待／檢查"]
     RAM --> MODE{"已回復可讀模式？"}
-    MODE -->|是| RETURN["返回 ROM；恢復中斷狀態"]
+    MODE -->|是| RETURN["返回 ROM；恢復一般流程與中斷"]
     MODE -->|否| FAIL["RAM 內錯誤／reset 路徑"]
 ```
 
