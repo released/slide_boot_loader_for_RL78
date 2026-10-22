@@ -1224,6 +1224,32 @@ F13、F24 各自維護獨立的 Boot／App 工程，使用相同的流程概念�
 Metadata 編輯與新增 IRQ 的逐步操作集中於 [Device App 設定](https://released.github.io/slide_boot_loader_for_RL78/#device-metadata-vector-workshop)。
 本節著重移植時各項工程設定的關係。
 
+<a id="basic-vs-golden"></a>
+
+### Basic 範例與 CAN golden sample
+
+[F24 Basic UART／I2C／XMODEM 範例](https://released.github.io/slide_boot_loader_for_RL78/basic_uart_i2c/)
+聚焦於固定分區、Flash API、下載及手動中斷轉送。
+CAN golden sample 則整合映像契約、完整一般 IRQ 介面與 Tool 更新流程。
+Basic 是功能範圍的分類，不代表 Boot ROM 占用較小。
+
+| 項目 | F24 Basic Boot／App | MCU CAN device golden sample |
+| --- | --- | --- |
+| 工程分類 | UART XMODEM／IICA0；各配對工程各自設定 | Classical CAN：F13／F24；CAN FD：F24 |
+| Boot／App 起點 | Boot 預留20 KiB；App `0x5000` | Boot 預留8 KiB；App `0x2000` |
+| 映像資訊 | 由 `user_def.h`、`ftable.inc` 與下載器設定分區 | 獨立 metadata header／parser；256-byte metadata |
+| 完整性檢查 | 固定分區尾端 CRC；SW CRC32／HW CRC16 依配對工程 | 依實際 BIN 長度，最後4 bytes 為 CRC32 |
+| 中斷轉送 | Boot 已選定的 ISR 依 AA／55 轉送固定 App 槽位 | Boot 完整一般 IRQ dispatcher，App 生成跳轉表 |
+| App 增加 IRQ | 核對 Boot 轉送入口、App 手動表及 ISR | 在固定契約內修改 App ISR／mapping，產表並重建 App |
+| 寫入前判斷 | 工程自己的下載協定與校驗流程 | target、角色、通訊、分區、IRQ ABI、最低 Boot 與版本政策 |
+| 建置輸入／結果 | 手動 `ftable.inc`，各工程 checksum 封裝命令 | C header → PowerShell 產生 → 實際映像驗證／HTML 摘要 |
+| 操作入口 | 配對工程的 XMODEM／I2C 下載流程 | Tool Discover／Enter Boot／Update／App 確認與報告 |
+
+Basic 的無後綴與 `_e2` 配對均使用軟體 CRC32；`_e2` 表示附有 e2 studio 設定。
+`_CRC` 配對包含 timer／IICA0 IRQ 轉送；`_HW_CRC` 配對使用 general-purpose 硬體 CRC16。
+各配對的來源、啟用開關及封裝範圍見 [Basic 工程索引](https://released.github.io/slide_boot_loader_for_RL78/basic_uart_i2c/#basic-projects)。
+兩類映像分別交給對應下載流程，Basic BIN 不作為 CAN metadata 映像載入。
+
 ### 1. 工程來源
 
 | 工程 | F13 (MCU CAN device) | F24 (MCU CAN device) |
@@ -1329,6 +1355,76 @@ App 經自己的 startup 初始化後，再啟用所需周邊與 IRQ。
 F13 的 `f13_board_support` 與 startup user-area clock hook 負責時鐘交接。
 F24 的 `common` 與 startup projection 負責板端初始化及 RFD RAM 配置。
 這些來源分別保留在各自工程中。
+
+<a id="flash-ram-execution"></a>
+
+#### Code Flash 擦寫：ROM 儲存與 RAM 執行
+
+F24 在 Code Flash programming mode 期間無法從 Code Flash 取指或讀取資料。
+因此 RAM 執行範圍包含 Flash API、呼叫端的等待／錯誤處理路徑，以及期間所需的資料與常數；
+不是只把 erase／write 函式複製到 RAM，也不需要將整個 Boot 都放在 RAM。
+依據為 [RFD RL78 Type02 手冊](https://www.renesas.com/en/document/mat/renesas-flash-driver-rl78-type-02-users-manual-rl78f23-and-rl78f24-rev111)
+§1 注意事項、§2.3.1.1 Code Flash sections。
+
+| 階段 | 執行位置／動作 | 工程核對位置 |
+| --- | --- | --- |
+| 編譯與安裝 | RAM 程式的初始 bytes 仍儲存在 Boot ROM 映像 | linker 的 ROM-to-RAM section 對應；安裝 HEX 包含初始 bytes |
+| Startup | 先複製程式與初始化資料到 RAM，再呼叫 Flash API | `cstart.asm` 的 copy 來源、目的與長度 |
+| 進入 programming mode | 從 RAM 執行模式切換；待寫 bytes 預先備於 RAM | 模式切換函式、呼叫鏈及寫入 buffer |
+| erase／write／等待 | 全部在可存取的 RAM 路徑執行；核對 timeout／error 分支 | RFD API、輪詢函式、錯誤／reset 路徑及反組譯 |
+| 離開 programming mode | 確認回到可讀模式，再返回 ROM 程式 | 模式回復／檢查及返回位置 |
+
+```mermaid
+flowchart TD
+    ROM["Boot ROM：保存 RAM 程式初始 bytes"] --> COPY["Startup：複製程式／資料到 RAM"]
+    COPY --> PREP["準備 RAM buffer；保存並限制中斷狀態"]
+    PREP --> RAM["RAM：切換模式 → erase/write → 等待／檢查"]
+    RAM --> MODE{"已回復可讀模式？"}
+    MODE -->|是| RETURN["返回 ROM；恢復中斷狀態"]
+    MODE -->|否| FAIL["RAM 內錯誤／reset 路徑"]
+```
+
+| F24 工程 | RAM 配置來源 |
+| --- | --- |
+| Basic | `cstart.asm` 複製 `RFD_CMN`、`RFD_CF`、`SMP_CMN`、`SMP_CF` 及資料 section；配合 `-rom` 與 RAM section 配置 |
+| CAN／CAN FD golden sample | `f24_flash.c` 的 `DRAM` 包含 `execute()`、`wait_end()`、`fail_reset()`；`generated_projection/cstart.asm` 複製 RFD／DRAM sections |
+
+F24 CAN 工程在 Flash critical section 使用 DI／EI；此期間不執行一般 Flash-resident IRQ 路徑。
+軟體向量轉送不會解除 Flash busy 限制；實體 vector、stub、dispatcher、ISR 與資料都需要可存取。
+Data Flash 的取指條件與 Code Flash 不同，依 RFD 對應章節配置，不套用同一結論。
+F13 使用其 FSL 的 library／使用者程式配置，依 FSL 的內部處理或使用者處理模式核對；不沿用 F24 RFD section 名稱。
+
+移植後以 linker map 與反組譯確認執行位址及完整呼叫鏈，再驗證 erase／write、錯誤分支與重啟。
+僅存在 RAM section 或成功編譯，並不足以證明 busy 期間沒有回到 Code Flash。
+
+<a id="crc-backends"></a>
+
+#### 映像 CRC32 與硬體 CRC
+
+CRC 的格式契約與計算後端分開：相同資料需使用相同位寬、多項式、初值、位元／byte 順序與最終處理，才能比較結果。
+目前 CAN golden sample 使用軟體 CRC32，讓 Tool、metadata／區塊與 MCU Flash 映像共用同一演算法；
+選擇依據是結果一致與可移植性，並非軟體一定比硬體快。
+
+| 項目 | Golden sample 軟體 CRC32 | F13／F24 general-purpose CRC | F13／F24 high-speed CRC |
+| --- | --- | --- | --- |
+| 位寬／多項式 | CRC32/ISO-HDLC；normal `0x04C11DB7`、reflected `0xEDB88320` | CRC16-CCITT `0x1021`；另有 SENT 4-bit 模式 | CRC16-CCITT |
+| 資料範圍 | 呼叫端指定 RAM／Flash bytes，支援增量 | CPU 將指定資料逐 byte 寫入 `CRCIN` | 從 Flash 起點0開始，依硬體選擇範圍 |
+| CPU 工作 | 軟體運算，占用指令時間 | CPU 搬入資料，硬體計算 | CPU 進入 HALT 後計算 |
+| 作為目前 BIN CRC32 | 直接使用 | CRC16 結果不能直接替換 CRC32 | 位寬與範圍均不直接對應 App BIN |
+
+目前 CRC32 參數為 init=`0xFFFFFFFF`、refin/refout=true、xorout=`0xFFFFFFFF`；
+計算 App BIN 除最後4 bytes 以外的全部 bytes，CRC 以 LE32 存入最後4 bytes。
+`123456789` 的檢查值為 `0xCBF43926`，儲存 bytes 為 `26 39 F4 CB`。
+來源為各 Boot 的 `sw_crc32.c`；Basic `_HW_CRC` 呼叫的是 general-purpose CRC16，不是 high-speed CRC。
+
+硬體功能依據：[F13／F14／F15 Safety Function](https://www.renesas.com/en/document/apn/rl78f13-f14-f15-safety-function-rev250)
+與 [F23／F24 Safety Function](https://www.renesas.com/en/document/apn/rl78f23-f24-safety-function-rev110)，各 §2／§3。
+General-purpose CRC 可處理 CPU 指定的資料；限制在演算法結果，不是只能讀固定 Flash 範圍。
+
+移植到具備相容硬體 CRC32 的 MCU 時，可替換計算後端而保留映像格式。
+先核對 polynomial、init、reflection、feed order、xorout、範圍與 endian，再比較已知向量、分段運算及完整 BIN 的結果。
+效能取決於 CPU 搬運、硬體啟動與映像大小，需依實際工程量測。
+CRC 用於偵測資料損壞，不提供韌體來源驗證或防竄改簽章。
 
 ### 4. 固定向量介面
 
@@ -2017,7 +2113,7 @@ Self Test不是更新協定，也沒有Byte7 CRC；需CAN analyzer觀察實際bu
 
 ## UART／I2C 範例入口
 
-UART／I2C 參考工程的分區、startup、向量與 CRC 操作集中於 [UART／I2C 範例](uart_i2c/)。
+Basic UART／I2C 參考工程的分區、startup、向量與 CRC 操作集中於 [Basic UART／I2C 範例](basic_uart_i2c/)。
 
 <a id="target_MCU_flash_type"></a>
 <a id="ram_flag"></a>
@@ -2078,59 +2174,59 @@ UART／I2C 參考工程的分區、startup、向量與 CRC 操作集中於 [UART
 
 | 章節 | 範例頁位置 |
 | --- | --- |
-| Flash library 類型 | [閱讀章節](uart_i2c/#target_MCU_flash_type) |
-| App 返回 Boot 的 RAM marker | [閱讀章節](uart_i2c/#ram_flag) |
-| ftable.inc 分區設定 | [閱讀章節](uart_i2c/#FALSH_TABLE) |
-| ftable.inc 欄位 | [閱讀章節](uart_i2c/#ftable_inc) |
-| App 起點與 mirror 對照 | [閱讀章節](uart_i2c/#map_const) |
-| Boot main | [閱讀章節](uart_i2c/#boot_main) |
-| Boot 硬體初始化 | [閱讀章節](uart_i2c/#boot_hdwinit) |
-| Flash symbol 檔案 | [閱讀章節](uart_i2c/#fsy_file) |
-| App IRQ 向量位址 | [閱讀章節](uart_i2c/#vect_address) |
-| 硬體向量表 | [閱讀章節](uart_i2c/#vector_table) |
-| UART／I2C 範例 | [閱讀章節](uart_i2c/#uart／i2c-範例) |
-| Flash architecture | [閱讀章節](uart_i2c/#flash-architecture) |
-| Scenario : Boot area (boot code) | [閱讀章節](uart_i2c/#scenario-boot-area-boot-code) |
-| Scenario : Flash area (app code) | [閱讀章節](uart_i2c/#scenario-flash-area-app-code) |
-| Project : boot code/app code configuration - ftable.inc | [閱讀章節](uart_i2c/#project-boot-codeapp-code-modifictaion---ftableinc) |
-| Project : boot code configuration - cstart.asm | [閱讀章節](uart_i2c/#project-boot-code-modifictaion---cstartasm) |
-| Project : boot code configuration - stkinit.asm | [閱讀章節](uart_i2c/#project-boot-code-modifictaion---stkinitasm) |
-| Project : boot code configuration - project tree | [閱讀章節](uart_i2c/#project-boot-code-modifictaion---project-tree) |
-| Project : boot code configuration - add CODE FLASH library | [閱讀章節](uart_i2c/#project-boot-code-modifictaion---add-code-flash-library) |
-| Project : boot code configuration - add CRC compare (1) | [閱讀章節](uart_i2c/#project-boot-code-modifictaion---add-crc-compare-1) |
-| Project : boot code configuration - add CRC compare (2) | [閱讀章節](uart_i2c/#project-boot-code-modifictaion---add-crc-compare-2) |
-| Project : boot code configuration - use smart config tool to generate driver | [閱讀章節](uart_i2c/#project-boot-code-modifictaion---use-smart-config-tool-to-generate-driver) |
-| Project : boot code configuration - boot_main.c | [閱讀章節](uart_i2c/#project-boot-code-modifictaion---boot_mainc) |
-| Project : boot code configuration - I2C command flow | [閱讀章節](uart_i2c/#project-boot-code-modifictaion---i2c-command-flow) |
-| Project : boot code configuration - I2C command flow (check_generic_boot_standard_interface) | [閱讀章節](uart_i2c/#project-boot-code-modifictaion---i2c-command-flow-check_generic_boot_standard_interface) |
-| Project : boot code configuration - I2C command flow (read_device_signature) | [閱讀章節](uart_i2c/#project-boot-code-modifictaion---i2c-command-flow-read_device_signature) |
-| Project : boot code configuration - I2C command flow (read_area_information) | [閱讀章節](uart_i2c/#project-boot-code-modifictaion---i2c-command-flow-read_area_information) |
-| Project : boot code configuration - I2C command flow (start_device_image_transfer) | [閱讀章節](uart_i2c/#project-boot-code-modifictaion---i2c-command-flow-start_device_image_transfer) |
-| Project : boot code configuration - I2C command flow terminal operation (master & slave) | [閱讀章節](uart_i2c/#project-boot-code-modifictaion---i2c-command-flow-terminal-operation-master-slave) |
-| Project : boot code configuration - xmodem update flow | [閱讀章節](uart_i2c/#project-boot-code-modifictaion---xmodem-update-flow) |
-| Project : boot code property configuration - E2 lite setting | [閱讀章節](uart_i2c/#project-boot-code-property-modifictaion---e2-lite-setting) |
-| Project : boot code property configuration - CC-RL Build Tool setting | [閱讀章節](uart_i2c/#project-boot-code-property-modifictaion---cc-rl-build-tool-setting) |
-| Project : boot code property configuration - CC-RL Build Tool setting | [閱讀章節](uart_i2c/#project-boot-code-property-modifictaion---cc-rl-build-tool-setting-2) |
-| Project : boot code property configuration - CC-RL Build Tool setting | [閱讀章節](uart_i2c/#project-boot-code-property-modifictaion---cc-rl-build-tool-setting-3) |
-| Project : boot code property configuration - CC-RL Build Tool setting | [閱讀章節](uart_i2c/#project-boot-code-property-modifictaion---cc-rl-build-tool-setting-4) |
-| Reference - RL78/F23, F24 User’s Manual: Hardware - Input Source List | [閱讀章節](uart_i2c/#reference---rl78f23-f24-user’s-manual-hardware---input-source-list) |
-| Project : RL78/F23, F24 User’s Manual: Hardware - Vector Table | [閱讀章節](uart_i2c/#project-rl78f23-f24-user’s-manual-hardware---vector-table) |
-| Project : boot code/app code configuration - ftable.inc | [閱讀章節](uart_i2c/#project-boot-codeapp-code-modifictaion---ftableinc-2) |
-| Project : app code configuration - cstart.asm | [閱讀章節](uart_i2c/#project-app-code-modifictaion---cstartasm) |
-| Project : app code configuration - ftable.asm | [閱讀章節](uart_i2c/#project-app-code-modifictaion---ftableasm) |
-| Project : app code configuration - fsy file | [閱讀章節](uart_i2c/#project-app-code-modifictaion---fsy-file) |
-| Project : app code configuration - project tree | [閱讀章節](uart_i2c/#project-app-code-modifictaion---project-tree) |
-| Project : app code configuration - add DATA FLASH library | [閱讀章節](uart_i2c/#project-app-code-modifictaion---add-data-flash-library) |
-| Project : app code configuration - use smart config tool to generate driver | [閱讀章節](uart_i2c/#project-app-code-modifictaion---use-smart-config-tool-to-generate-driver) |
-| Project : app code configuration -  remove static and vect define | [閱讀章節](uart_i2c/#project-app-code-modifictaion---remove-static-and-vect-define) |
-| Project : app code configuration - main.c | [閱讀章節](uart_i2c/#project-app-code-modifictaion---mainc) |
-| Project : app code property configuration - E2 lite setting | [閱讀章節](uart_i2c/#project-app-code-property-modifictaion---e2-lite-setting) |
-| Project : app code property configuration - CC-RL Build Tool setting | [閱讀章節](uart_i2c/#project-app-code-property-modifictaion---cc-rl-build-tool-setting) |
-| Project : app code property configuration - CC-RL Build Tool setting | [閱讀章節](uart_i2c/#project-app-code-property-modifictaion---cc-rl-build-tool-setting-2) |
-| Project : app code property configuration - CC-RL Build Tool setting | [閱讀章節](uart_i2c/#project-app-code-property-modifictaion---cc-rl-build-tool-setting-3) |
-| Project : app code property configuration - CC-RL Build Tool setting | [閱讀章節](uart_i2c/#project-app-code-property-modifictaion---cc-rl-build-tool-setting-4) |
-| How to add interrupt at boot code | [閱讀章節](uart_i2c/#how-to-add-interrupt-at-boot-code) |
-| How to use hardware CRC at boot code and app code project | [閱讀章節](uart_i2c/#how-to-use-hardware-crc-at-boot-code-and-app-code-project) |
+| Flash library 類型 | [閱讀章節](basic_uart_i2c/#target_MCU_flash_type) |
+| App 返回 Boot 的 RAM marker | [閱讀章節](basic_uart_i2c/#ram_flag) |
+| ftable.inc 分區設定 | [閱讀章節](basic_uart_i2c/#FALSH_TABLE) |
+| ftable.inc 欄位 | [閱讀章節](basic_uart_i2c/#ftable_inc) |
+| App 起點與 mirror 對照 | [閱讀章節](basic_uart_i2c/#map_const) |
+| Boot main | [閱讀章節](basic_uart_i2c/#boot_main) |
+| Boot 硬體初始化 | [閱讀章節](basic_uart_i2c/#boot_hdwinit) |
+| Flash symbol 檔案 | [閱讀章節](basic_uart_i2c/#fsy_file) |
+| App IRQ 向量位址 | [閱讀章節](basic_uart_i2c/#vect_address) |
+| 硬體向量表 | [閱讀章節](basic_uart_i2c/#vector_table) |
+| UART／I2C 範例 | [閱讀章節](basic_uart_i2c/#uart／i2c-範例) |
+| Flash architecture | [閱讀章節](basic_uart_i2c/#flash-architecture) |
+| Scenario : Boot area (boot code) | [閱讀章節](basic_uart_i2c/#scenario-boot-area-boot-code) |
+| Scenario : Flash area (app code) | [閱讀章節](basic_uart_i2c/#scenario-flash-area-app-code) |
+| Project : boot code/app code configuration - ftable.inc | [閱讀章節](basic_uart_i2c/#project-boot-codeapp-code-modifictaion---ftableinc) |
+| Project : boot code configuration - cstart.asm | [閱讀章節](basic_uart_i2c/#project-boot-code-modifictaion---cstartasm) |
+| Project : boot code configuration - stkinit.asm | [閱讀章節](basic_uart_i2c/#project-boot-code-modifictaion---stkinitasm) |
+| Project : boot code configuration - project tree | [閱讀章節](basic_uart_i2c/#project-boot-code-modifictaion---project-tree) |
+| Project : boot code configuration - add CODE FLASH library | [閱讀章節](basic_uart_i2c/#project-boot-code-modifictaion---add-code-flash-library) |
+| Project : boot code configuration - add CRC compare (1) | [閱讀章節](basic_uart_i2c/#project-boot-code-modifictaion---add-crc-compare-1) |
+| Project : boot code configuration - add CRC compare (2) | [閱讀章節](basic_uart_i2c/#project-boot-code-modifictaion---add-crc-compare-2) |
+| Project : boot code configuration - use smart config tool to generate driver | [閱讀章節](basic_uart_i2c/#project-boot-code-modifictaion---use-smart-config-tool-to-generate-driver) |
+| Project : boot code configuration - boot_main.c | [閱讀章節](basic_uart_i2c/#project-boot-code-modifictaion---boot_mainc) |
+| Project : boot code configuration - I2C command flow | [閱讀章節](basic_uart_i2c/#project-boot-code-modifictaion---i2c-command-flow) |
+| Project : boot code configuration - I2C command flow (check_generic_boot_standard_interface) | [閱讀章節](basic_uart_i2c/#project-boot-code-modifictaion---i2c-command-flow-check_generic_boot_standard_interface) |
+| Project : boot code configuration - I2C command flow (read_device_signature) | [閱讀章節](basic_uart_i2c/#project-boot-code-modifictaion---i2c-command-flow-read_device_signature) |
+| Project : boot code configuration - I2C command flow (read_area_information) | [閱讀章節](basic_uart_i2c/#project-boot-code-modifictaion---i2c-command-flow-read_area_information) |
+| Project : boot code configuration - I2C command flow (start_device_image_transfer) | [閱讀章節](basic_uart_i2c/#project-boot-code-modifictaion---i2c-command-flow-start_device_image_transfer) |
+| Project : boot code configuration - I2C command flow terminal operation (master & slave) | [閱讀章節](basic_uart_i2c/#project-boot-code-modifictaion---i2c-command-flow-terminal-operation-master-slave) |
+| Project : boot code configuration - xmodem update flow | [閱讀章節](basic_uart_i2c/#project-boot-code-modifictaion---xmodem-update-flow) |
+| Project : boot code property configuration - E2 lite setting | [閱讀章節](basic_uart_i2c/#project-boot-code-property-modifictaion---e2-lite-setting) |
+| Project : boot code property configuration - CC-RL Build Tool setting | [閱讀章節](basic_uart_i2c/#project-boot-code-property-modifictaion---cc-rl-build-tool-setting) |
+| Project : boot code property configuration - CC-RL Build Tool setting | [閱讀章節](basic_uart_i2c/#project-boot-code-property-modifictaion---cc-rl-build-tool-setting-2) |
+| Project : boot code property configuration - CC-RL Build Tool setting | [閱讀章節](basic_uart_i2c/#project-boot-code-property-modifictaion---cc-rl-build-tool-setting-3) |
+| Project : boot code property configuration - CC-RL Build Tool setting | [閱讀章節](basic_uart_i2c/#project-boot-code-property-modifictaion---cc-rl-build-tool-setting-4) |
+| Reference - RL78/F23, F24 User’s Manual: Hardware - Input Source List | [閱讀章節](basic_uart_i2c/#reference---rl78f23-f24-user’s-manual-hardware---input-source-list) |
+| Project : RL78/F23, F24 User’s Manual: Hardware - Vector Table | [閱讀章節](basic_uart_i2c/#project-rl78f23-f24-user’s-manual-hardware---vector-table) |
+| Project : boot code/app code configuration - ftable.inc | [閱讀章節](basic_uart_i2c/#project-boot-codeapp-code-modifictaion---ftableinc-2) |
+| Project : app code configuration - cstart.asm | [閱讀章節](basic_uart_i2c/#project-app-code-modifictaion---cstartasm) |
+| Project : app code configuration - ftable.asm | [閱讀章節](basic_uart_i2c/#project-app-code-modifictaion---ftableasm) |
+| Project : app code configuration - fsy file | [閱讀章節](basic_uart_i2c/#project-app-code-modifictaion---fsy-file) |
+| Project : app code configuration - project tree | [閱讀章節](basic_uart_i2c/#project-app-code-modifictaion---project-tree) |
+| Project : app code configuration - add DATA FLASH library | [閱讀章節](basic_uart_i2c/#project-app-code-modifictaion---add-data-flash-library) |
+| Project : app code configuration - use smart config tool to generate driver | [閱讀章節](basic_uart_i2c/#project-app-code-modifictaion---use-smart-config-tool-to-generate-driver) |
+| Project : app code configuration -  remove static and vect define | [閱讀章節](basic_uart_i2c/#project-app-code-modifictaion---remove-static-and-vect-define) |
+| Project : app code configuration - main.c | [閱讀章節](basic_uart_i2c/#project-app-code-modifictaion---mainc) |
+| Project : app code property configuration - E2 lite setting | [閱讀章節](basic_uart_i2c/#project-app-code-property-modifictaion---e2-lite-setting) |
+| Project : app code property configuration - CC-RL Build Tool setting | [閱讀章節](basic_uart_i2c/#project-app-code-property-modifictaion---cc-rl-build-tool-setting) |
+| Project : app code property configuration - CC-RL Build Tool setting | [閱讀章節](basic_uart_i2c/#project-app-code-property-modifictaion---cc-rl-build-tool-setting-2) |
+| Project : app code property configuration - CC-RL Build Tool setting | [閱讀章節](basic_uart_i2c/#project-app-code-property-modifictaion---cc-rl-build-tool-setting-3) |
+| Project : app code property configuration - CC-RL Build Tool setting | [閱讀章節](basic_uart_i2c/#project-app-code-property-modifictaion---cc-rl-build-tool-setting-4) |
+| How to add interrupt at boot code | [閱讀章節](basic_uart_i2c/#how-to-add-interrupt-at-boot-code) |
+| How to use hardware CRC at boot code and app code project | [閱讀章節](basic_uart_i2c/#how-to-use-hardware-crc-at-boot-code-and-app-code-project) |
 
 </details>
 

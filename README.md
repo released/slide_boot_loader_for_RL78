@@ -6,7 +6,8 @@
 
 本頁提供 MCU CAN device 的 Boot/App 工程、metadata、vector、startup 與 Flash 更新說明。
 F13 與 F24 各有獨立工程，概念流程使用 MCU CAN device 名稱；型號、位址與驅動差異列於工程表格。
-UART／I2C 範例的設定與來源集中於 [獨立範例頁](uart_i2c/)，內容為 `uart_i2c/index.md`。
+Basic UART／I2C 範例的設定與來源集中於 [獨立範例頁](basic_uart_i2c/)，內容為 `basic_uart_i2c/index.md`。
+`uart_i2c/` 保留轉址並延續章節錨點。
 主頁保留原章節的 anchor 及跳轉入口。
 首頁模式導覽分為 Classical CAN（F13／F24）、CAN FD（F24）及 Custom Transfer 三種範例；僅提供工程及操作跳轉。
 
@@ -29,6 +30,7 @@ UART／I2C 範例的設定與來源集中於 [獨立範例頁](uart_i2c/)，內�
 | F13 Boot decision／ENTER／逾時 | F13_BOOT_UPDATE_FLOW／sync_f13_boot_decision.ps1 |
 | F24 device 工程 | F24_CAN_DEVICE_DESIGN／sync_f24_device_design.ps1 |
 | Boot/App 移植 | RL78_BOOT_APP_PORTING_GUIDE／sync_rl78_porting_guide.ps1 |
+| Basic／golden sample 對照、Flash RAM 執行、CRC 後端 | 同一 porting guide 的 basic-vs-golden／flash-ram-execution／crc-backends |
 | Boot 安裝／debug monitor／119、247 KiB 與滿容量限制 | 同一 porting guide 的 device-debug-monitor；Tool operation 僅放提醒與跳轉 |
 | Flash／metadata 全部 byte／CAN frame | FLASH_METADATA_CAN_FRAME_GUIDE／sync_flash_reference.ps1 |
 
