@@ -10,6 +10,10 @@ Keep its neutral sharing tone, current-state wording and source/evidence rules.
   future MCU ports. Project-specific rules stay here, not in /web root policy.
 - Edit the canonical Tool docs first; use their sync scripts and -CheckOnly.
 - Preserve stable anchors and use short links to ISP-owned topics.
+- index.md is the short overview,not a destination for full chapters. Tool
+  scripts/web_guide_layout.json owns marker-to-page placement. Preserve the
+  guide-map.json legacy aliases;refresh generated guide-routes.js after adding
+  stable anchors. Flat HTML/MD chapters retain existing relative assets.
 - The page-owned DEVICE_MODE_NAV groups F13/F24 Classical CAN together and
   F24 CAN FD separately,plus Custom Transfer across all three examples;
   link engineering/update/Transfer chapters,not copies.
