@@ -161,28 +161,22 @@ flowchart TD
 
 ### 工程與建置
 
-三個工程放在同一父目錄。
-Boot 的 `common` 提供 board／clock／CAN backend，Boot 內含 RFD 來源。
-App 與 Transfer 各自保存 SC 與 MTPJ。
+每個工程自備 `hal` API、設定 header、SC 與 MTPJ，可獨立建置。
+目錄分工見 [工程目錄與程式入口](https://released.github.io/slide_boot_loader_for_RL78/#device-project-entry)。
 
-在 Boot 目錄使用 PowerShell：
+在所選工程根目錄使用 PowerShell：
 
 ```powershell
-# Clean rebuild Transfer, Boot and App.
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\build.ps1 -Kind all
+# Rebuild this project and run its linked-image/package guards.
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\build.ps1
 
-# App-only clean rebuild.
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\build.ps1 -Kind app
-
-# Safe artifact and contract checks.
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\test.ps1
 ```
 
 日常建置使用 Windows PowerShell、CS+／CC-RL。
 CS+ hooks 依序執行產表與封裝；map、ROM／RAM、向量、metadata 與 CRC 由腳本核對。
 
 C header 編輯、ISR 與 App-only 命令集中於 [Device App 設定與建置](https://released.github.io/slide_boot_loader_for_RL78/#device-app-build)。
-初裝檔為 Boot `boot0000_1FFF.hex`＋App `flash_app_variable_CRC.hex`，或 App 根目錄 `boot_app.hex`。
+初裝檔為 Boot `boot0000_1FFF.hex`＋App `flash_app_variable_CRC.hex`，核對兩者的地址範圍。
 CAN 更新使用 App `*_update.bin`。App 產表為 `ftable.inc`、`app_identity.h`、`app_irq_table.inc`，
 由 `ftable_RL78_F24.asm` 組譯；兩份 C header 仍是編輯入口。
 
@@ -201,7 +195,7 @@ CAN 波形量測、250K／1M、其他 IRQ、長時間壓力、取消、斷線及
 
 F24 device 使用獨立 `RL78_F24_Boot_loader_CAN_FD` 與
 `RL78_F24_Boot_loader_CAN_FD_app` 工程，放在同一父目錄。
-App 引用相鄰 FD Boot 的 common／metadata 來源。
+App 使用本工程的 `hal` API、metadata 設定與建置工具。
 App 發行與 IRQ 編輯沿用 [C header 工作流程](https://released.github.io/slide_boot_loader_for_RL78/#device-metadata-vector-workshop)。
 
 ### 設定來源
@@ -212,7 +206,7 @@ App 發行與 IRQ 編輯沿用 [C header 工作流程](https://released.github.i
 | App `app_irq_handlers.h` | App-local IRQ mapping；無 vect ISR |
 | Boot `image_metadata_config.h` | Flash／metadata格式／IRQ ABI／最低Boot相容契約 |
 | Boot `can_boot_config.h` | mode2、nominal mask4、data mask2及ID |
-| Boot `common/f24_device_config.h` | 實際40MHz CAN clock timing、FD模式、64-byte RXMB及中斷來源 |
+| Boot `hal/device/f24_device_config.h` | 實際40MHz CAN clock timing、FD模式、64-byte RXMB及中斷來源 |
 | Boot `boot_app_handoff.h` | owner Boot=AA／App=55、no-init RAM |
 | `image_metadata_profile.c` | 由獨立metadata parser比對的工程契約 |
 | `tools/device_common.ps1` | 讀取上述C headers、產生metadata |
@@ -239,7 +233,7 @@ SC重新產生後仍需執行工程prepare及clean build，核對實際linked產
 
 ### 接收與中斷
 
-Boot 與 App 各自連結 `common/device_can.c`，使用精簡 RXMB0 ISR 與 8 筆 RAM queue。
+Boot 與 App 各自連結 `hal/can/device_can.c`，使用精簡 RXMB0 ISR 與 8 筆 RAM queue。
 主迴圈負責命令、metadata、CRC 及 Flash 流程；ISR 只核對幀的型態／長度並搬移資料，不解析更新命令、不輸出 UART，也不等待 TX。
 主迴圈不直接輪詢 RXMB0；TX 完成狀態仍使用有上限的輪詢。
 
@@ -298,7 +292,8 @@ Host 在 COMMIT ACK 前等待，不連續送下一個區塊；逾時與斷線結
 ### Flash與建置
 
 `RL78_F24_Boot_loader_CAN_FD`、`RL78_F24_Boot_loader_CAN_FD_app` 與 `RL78_F24_CAN_FD_Transfer`
-保持同層及既有名稱；App／Transfer 都需要 Boot checkout 的共用來源與 PowerShell helpers。
+各自包含來源碼與 PowerShell helpers，可單獨建置；搭配安裝的 Boot／App 使用相容契約。
+來源分工見 [工程目錄與程式入口](https://released.github.io/slide_boot_loader_for_RL78/#device-project-entry)。
 詳細相依與生成路徑檢查見 [工程發佈說明](https://github.com/released/simple_renesas_isp_tool/blob/main/docs/GITHUB_PUBLISH_zh-TW.md#fd-publication-layout)。
 SC 重新生成後使用同一建置入口；`-CheckOnly` 檢查相對路徑及生成檔狀態。
 
@@ -312,15 +307,11 @@ SC 重新生成後使用同一建置入口；`-CheckOnly` 檢查相對路徑及�
 | App start + image_size -4 | 全映像 CRC32 tail |
 | 0x3FC00..0x3FFFF | 保護區 |
 
-在 FD Boot 目錄執行：
+在所選 FD Boot 或 App 工程根目錄執行：
 
 ```powershell
-# Clean rebuild only the FD Boot/App pair.
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\build.ps1 -Kind all
-# App-only release changes.
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\build.ps1 -Kind app
-# Artifact, metadata, IRQ, ROM/RAM and CRC guards.
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\test.ps1
+# Rebuild this project and run its linked-image/package guards.
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\build.ps1
 ```
 
 MCU建置使用CS+ CC-RL、Windows PowerShell5.1／.NET，不需Python。

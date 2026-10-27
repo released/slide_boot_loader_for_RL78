@@ -22,7 +22,7 @@ Tool選取值、Boot／App初始化、live INFO與BIN需對應的項目集中於
 | --- | --- | --- | --- | --- |
 | F13 | 32MHz／X1 4MHz | 128KiB／8KiB | 119KiB | 0x1FC00..0x1FFFF |
 | F24 | 40MHz／X1 4MHz | 256KiB／24KiB | 247KiB | 0x3FC00..0x3FFFF |
-| G16 | 32MHz／HOCO | 32KiB／2KiB | 23KiB | 0x07C00..0x07FFF |
+| G16 | 16MHz／HOCO | 32KiB／2KiB | 23KiB | 0x07C00..0x07FFF |
 | G22 | 32MHz／HOCO | 64KiB／4KiB | 55KiB | 0x0FC00..0x0FFFF |
 
 各工程Boot為0x0000..0x1FFF（8KiB），建置檢查至少512-byte餘裕。
@@ -40,35 +40,45 @@ App表為0x2000..0x20FF，metadata為0x2100..0x21FF，程式從0x2200開始；�
 G16／G22 UART1使用SAU0 channels2／3；實際pin與PIOR值由各board adapter管理。
 Flash函式的ROM儲存與RAM執行概念見 [Flash執行位置](https://released.github.io/slide_boot_loader_for_RL78/#flash-ram-execution)。
 
+UART速率由 `isp_transport_config.h` 宣告；INFO、metadata及周邊分頻需一致。
+`isp_bus_contract.h` 檢查各宣告值；SAU adapter依目前選定的UART source clock產生SDR，
+`isp_uart_timing.h` 拒絕無法表示或誤差超過2%的組合。UART0 Log維持獨立分頻。
+若速率需要不同的SPS時脈來源，先調整board adapter與其source clock，再重建配對Boot／App；
+設定檢查通過不代替實際電氣與通訊時序驗證。
+
 ### 編輯、產生與建置
 
 | 輸入／來源 | 用途與編輯時機 |
 | --- | --- |
 | App app_image_config.h | 發行version、build、target、DEVICE_APP、update transport、version control；每個define附註解 |
 | App app_irq_handlers.h | 實體vector與global ISR mapping；新增中斷時編輯 |
-| App app_main.c | 業務功能、APP_LOG_TAG與counter觀察 |
-| Boot image_metadata_config.h | MCU／Flash、App起點／容量、格式、IRQ ABI、Boot identity |
-| Boot isp_transport_config.h | UART／I2C／Xmodem的編譯契約、速率、位址、timeout |
-| Boot boot_app_handoff.h | owner與RAM保留區、ENTER／更新完成marker |
+| App custom_func.c | hardware_init／loop 入口、業務功能、APP_LOG_TAG與counter觀察；[入口與產碼說明](https://released.github.io/slide_boot_loader_for_RL78/#device-project-entry) |
+| 各工程 image_metadata_config.h | MCU／Flash、App起點／容量、格式、IRQ ABI、Boot identity |
+| 各工程 isp_transport_config.h | UART／I2C／Xmodem的編譯契約、速率、位址、timeout |
+| 各工程 boot_app_handoff.h | owner與RAM保留區、ENTER／更新完成marker |
+| 工程同名 .scfg | SC適用工程的MCU、時脈、UART／IICA與腳位配置，見[SC設定與重新產生](#serial-scfg-workflow) |
 | image_metadata.c/.h、image_metadata_profile.c | 中性parser與expected profile；不操作UART／I2C／Flash |
 | 產生的INC／identity／vectors | Pre-build輸出；由上述C headers產生，不另行手改 |
 
-App與Transfer需同父目錄的配對Boot工程提供helper與共用來源。
-在所選工程根目錄執行；App／Transfer wrapper只建置自己：
+Boot／App／Transfer 各自包含 API、設定 header 與建置工具，不依賴相鄰工程。
+目錄分工見 [工程目錄與程式入口](https://released.github.io/slide_boot_loader_for_RL78/#device-project-entry)。
+在所選工程根目錄執行：
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File .\build.ps1
 ```
 
 使用CS+／CC-RL與Windows PowerShell，不增加Python或JSON authoring前提。
-Boot根目錄的build.ps1 -Kind all可依序建置Boot、App、Transfer；-Compiler可指定既有CubeSuite+.exe位置。
+`build.ps1` 只建置所在工程；`-Compiler` 可指定既有 CubeSuite+.exe 位置。
 
 Pre-build產生完整表與metadata；post-build核對實際linked image、ISR返回方式、CRC、ROM／RAM範圍後產生_update.bin與app_build_report.html。
 HTML列出實際BIN的metadata bytes、IRQ、CRC與雜湊；它是編譯報告，不是板上更新結果。
 
 ```mermaid
 flowchart TD
-    H["App C headers / MCU與ISP工程配置"] --> P["Pre-build產生 identity / metadata / App IRQ表"]
+    H["App C headers / MCU與ISP工程配置"] --> P["Pre-build檢查設定與產生 identity / metadata / App IRQ表"]
+    S["SC適用工程：編輯 .scfg"] --> G["Generate Code：產生周邊設定"]
+    G --> P
     P --> C["CS+分開編譯連結 Boot與App"]
     C --> V["核對實際映像 / 全表 / ROM與RAM範圍"]
     V -- 不符合 --> E["停止封裝 / 保留錯誤"]
@@ -108,6 +118,43 @@ App ISR為global、無vect=的interrupt pragma，並列於app_irq_handlers.h。
 版本號採00MMmmpp，build分開回報；最低Boot不是App／Boot版號相等要求。
 只有完整驗證通過的installed App提供版本下限；FORCE_START只略過該交易版本排序，其他格式、identity、layout、IRQ與CRC檢查不變。
 
+<a id="serial-scfg-workflow"></a>
+
+### SC設定與重新產生
+
+F24、G16、G22 的 UART／Xmodem／I2C Boot、App、Transfer各自帶有同名 `.scfg`。
+F13使用工程內的Code Generator與board設定，沿用相同的metadata與App IRQ編輯方式。
+
+| 配置 | SC元件 | Runtime負責 |
+| --- | --- | --- |
+| UART／Xmodem | UART0 Log、UART1更新、TAU0_1一毫秒tick、r_bsp時脈資料 | 有界RX queue、協定處理與傳送完成判斷 |
+| I2C | UART0 Log、IICA0 Slave、TAU0_1一毫秒tick、r_bsp時脈資料 | Mailbox、STOP／NACK與回覆完成後的reset條件 |
+
+Xmodem與UART使用相同周邊配置；XMODEM-CRC128的資料處理由協定程式負責。
+各MCU的腳位見工程README；G16的16MHz時脈依據[原廠器件規格](https://www.renesas.com/en/products/rl78-g16/part-details/r5f121bcana-40)。
+
+1. 在CS+開啟所選工程，進入Smart Configurator節點，開啟工程同名 `.scfg`。
+2. 修改通訊設定時，同步核對配對Boot的 `isp_transport_config.h`，以及Boot／App／Transfer各自的SC設定。
+   UART1 baud與編譯契約一致；UART0保留獨立Log設定。
+3. I2C契約與Tool使用7-bit位址。SC的address欄位對應SVA暫存器值：`SVA = 7-bit address << 1`。
+   例如7-bit `0x20` 對應SVA `0x40`，SC十進位輸入值為 `64`；7-bit `0x42` 對應SVA `0x84`，十進位值為 `132`。
+4. 在SC執行 **Generate Code**，再於CS+執行 **Rebuild**，或使用上方PowerShell建置命令。
+5. 核對建置輸出的 `PASS SC MCU/pins/clocks/serial/timer and actual generated registers`。
+   App建置完成後，再開啟 `DefaultBuild/app_build_report.html` 檢查實際BIN的metadata與IRQ內容。
+
+Pre-build會對照 `.scfg`、實際 `src/smc_gen` 產物與C header契約，
+將核對過的時脈、UART0分頻、timer及IICA timing輸出至工程自己的 `sc_peripheral_config.generated.h`，供runtime初始化使用。
+此header是產物，不另行編輯；修改設定後，透過SC重新產生及Rebuild更新。
+
+若出現 `SC consistency` 或 `Regenerate SC`，建置會在產表與封裝前停止。
+訊息會指出MCU、腳位、時脈、速率、位址或尚未更新的產物；調整對應輸入後再產生。
+目前board adapter固定管理所列的clock與pin路由；若改用其他腳位或clock來源，也需修改adapter及其檢查條件。
+
+工程保留自己的startup與IRQ入口。SC的周邊設定透過上述header接入；
+UART／IICA預設callback ISR不另外加入連結，App也不產生第二套實體vector。
+App新增中斷仍由[App IRQ編輯流程](https://released.github.io/slide_boot_loader_for_RL78/#device-irq-ownership)處理。
+SC重新產生與建置檢查不代表已完成板上通訊、動態stack或Flash操作驗證。
+
 ### Framed control與INFO
 
 | Frame byte | Bytes | 意義 |
@@ -135,12 +182,38 @@ Frame最長110bytes；UART partial frame200ms逾時。相同sequence僅允許完
 | 20 PING／21 ECHO | App／Transfer回傳0..96bytes |
 | 22 STATS／23 CLEAR_STATS | App／Transfer四個LE32：requests、replays、errors、written |
 | 24 STREAM_TEST | Xmodem App／Transfer宣告size1..65536與CRC32，轉到RAM診斷sink |
+| 25 DIAGNOSTICS | 宣告能力的UART／Xmodem App／Transfer，回覆唯讀24-byte UART快照 |
 
 INFO bytes0..7依序為contract、mode、transport、max-write、LE16target、valid、active。
 Bytes8..39為八個LE32：App start、capacity、Flash、Boot、erase、Boot version、Boot build、bus rate。
 Bytes40..51為installed version／build／size；52..55為policy／ready／LE16capabilities。
 Bytes56..71為part16，72..83為family12，84..87為IRQ ABI。
 Boot能力0F、App3C、Transfer10；Transfer不回報installed App／Boot分區與IRQ ABI，其對應值為零。
+提供UART診斷callback的App／Transfer另加能力bit6（0x40）；Boot不加此位元。
+
+<a id="serial-uart-diagnostics"></a>
+
+### UART診斷格式
+
+Command0x25不帶payload。只有INFO宣告bit6時才查詢；回覆是下表24bytes，多byte整數採little-endian。
+回覆使用相同sequence快取規則；重播同一request不重新讀取硬體。
+
+| Offset | Bytes | 內容與範例 |
+| --- | --- | --- |
+| 00 | 1 | 格式1 |
+| 01 | 1 | 診斷種類1：Device UART |
+| 02..03 | 2 | 欄位mask0x000F，代表本表四組計數／queue欄位均提供 |
+| 04..07 | 4 | RX硬體錯誤次數 |
+| 08..0B | 4 | RX queue丟棄新資料次數 |
+| 0C..0F | 4 | 本機TX timeout次數 |
+| 10..13 | 4 | RX queue最高使用bytes |
+| 14..17 | 4 | 快照當下RX queue待處理bytes |
+
+RL78硬體錯誤／丟棄／TX計數飽和於65535，RH850飽和於0xFFFFFFFF；欄位仍統一序列化為32bits。
+最高量與待處理量是bytes，不是CAN frame數；reset後重新起算，不宣告跨重啟的累積量。
+快照只短暫保留並還原對應IRQ遮罩，不清空接收queue或重設周邊。
+`CLEAR_STATS`只清除協定計數，不清除此硬體診斷快照的累積量。
+Tool保留支援／未提供／讀取失敗的區別；畫面與報告的用途見[Device串列診斷](https://released.github.io/slide_isp_tool_for_RL78/serial-isp.html#serial-device-diagnostics)。
 
 ### I2C mailbox
 
@@ -166,6 +239,8 @@ Short read保留reply，mailbox有2秒lease；buffer overflow、busy時寫入及
 Metadata與START仍使用framed ISP control。Receiver以宣告size排除1A padding，CRC16保護各block；CRC32保護完整useful data。
 重送只允許相同block及完整相同128-byte內容；Tool最多三次相同block嘗試，不重送EOT。
 Partial block200ms逾時NAK，idle10秒取消；完成／錯誤／取消後恢復framed parser。
+本機無法送出C、ACK或NAK時，接收器取消串流並清除待重啟動作。
+Boot只有完整映像驗證通過且最終ACK已由本機傳送完成後才reset；對端是否收到仍由Tool後續確認。
 
 App／Transfer的0x24使用RAM CRC32 sink，沒有Flash erase／write／reset；Boot更新路徑才寫Flash並驗證映像。
 Tool的389-byte診斷涵蓋短末塊，模型亦涵蓋65536-byte block-number wrap、CRC錯誤、duplicate、cancel及timeout。

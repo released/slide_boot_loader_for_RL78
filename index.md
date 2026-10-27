@@ -37,4 +37,10 @@ CAN FD 使用 F24 的獨立 Boot／App 與 Transfer 工程。
 [Basic UART／I2C 範例](basic_uart_i2c/)提供獨立範例的分區、startup、向量與 CRC 操作。
 
 <!-- RH850_DEVICE_BEGIN -->
+<a id="rh850-can-device"></a>
+
+## RH850 MCU CAN device 工程
+
+RH850 的 CAN／CAN FD、App Metadata／IRQ、串列介面與 Flash 移植集中於獨立 Bootloader 指南。
+[閱讀完整章節](https://released.github.io/slide_boot_loader_for_RH850/#rh850-can-device)
 <!-- RH850_DEVICE_END -->

@@ -570,6 +570,22 @@
     "mcu-can-device": {
       "page": "can-device.html",
       "anchor": "article_top"
+    },
+    "serial-scfg-workflow": {
+      "page": "serial-device.html",
+      "anchor": "serial-scfg-workflow"
+    },
+    "serial-uart-diagnostics": {
+      "page": "serial-device.html",
+      "anchor": "serial-uart-diagnostics"
+    },
+    "device-project-entry": {
+      "page": "porting.html",
+      "anchor": "device-project-entry"
+    },
+    "rh850-can-device": {
+      "page": "index.html",
+      "anchor": "rh850-can-device"
     }
   }
 }
