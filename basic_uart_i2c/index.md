@@ -1,4 +1,4 @@
-[MCU CAN device 指南](../) · [ISP Tool 操作](../../slide_isp_tool_for_RL78/)
+[MCU CAN device 指南](../) · [ISP Tool 操作](../../slide_simple_renesas_isp_tool/)
 
 <a id="uart／i2c-範例"></a>
 <a id="article_top"></a>

@@ -1,10 +1,48 @@
-[知識庫首頁](https://released.github.io/) · [RL78 Bootloader 實作指南](index.html)
+[知識庫首頁](https://released.github.io/) · [RL78 Bootloader](index.html)
 
 <a id="article_top"></a>
 
 # Classical CAN／CAN FD device 工程
 
 F13／F24 Classical CAN、F24 CAN FD 的 Boot／App 工程與啟動流程。
+
+<!-- BOOTLOADER_TOPICS_BEGIN -->
+## 本頁主題
+
+| 章節／規格 | 本頁 | 另一平台 |
+| --- | --- | --- |
+| 工程與用途 | [閱讀](#guide-can-device-1) | [RH850](../slide_boot_loader_for_RH850/can-device.html#guide-can-device-1) |
+| 板端與更新設定 | [閱讀](#guide-can-device-2) | [RH850](../slide_boot_loader_for_RH850/can-device.html#guide-can-device-2) |
+| Flash 配置 | [閱讀](#guide-can-device-3) | [RH850](../slide_boot_loader_for_RH850/can-device.html#guide-can-device-3) |
+| Boot 啟動與更新 | [閱讀](#f13-boot-decision) | [RH850](../slide_boot_loader_for_RH850/can-device.html#guide-can-device-4) |
+| MCU CAN FD device 工程設定 | [閱讀](#guide-can-device-5) | [RH850](../slide_boot_loader_for_RH850/can-device.html#guide-can-device-5) |
+| 設定來源 | [閱讀](#guide-can-device-6) | [RH850](../slide_boot_loader_for_RH850/can-device.html#guide-can-device-6) |
+| 接收與中斷 | [閱讀](#guide-can-device-7) | [RH850](../slide_boot_loader_for_RH850/can-device.html#guide-can-device-7) |
+| 更新區塊與 Flash 交接 | [閱讀](#guide-can-device-8) | [RH850](../slide_boot_loader_for_RH850/can-device.html#guide-can-device-8) |
+| 工程與建置 | [閱讀](#guide-can-device-9) | [RH850](../slide_boot_loader_for_RH850/can-device.html#guide-can-device-9) |
+| 驗證項目 | [閱讀](#guide-can-device-10) | [RH850](../slide_boot_loader_for_RH850/can-device.html#guide-can-device-10) |
+<!-- BOOTLOADER_TOPICS_END -->
+
+<!-- RL78_CAN_INDEX_BEGIN -->
+<a id="guide-can-device-1"></a>
+
+### 工程與用途
+
+| 模式／MCU | Transfer | Boot | App |
+| --- | --- | --- | --- |
+| Classical CAN／F13 | `RL78_F13_CAN_Transfer` | `RL78_F13_Boot_loader_CAN` | `RL78_F13_Boot_loader_CAN_app` |
+| Classical CAN／F24 | `RL78_F24_CAN_Transfer` | `RL78_F24_Boot_loader_CAN` | `RL78_F24_Boot_loader_CAN_app` |
+| CAN FD／F24 | `RL78_F24_CAN_FD_Transfer` | `RL78_F24_Boot_loader_CAN_FD` | `RL78_F24_Boot_loader_CAN_FD_app` |
+
+| MCU／模式 | Boot reserve | 預設完整App容量 | 編譯的bus條件 |
+| --- | --- | --- | --- |
+| F13 Classical CAN | 8KiB | 119KiB | nominal500K |
+| F24 Classical CAN | 8KiB | 247KiB | nominal500K |
+| F24 CAN FD | 8KiB | 247KiB | nominal500K／data2M、BRS |
+
+Boot、App與獨立Transfer各自建置。下載／產物選擇集中於 [下載入口](https://released.github.io/slide_simple_renesas_isp_tool/downloads.html)。
+板端設定與啟動分支依本頁的F13／F24工程說明；完整地址與尾端保護集中於 [移植與Flash](porting.html)。
+<!-- RL78_CAN_INDEX_END -->
 
 ## F13 (MCU CAN device)：Boot 啟動與更新
 
@@ -64,7 +102,7 @@ flowchart TD
 
 在 Tool 完成 Enter Boot 後，若停留在選檔或確認視窗而未開始更新，原有效 App 可能因 inactivity 到期而重新執行。
 此時先 `Discover Target` 取得目前模式；若為 App，再 `Enter Boot`，確認 Boot Ready 後執行 `Start Device Update`。
-操作圖集中於 [Device App 更新操作圖](https://released.github.io/slide_isp_tool_for_RL78/#device-update-example)。
+操作圖集中於 [Device App 更新操作圖](https://released.github.io/slide_simple_renesas_isp_tool/#device-update-example)。
 
 | 事件 | boot 的實際結果 |
 | --- | --- |
@@ -108,7 +146,9 @@ Metadata 與 App-only 建置命令見 [Device App 建置](https://released.githu
 F24 CAN device 使用獨立的 Transfer、Boot 與 App 工程。
 板端為 RL78/F24 Target Board R7F124FPJ5xFB。
 正常 CAN App 更新已完成實板驗證，操作與 F13 device 相同：載入配對 BIN、Discover、必要時 Enter Boot、更新並確認 App。
-完成報告與 UART counter 見 [F24 device 更新結果](https://released.github.io/slide_isp_tool_for_RL78/#f24-device-update-example)。
+完成報告與 UART counter 見 [F24 device 更新結果](https://released.github.io/slide_simple_renesas_isp_tool/#f24-device-update-example)。
+
+<a id="guide-can-device-2"></a>
 
 ### 板端與更新設定
 
@@ -123,6 +163,8 @@ F24 CAN device 使用獨立的 Transfer、Boot 與 App 工程。
 | IRQ owner | `0xAA`：Boot；`0x55`：App |
 | CAN IDs | Control `0x700`、response `0x701`、raw `0x720..0x727` |
 | 更新格式 | App image format6、CAN protocol5、64-byte blocks |
+
+<a id="guide-can-device-3"></a>
 
 ### Flash 配置
 
@@ -159,6 +201,8 @@ flowchart TD
     END -->|否| WAIT
 ```
 
+<a id="guide-can-device-9"></a>
+
 ### 工程與建置
 
 每個工程自備 `hal` API、設定 header、SC 與 MTPJ，可獨立建置。
@@ -180,16 +224,20 @@ C header 編輯、ISR 與 App-only 命令集中於 [Device App 設定與建置](
 CAN 更新使用 App `*_update.bin`。App 產表為 `ftable.inc`、`app_identity.h`、`app_irq_table.inc`，
 由 `ftable_RL78_F24.asm` 組譯；兩份 C header 仍是編輯入口。
 
+<a id="guide-can-device-10"></a>
+
 ### 驗證項目
 
 軟體檢查涵蓋編譯、向量／RETI、IRQ stack、RFD RAM 路徑及 metadata／區塊處理。
 正常 500K CAN App 寫入、END CRC、reset 後 APP_READY／live INFO 與 UART timer counter 已確認。
 CAN 波形量測、250K／1M、其他 IRQ、長時間壓力、取消、斷線及斷電復原分項驗證，
-見 [更新驗證矩陣](https://released.github.io/slide_isp_tool_for_RL78/#update-confirmation)。
+見 [更新驗證矩陣](https://released.github.io/slide_simple_renesas_isp_tool/#update-confirmation)。
 <!-- F24_DEVICE_END -->
 
 <!-- FD_DEVICE_BEGIN -->
 <a id="can-fd-device-engineering"></a>
+
+<a id="guide-can-device-5"></a>
 
 ## MCU CAN FD device 工程設定
 
@@ -197,6 +245,8 @@ F24 device 使用獨立 `RL78_F24_Boot_loader_CAN_FD` 與
 `RL78_F24_Boot_loader_CAN_FD_app` 工程，放在同一父目錄。
 App 使用本工程的 `hal` API、metadata 設定與建置工具。
 App 發行與 IRQ 編輯沿用 [C header 工作流程](https://released.github.io/slide_boot_loader_for_RL78/#device-metadata-vector-workshop)。
+
+<a id="guide-can-device-6"></a>
 
 ### 設定來源
 
@@ -230,6 +280,8 @@ SC重新產生後仍需執行工程prepare及clean build，核對實際linked產
 4MHz resonator與周邊接線依實際板本確認。
 
 <a id="can-fd-device-rx"></a>
+
+<a id="guide-can-device-7"></a>
 
 ### 接收與中斷
 
@@ -265,6 +317,8 @@ ISR 確認 RMND 後讀取 RXMB0，保存／還原 CAN RAM window；讀取期間�
 | `Device_CanRxDrops()` | 丟棄觀察計數，累計到 255 後飽和；不是線上所有遺失幀的精確數量 |
 | 觀察位置 | App 在 UART counter 旁顯示非零 faults／drops；Boot 可由 debugger 查看 `g_rx_faults`／`g_device_rx_drops`，位址由當次 map 查詢 |
 | 重設範圍 | 上述值只在 CAN 初始化時歸零；正常一問一答應保持 0 |
+
+<a id="guide-can-device-8"></a>
 
 ### 更新區塊與 Flash 交接
 
@@ -316,7 +370,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\build.ps1
 
 MCU建置使用CS+ CC-RL、Windows PowerShell5.1／.NET，不需Python。
 封裝維持至少512-byte Boot餘裕、完整IRQ表、RAM-only RFD與分區界線；
-App-only建置不改Boot；操作見 [CAN FD更新](https://released.github.io/slide_isp_tool_for_RL78/#can-fd-update)。
+App-only建置不改Boot；操作見 [CAN FD更新](https://released.github.io/slide_simple_renesas_isp_tool/#can-fd-update)。
 
 | 產物 | 使用方式 |
 | --- | --- |
@@ -330,4 +384,4 @@ App-only建置不改Boot；操作見 [CAN FD更新](https://released.github.io/s
 
 ---
 
-[指南入口](index.html) · [下一主題：App Metadata 與 IRQ 編輯](app-development.html)
+[指南入口](index.html) · [下一主題：App Metadata、IRQ 與更新耗時](app-development.html)

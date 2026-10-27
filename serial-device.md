@@ -1,10 +1,26 @@
-[知識庫首頁](https://released.github.io/) · [RL78 Bootloader 實作指南](index.html)
+[知識庫首頁](https://released.github.io/) · [RL78 Bootloader](index.html)
 
 <a id="article_top"></a>
 
 # UART／Xmodem／I2C device 工程
 
 四系列獨立串列工程的 Flash、Metadata、IRQ 與通訊契約。
+
+<!-- BOOTLOADER_TOPICS_BEGIN -->
+## 本頁主題
+
+| 章節／規格 | 本頁 | 另一平台 |
+| --- | --- | --- |
+| 配置與資料來源 | [閱讀](#guide-serial-device-1) | [RH850](../slide_boot_loader_for_RH850/serial-device.html#guide-serial-device-1) |
+| 編輯、產生與建置 | [閱讀](#guide-serial-device-2) | [RH850](../slide_boot_loader_for_RH850/serial-device.html#guide-serial-device-2) |
+| Metadata offset與協定配置 | [閱讀](#guide-serial-device-3) | [RH850](../slide_boot_loader_for_RH850/serial-device.html#guide-serial-device-3) |
+| SC設定與重新產生 | [閱讀](#guide-serial-device-4) | [RH850](../slide_boot_loader_for_RH850/serial-device.html#guide-serial-device-4) |
+| Framed control與INFO | [閱讀](#guide-serial-device-5) | [RH850](../slide_boot_loader_for_RH850/serial-device.html#guide-serial-device-5) |
+| UART診斷格式 | [閱讀](#guide-serial-device-6) | [RH850](../slide_boot_loader_for_RH850/serial-device.html#guide-serial-device-6) |
+| I2C mailbox | [閱讀](#guide-serial-device-7) | [RH850](../slide_boot_loader_for_RH850/serial-device.html#guide-serial-device-7) |
+| XMODEM-CRC128資料與診斷 | [閱讀](#guide-serial-device-8) | [RH850](../slide_boot_loader_for_RH850/serial-device.html#guide-serial-device-8) |
+| 驗證範圍 | [閱讀](#guide-serial-device-9) | [RH850](../slide_boot_loader_for_RH850/serial-device.html#guide-serial-device-9) |
+<!-- BOOTLOADER_TOPICS_END -->
 
 <!-- SERIAL_DEVICE_GUIDE_BEGIN -->
 <a id="serial-device-engineering"></a>
@@ -13,8 +29,10 @@
 
 F13、F24、G16、G22 分別提供 UART、Xmodem、I2C 的獨立 Boot／App／Transfer。
 每份 Device Boot 只編入所選的一種更新介面／協定；UART0保留診斷文字。
-Tool操作與接線見 [串列 device 操作](https://released.github.io/slide_isp_tool_for_RL78/#uart-device-operation)，本節集中於工程編輯與資料契約。
-Tool選取值、Boot／App初始化、live INFO與BIN需對應的項目集中於[通訊設定與更新必要條件](https://released.github.io/slide_isp_tool_for_RL78/#serial-update-requirements)。
+Tool操作與接線見 [串列 device 操作](https://released.github.io/slide_simple_renesas_isp_tool/#uart-device-operation)，本節集中於工程編輯與資料契約。
+Tool選取值、Boot／App初始化、live INFO與BIN需對應的項目集中於[通訊設定與更新必要條件](https://released.github.io/slide_simple_renesas_isp_tool/#serial-update-requirements)。
+
+<a id="guide-serial-device-1"></a>
 
 ### 配置與資料來源
 
@@ -45,6 +63,8 @@ UART速率由 `isp_transport_config.h` 宣告；INFO、metadata及周邊分頻�
 `isp_uart_timing.h` 拒絕無法表示或誤差超過2%的組合。UART0 Log維持獨立分頻。
 若速率需要不同的SPS時脈來源，先調整board adapter與其source clock，再重建配對Boot／App；
 設定檢查通過不代替實際電氣與通訊時序驗證。
+
+<a id="guide-serial-device-2"></a>
 
 ### 編輯、產生與建置
 
@@ -91,6 +111,8 @@ App ISR為global、無vect=的interrupt pragma，並列於app_irq_handlers.h。
 同一專案不能重複定義同名ISR；分開連結的Boot／App可以同名。
 新增IRQ亦包含C來源註冊、周邊初始化與旗標清除；完整流程見 [App IRQ編輯](https://released.github.io/slide_boot_loader_for_RL78/#device-irq-ownership)。
 
+<a id="guide-serial-device-3"></a>
+
 ### Metadata offset與協定配置
 
 總長256bytes，core128bytes、其餘128為FF。除ASCII與byte欄位外，多byte整數採little-endian。
@@ -119,6 +141,8 @@ App ISR為global、無vect=的interrupt pragma，並列於app_irq_handlers.h。
 只有完整驗證通過的installed App提供版本下限；FORCE_START只略過該交易版本排序，其他格式、identity、layout、IRQ與CRC檢查不變。
 
 <a id="serial-scfg-workflow"></a>
+
+<a id="guide-serial-device-4"></a>
 
 ### SC設定與重新產生
 
@@ -154,6 +178,9 @@ Pre-build會對照 `.scfg`、實際 `src/smc_gen` 產物與C header契約，
 UART／IICA預設callback ISR不另外加入連結，App也不產生第二套實體vector。
 App新增中斷仍由[App IRQ編輯流程](https://released.github.io/slide_boot_loader_for_RL78/#device-irq-ownership)處理。
 SC重新產生與建置檢查不代表已完成板上通訊、動態stack或Flash操作驗證。
+
+<!-- SERIAL_WIRE_REFERENCE_BEGIN -->
+<a id="guide-serial-device-5"></a>
 
 ### Framed control與INFO
 
@@ -193,6 +220,8 @@ Boot能力0F、App3C、Transfer10；Transfer不回報installed App／Boot分區�
 
 <a id="serial-uart-diagnostics"></a>
 
+<a id="guide-serial-device-6"></a>
+
 ### UART診斷格式
 
 Command0x25不帶payload。只有INFO宣告bit6時才查詢；回覆是下表24bytes，多byte整數採little-endian。
@@ -213,7 +242,9 @@ RL78硬體錯誤／丟棄／TX計數飽和於65535，RH850飽和於0xFFFFFFFF；
 最高量與待處理量是bytes，不是CAN frame數；reset後重新起算，不宣告跨重啟的累積量。
 快照只短暫保留並還原對應IRQ遮罩，不清空接收queue或重設周邊。
 `CLEAR_STATS`只清除協定計數，不清除此硬體診斷快照的累積量。
-Tool保留支援／未提供／讀取失敗的區別；畫面與報告的用途見[Device串列診斷](https://released.github.io/slide_isp_tool_for_RL78/serial-isp.html#serial-device-diagnostics)。
+Tool保留支援／未提供／讀取失敗的區別；畫面與報告的用途見[Device串列診斷](https://released.github.io/slide_simple_renesas_isp_tool/serial-isp.html#serial-device-diagnostics)。
+
+<a id="guide-serial-device-7"></a>
 
 ### I2C mailbox
 
@@ -224,6 +255,8 @@ Tool只寫入一次request，再以唯讀poll等候；不因busy重送Flash requ
 IICA ISR只處理有界Start／Receive／Next／NACK／STOP。
 Main loop才解析／執行Flash並發布不可變reply；ENTER／END需等完整ready read、最終NACK及STOP後才reset。
 Short read保留reply，mailbox有2秒lease；buffer overflow、busy時寫入及錯誤交易不授權更新。
+
+<a id="guide-serial-device-8"></a>
 
 ### XMODEM-CRC128資料與診斷
 
@@ -244,6 +277,9 @@ Boot只有完整映像驗證通過且最終ACK已由本機傳送完成後才rese
 
 App／Transfer的0x24使用RAM CRC32 sink，沒有Flash erase／write／reset；Boot更新路徑才寫Flash並驗證映像。
 Tool的389-byte診斷涵蓋短末塊，模型亦涵蓋65536-byte block-number wrap、CRC錯誤、duplicate、cancel及timeout。
+<!-- SERIAL_WIRE_REFERENCE_END -->
+
+<a id="guide-serial-device-9"></a>
 
 ### 驗證範圍
 
@@ -254,4 +290,4 @@ App-only建置會比對Boot來源與產物雜湊，確認未被改寫。
 
 ---
 
-[上一主題：App Metadata 與 IRQ 編輯](app-development.html) · [指南入口](index.html) · [下一主題：Boot／App 移植與 Flash](porting.html)
+[上一主題：App Metadata、IRQ 與更新耗時](app-development.html) · [指南入口](index.html) · [下一主題：Boot／App 移植與 Flash](porting.html)

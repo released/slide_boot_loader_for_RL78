@@ -1,10 +1,30 @@
-[知識庫首頁](https://released.github.io/) · [RL78 Bootloader 實作指南](index.html)
+[知識庫首頁](https://released.github.io/) · [RL78 Bootloader](index.html)
 
 <a id="article_top"></a>
 
 # Boot／App 移植與 Flash
 
 分區、Boot 安裝、debug monitor、Flash RAM 執行與 CRC 後端。
+
+<!-- BOOTLOADER_TOPICS_BEGIN -->
+## 本頁主題
+
+| 章節／規格 | 本頁 | 另一平台 |
+| --- | --- | --- |
+| Basic 範例與 CAN golden sample | [閱讀](#guide-porting-1) | [RH850](../slide_boot_loader_for_RH850/porting.html#guide-porting-1) |
+| 1. 工程來源 | [閱讀](#guide-porting-2) | [RH850](../slide_boot_loader_for_RH850/porting.html#guide-porting-2) |
+| 2. Flash 與映像配置 | [閱讀](#guide-porting-3) | [RH850](../slide_boot_loader_for_RH850/porting.html#guide-porting-3) |
+| 重要事項：Boot 燒錄方式與 Flash 尾端保護 | [閱讀](#guide-porting-4) | [RH850](../slide_boot_loader_for_RH850/porting.html#guide-porting-4) |
+| 3. Startup、RAM 與中斷交接 | [閱讀](#guide-porting-5) | [RH850](../slide_boot_loader_for_RH850/porting.html#guide-porting-5) |
+| 使用者程式入口與 Generate Code | [閱讀](#guide-porting-6) | [RH850](../slide_boot_loader_for_RH850/porting.html#guide-porting-6) |
+| Code Flash 擦寫：ROM 儲存與 RAM 執行 | [閱讀](#guide-porting-7) | [RH850](../slide_boot_loader_for_RH850/porting.html#guide-porting-7) |
+| 映像 CRC32 與硬體 CRC | [閱讀](#guide-porting-8) | [RH850](../slide_boot_loader_for_RH850/porting.html#guide-porting-8) |
+| 4. 固定向量介面 | [閱讀](#guide-porting-9) | [RH850](../slide_boot_loader_for_RH850/porting.html#guide-porting-9) |
+| 5. 設定檔與建置 | [閱讀](#guide-porting-10) | [RH850](../slide_boot_loader_for_RH850/porting.html#guide-porting-10) |
+| 6. 初次安裝與後續更新 | [閱讀](#guide-porting-11) | [RH850](../slide_boot_loader_for_RH850/porting.html#guide-porting-11) |
+| 7. 啟動與更新流程 | [閱讀](#guide-porting-12) | [RH850](../slide_boot_loader_for_RH850/porting.html#guide-porting-12) |
+| 8. App 變更與驗證 | [閱讀](#guide-porting-13) | [RH850](../slide_boot_loader_for_RH850/porting.html#guide-porting-13) |
+<!-- BOOTLOADER_TOPICS_END -->
 
 <!-- RL78_PORTING_BEGIN -->
 <a id="boot-app-porting"></a>
@@ -19,6 +39,8 @@ Metadata 編輯與新增 IRQ 的逐步操作集中於 [Device App 設定](https:
 本節著重移植時各項工程設定的關係。
 
 <a id="basic-vs-golden"></a>
+
+<a id="guide-porting-1"></a>
 
 ### Basic 範例與 CAN golden sample
 
@@ -43,6 +65,8 @@ Basic 的無後綴與 `_e2` 配對均使用軟體 CRC32；`_e2` 表示附有 e2 
 `_CRC` 配對包含 timer／IICA0 IRQ 轉送；`_HW_CRC` 配對使用 general-purpose 硬體 CRC16。
 各配對的來源、啟用開關及封裝範圍見 [Basic 工程索引](https://released.github.io/slide_boot_loader_for_RL78/basic_uart_i2c/#basic-projects)。
 兩類映像分別交給對應下載流程，Basic BIN 不作為 CAN metadata 映像載入。
+
+<a id="guide-porting-2"></a>
 
 ### 1. 工程來源
 
@@ -76,6 +100,8 @@ git clone https://github.com/released/RL78_F13_Boot_loader_CAN.git
 git clone https://github.com/released/RL78_F13_Boot_loader_CAN_app.git
 ```
 
+<a id="guide-porting-3"></a>
+
 ### 2. Flash 與映像配置
 
 | 區域 | F13 device | F24 device |
@@ -98,6 +124,8 @@ BIN 的實際長度由 linker map 決定，尾端四位元組對齊並加上 CRC
 逐 byte 位址見 [Flash／metadata 參考](https://released.github.io/slide_boot_loader_for_RL78/#flash-metadata-can-reference)。
 
 <a id="device-debug-monitor"></a>
+
+<a id="guide-porting-4"></a>
 
 #### 重要事項：Boot 燒錄方式與 Flash 尾端保護
 
@@ -131,6 +159,8 @@ App BIN 容量包含向量表、metadata、程式／填充與最後 4 bytes CRC3
 僅改用 RFP、不修改配對工程，預設 Boot 仍只接受 119／247 KiB 以內的 App。
 目前操作依據可參閱 Renesas [E1／E20／E2／E2 Lite RL78 附加手冊](https://www.renesas.com/en/document/mat/e1e20e2-emulator-e2-emulator-lite-additional-document-users-manual-notes-connection-rl78) §3.3.1（monitor 區域）、§3.5.1（self-programming）及 §3.8.2（離開除錯後獨立運作）。
 
+<a id="guide-porting-5"></a>
+
 ### 3. Startup、RAM 與中斷交接
 
 | 項目 | 工程設定與檢查位置 |
@@ -152,6 +182,8 @@ F24 的 `hal/device`、`hal/flash` 與 startup projection 負責板端初始化�
 這些來源分別保留在各自工程中。
 
 <a id="device-project-entry"></a>
+
+<a id="guide-porting-6"></a>
 
 #### 使用者程式入口與 Generate Code
 
@@ -215,6 +247,8 @@ Generate Code 後，可在 MTPJ 的編譯來源確認使用者入口仍被選用
 
 <a id="flash-ram-execution"></a>
 
+<a id="guide-porting-7"></a>
+
 #### Code Flash 擦寫：ROM 儲存與 RAM 執行
 
 F24 在 Code Flash programming mode 期間無法從 Code Flash 取指或讀取資料。
@@ -256,6 +290,8 @@ F13 使用其 FSL 的 library／使用者程式配置，依 FSL 的內部處理�
 
 <a id="crc-backends"></a>
 
+<a id="guide-porting-8"></a>
+
 #### 映像 CRC32 與硬體 CRC
 
 CRC 的格式契約與計算後端分開：相同資料需使用相同位寬、多項式、初值、位元／byte 順序與最終處理，才能比較結果。
@@ -283,6 +319,8 @@ General-purpose CRC 可處理 CPU 指定的資料；限制在演算法結果，�
 效能取決於 CPU 搬運、硬體啟動與映像大小，需依實際工程量測。
 CRC 用於偵測資料損壞，不提供韌體來源驗證或防竄改簽章。
 
+<a id="guide-porting-9"></a>
+
 ### 4. 固定向量介面
 
 一般 IRQ 的 owner 分流、16-bit 實體入口、App 槽位換算及轉送成本集中於
@@ -305,6 +343,8 @@ CRC 用於偵測資料損壞，不提供韌體來源驗證或防竄改簽章。
 仍依 MCU 與 Flash library 的限制配置。
 若擦寫期間需要啟用中斷，另核對從實體 vector、stub、dispatcher 到 handler 與資料的完整路徑是否仍可存取。
 
+<a id="guide-porting-10"></a>
+
 ### 5. 設定檔與建置
 
 | 內容 | F13 device | F24 device |
@@ -319,9 +359,11 @@ CRC 用於偵測資料損壞，不提供韌體來源驗證或防竄改簽章。
 來源搬移或改名時，source／include／hook、map 與輸出檔名一併調整。
 完整命令集中於 [產生與建置](https://released.github.io/slide_boot_loader_for_RL78/#device-app-build)。
 
+<a id="guide-porting-11"></a>
+
 ### 6. 初次安裝與後續更新
 
-Tool 操作見 [CAN device 更新](https://released.github.io/slide_isp_tool_for_RL78/#mcu-can-device)。
+Tool 操作見 [CAN device 更新](https://released.github.io/slide_simple_renesas_isp_tool/#mcu-can-device)。
 以燒錄器安裝時，核對 Boot 與 App 檔案的位址範圍及 erase 設定。
 App raw ABS／MOT 用於編譯除錯，封裝後的 App HEX 用於燒錄器初裝。
 
@@ -330,6 +372,8 @@ App raw ABS／MOT 用於編譯除錯，封裝後的 App HEX 用於燒錄器初�
 | 燒錄器初裝 | Boot `DefaultBuild/boot0000_1FFF.hex`＋App `DefaultBuild/flash_app_variable_CRC.hex` | Boot `DefaultBuild/boot0000_1FFF.hex`＋App `DefaultBuild/flash_app_variable_CRC.hex` |
 | CAN 更新 App | `DefaultBuild/*_update.bin` | `DefaultBuild/*_update.bin` |
 | 除錯檢查 | 保留 Boot 實體向量，載入 App symbols | 保留 Boot 實體向量，載入 App symbols |
+
+<a id="guide-porting-12"></a>
 
 ### 7. 啟動與更新流程
 
@@ -348,6 +392,8 @@ flowchart TD
 各工程的 marker、逾時與 Flash 操作由各自 Boot 處理。
 F13 的狀態條件見 [F13 Boot 啟動與更新](https://released.github.io/slide_boot_loader_for_RL78/#f13-boot-decision)。
 F24 的狀態路徑見 [F24 device 工程配置](https://released.github.io/slide_boot_loader_for_RL78/#f24-can-device)。
+
+<a id="guide-porting-13"></a>
 
 ### 8. App 變更與驗證
 

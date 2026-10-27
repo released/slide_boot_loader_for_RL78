@@ -3,6 +3,7 @@
 - 網頁入口：<https://released.github.io/slide_boot_loader_for_RL78/>
 - 指南入口：`index.md`／`index.html`；完整章節位於各主題的 `.md`／`.html`。
 - 共用版型：`notices_can/assets/style.css`、`app.js`。
+- [App BIN 更新耗時比較](app-development.html#device-update-timing)：F13／F24 Classical CAN、F24 CAN FD。
 
 本頁提供 MCU CAN device 的 Boot/App 工程、metadata、vector、startup 與 Flash 更新說明。
 F13 與 F24 各有獨立工程，概念流程使用 MCU CAN device 名稱；型號、位址與驅動差異列於工程表格。
@@ -16,7 +17,7 @@ Basic UART／I2C 範例的設定與來源集中於 [獨立範例頁](basic_uart_
 | 頁面 | 內容 |
 | --- | --- |
 | [CAN device 工程](can-device.html) | F13／F24 Classical CAN、F24 CAN FD 與 Boot 啟動流程 |
-| [App 開發](app-development.html) | Metadata／IRQ C header、產表、建置、驗證、更新耗時與 CAN 速率 |
+| [App Metadata、IRQ 與更新耗時](app-development.html) | Metadata／IRQ C header、產表、建置、驗證、更新耗時與 CAN 速率 |
 | [串列 device 工程](serial-device.html) | UART／Xmodem／I2C 的工程與通訊契約 |
 | [移植與 Flash](porting.html) | 分區、Boot 安裝、debug monitor、Flash RAM 執行與 CRC |
 | [格式參考](reference.html) | Flash address、全部 Metadata bytes 與 CAN payload |
@@ -24,6 +25,7 @@ Basic UART／I2C 範例的設定與來源集中於 [獨立範例頁](basic_uart_
 
 每個主題頁保留自己的目錄，頁首可返回指南入口，頁尾提供上一／下一主題。
 圖片沿用本站相對路徑，完整技術內容只保留於所屬主題。
+每頁的「本頁主題」提供相同章節的RH850跳轉；欄位與位址由各平台工程的規格說明。
 
 ## 主題維護
 
@@ -50,7 +52,7 @@ Basic UART／I2C 範例的設定與來源集中於 [獨立範例頁](basic_uart_
 | Flash／metadata 全部 byte／CAN frame | FLASH_METADATA_CAN_FRAME_GUIDE／sync_flash_reference.ps1 |
 
 Tool 操作、Custom Transfer、CAN 更新逐層導讀、Host App 工程、下載及更新政策集中於
-[ISP Tool 頁](https://released.github.io/slide_isp_tool_for_RL78/)。
+[ISP Tool 頁](https://released.github.io/slide_simple_renesas_isp_tool/)。
 
 修改原稿後執行同步及 `-CheckOnly`，同步相關 PDF。
 使用 `-WebRoot` 或 `FIRMWARE_WEB_ROOT` 指定網站 checkout 父目錄。
