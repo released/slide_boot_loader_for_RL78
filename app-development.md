@@ -834,8 +834,8 @@ F13 寫入位置是 `r_rl78_can_drv.c` 的 `C0CFGL/C0CFGH`；
 F24 是生成 driver `r_rscanfd_rl78.c` 的 `C0NCFGL/C0NCFGH`，
 其 `CAN_CFG_NMNL_TSEG1/2` 由設定 header 轉成 register encoding。
 可由各工程上述原始碼及 MCU 硬體手冊的 CAN bit timing／configuration register 核對。
-F13 原始設定可直接開啟 [Boot RSCANlite.h](https://github.com/released/RL78_F13_Boot_loader_CAN/blob/main/RSCANconf/RSCANlite.h)
-及 [App RSCANlite.h](https://github.com/released/RL78_F13_Boot_loader_CAN_app/blob/main/RSCANconf/RSCANlite.h)。
+F13 原始設定可直接開啟 [Boot RSCANlite.h](https://github.com/released/RL78_F13_Boot_loader_CAN/blob/main/hal/can/RSCANlite.h)
+及 [App RSCANlite.h](https://github.com/released/RL78_F13_Boot_loader_CAN_app/blob/main/hal/can/RSCANlite.h)。
 
 以下只調整 BRP，保留上述 clock、TSEG1／2 與現有 SJW；改 clock 或 TSEG 時需重新計算。
 
