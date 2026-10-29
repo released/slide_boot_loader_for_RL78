@@ -50,7 +50,7 @@ Boot、App與獨立Transfer各自建置。下載／產物選擇集中於 [下載
 <a id="f13-boot-decision"></a>
 
 本節整理 F13 (MCU CAN device) 的 Boot 啟動與更新狀態。
-對應來源為 `r_main.c` 與 `can_boot_transport.c`。
+流程入口為 `custom_func.c` 的 `hardware_init()`／`loop()`；`r_main.c` 保留啟動 adapter，CAN 命令處理由 `hal/isp/can_boot_transport.c` 執行。
 
 #### A. 每次 reset 的 app 有效性檢查：全部通過才可啟動
 
@@ -242,7 +242,7 @@ CAN 波形量測、250K／1M、其他 IRQ、長時間壓力、取消、斷線及
 ## MCU CAN FD device 工程設定
 
 F24 device 使用獨立 `RL78_F24_Boot_loader_CAN_FD` 與
-`RL78_F24_Boot_loader_CAN_FD_app` 工程，放在同一父目錄。
+`RL78_F24_Boot_loader_CAN_FD_app` 工程；各自包含本地來源與工具，可分開建置。
 App 使用本工程的 `hal` API、metadata 設定與建置工具。
 App 發行與 IRQ 編輯沿用 [C header 工作流程](https://released.github.io/slide_boot_loader_for_RL78/#device-metadata-vector-workshop)。
 

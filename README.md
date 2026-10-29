@@ -1,11 +1,11 @@
-# RL78 MCU CAN device Boot/App 指南
+# RL78 MCU device Boot/App 指南
 
 - 網頁入口：<https://released.github.io/slide_boot_loader_for_RL78/>
 - 指南入口：`index.md`／`index.html`；完整章節位於各主題的 `.md`／`.html`。
 - 共用版型：`notices_can/assets/style.css`、`app.js`。
 - [App BIN 更新耗時比較](app-development.html#device-update-timing)：F13／F24 Classical CAN、F24 CAN FD。
 
-本頁提供 MCU CAN device 的 Boot/App 工程、metadata、vector、startup 與 Flash 更新說明。
+本頁提供 MCU device 的 Boot/App 工程、metadata、vector、startup、Flash 與通訊協定說明。
 F13 與 F24 各有獨立工程，概念流程使用 MCU CAN device 名稱；型號、位址與驅動差異列於工程表格。
 Basic UART／I2C 範例的設定與來源集中於 [獨立範例頁](basic_uart_i2c/)，內容為 `basic_uart_i2c/index.md`。
 `uart_i2c/` 保留轉址並延續章節錨點。
@@ -18,7 +18,10 @@ Basic UART／I2C 範例的設定與來源集中於 [獨立範例頁](basic_uart_
 | --- | --- |
 | [CAN device 工程](can-device.html) | F13／F24 Classical CAN、F24 CAN FD 與 Boot 啟動流程 |
 | [App Metadata、IRQ 與更新耗時](app-development.html) | Metadata／IRQ C header、產表、建置、驗證、更新耗時與 CAN 速率 |
-| [串列 device 工程](serial-device.html) | UART／Xmodem／I2C 的工程與通訊契約 |
+| [串列 ISP 共用契約](serial-device.html) | 平台配置、建置、Metadata、SC 與共用 Frame／命令／INFO／Status |
+| [UART Bootloader 與協定格式](uart-device.html) | UART 接收、更新流程、封包範例與診斷 |
+| [I2C Bootloader 與協定格式](i2c-device.html) | Slave mailbox、交易 bytes、STOP／NACK 與完成條件 |
+| [Xmodem Bootloader 與協定格式](xmodem-device.html) | Framed control、CRC128 block、重送與最終 ACK |
 | [移植與 Flash](porting.html) | 分區、Boot 安裝、debug monitor、Flash RAM 執行與 CRC |
 | [格式參考](reference.html) | Flash address、全部 Metadata bytes 與 CAN payload |
 | [Tool 主題入口](tool-guides.html) | 操作、更新、報告、Host 與 Custom Transfer 的連結 |
@@ -39,7 +42,8 @@ Basic UART／I2C 範例的設定與來源集中於 [獨立範例頁](basic_uart_
 
 | 本站完整主題 | 原稿／同步腳本 |
 | --- | --- |
-| 四系列 UART／Xmodem／I2C 工程、metadata與封包 | ISP_UART_DEVICE_DESIGN／sync_isp_uart_guide.ps1 |
+| 四系列串列共用工程、Metadata 與封包 | ISP_UART_DEVICE_DESIGN／sync_isp_uart_guide.ps1 |
+| UART／I2C／Xmodem 各自 Boot／Protocol Format | ISP_SERIAL_TRANSPORT_GUIDE／serial_guide_content.mjs／sync_rh850_device.ps1；兩平台共用章節定義 |
 | CAN FD device timing／工程／產物 | CAN_FD_UPDATE 的 FD_DEVICE／sync_can_fd.ps1 |
 | Device Metadata／App IRQ C header 編輯與建置 | DEVICE_METADATA_VECTOR_WORKSHOP／sync_device_workshop.ps1 |
 | Device CAN 速率／Boot-App ISR 所有權／App counter | 同一 workshop 的 device-can-bitrate／device-irq-ownership／device-app-runtime-log |

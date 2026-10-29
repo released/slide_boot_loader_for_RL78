@@ -14,8 +14,20 @@
       "description": "C header 編輯、產表、App 建置、驗證、CAN 速率與更新耗時。"
     },
     "serial-device": {
-      "title": "UART／Xmodem／I2C device 工程",
-      "description": "四系列獨立串列工程的 Flash、Metadata、IRQ 與通訊契約。"
+      "title": "串列 ISP 共用工程與協定契約",
+      "description": "平台配置、C header、建置、Metadata、SC 與共用 Frame／命令／INFO／Status。"
+    },
+    "uart-device": {
+      "title": "UART Bootloader 與協定格式",
+      "description": "資料 UART、接收中斷、framed ISP 更新、封包範例與診斷。"
+    },
+    "i2c-device": {
+      "title": "I2C Bootloader 與協定格式",
+      "description": "I2C Slave、STOP mailbox、111-byte reply window 與更新完成條件。"
+    },
+    "xmodem-device": {
+      "title": "Xmodem Bootloader 與協定格式",
+      "description": "Framed control、XMODEM-CRC128、串流寫入、重送與最終 ACK。"
     },
     "porting": {
       "title": "Boot／App 移植與 Flash",
@@ -456,12 +468,12 @@
       "anchor": "guide-serial-device-5"
     },
     "i2c-mailbox": {
-      "page": "serial-device.html",
-      "anchor": "guide-serial-device-7"
+      "page": "i2c-device.html",
+      "anchor": "i2c-protocol"
     },
     "xmodem-crc128資料與診斷": {
-      "page": "serial-device.html",
-      "anchor": "guide-serial-device-8"
+      "page": "xmodem-device.html",
+      "anchor": "xmodem-protocol"
     },
     "驗證範圍": {
       "page": "serial-device.html",
@@ -576,7 +588,7 @@
       "anchor": "serial-scfg-workflow"
     },
     "serial-uart-diagnostics": {
-      "page": "serial-device.html",
+      "page": "uart-device.html",
       "anchor": "serial-uart-diagnostics"
     },
     "device-project-entry": {
@@ -676,15 +688,15 @@
       "anchor": "guide-serial-device-5"
     },
     "guide-serial-device-6": {
-      "page": "serial-device.html",
+      "page": "uart-device.html",
       "anchor": "guide-serial-device-6"
     },
     "guide-serial-device-7": {
-      "page": "serial-device.html",
+      "page": "i2c-device.html",
       "anchor": "guide-serial-device-7"
     },
     "guide-serial-device-8": {
-      "page": "serial-device.html",
+      "page": "xmodem-device.html",
       "anchor": "guide-serial-device-8"
     },
     "guide-serial-device-9": {
@@ -832,8 +844,8 @@
       "anchor": "guide-serial-device-4"
     },
     "uart診斷格式": {
-      "page": "serial-device.html",
-      "anchor": "guide-serial-device-6"
+      "page": "uart-device.html",
+      "anchor": "serial-uart-diagnostics"
     },
     "basic-範例與-can-golden-sample": {
       "page": "porting.html",
@@ -890,6 +902,150 @@
     "uart／xmodem／i2c-device-操作": {
       "page": "tool-guides.html",
       "anchor": "uart-device-operation"
+    },
+    "serial-status-codes": {
+      "page": "serial-device.html",
+      "anchor": "serial-status-codes"
+    },
+    "uart-bootloader": {
+      "page": "uart-device.html",
+      "anchor": "uart-bootloader"
+    },
+    "guide-uart-device-1": {
+      "page": "uart-device.html",
+      "anchor": "guide-uart-device-1"
+    },
+    "guide-uart-device-2": {
+      "page": "uart-device.html",
+      "anchor": "guide-uart-device-2"
+    },
+    "guide-uart-device-3": {
+      "page": "uart-device.html",
+      "anchor": "guide-uart-device-3"
+    },
+    "uart-boot-flow": {
+      "page": "uart-device.html",
+      "anchor": "uart-boot-flow"
+    },
+    "guide-uart-device-4": {
+      "page": "uart-device.html",
+      "anchor": "guide-uart-device-4"
+    },
+    "uart-protocol": {
+      "page": "uart-device.html",
+      "anchor": "uart-protocol"
+    },
+    "guide-uart-device-5": {
+      "page": "uart-device.html",
+      "anchor": "guide-uart-device-5"
+    },
+    "guide-uart-device-6": {
+      "page": "uart-device.html",
+      "anchor": "guide-uart-device-6"
+    },
+    "i2c-bootloader": {
+      "page": "i2c-device.html",
+      "anchor": "i2c-bootloader"
+    },
+    "guide-i2c-device-1": {
+      "page": "i2c-device.html",
+      "anchor": "guide-i2c-device-1"
+    },
+    "guide-i2c-device-2": {
+      "page": "i2c-device.html",
+      "anchor": "guide-i2c-device-2"
+    },
+    "guide-i2c-device-3": {
+      "page": "i2c-device.html",
+      "anchor": "guide-i2c-device-3"
+    },
+    "i2c-boot-flow": {
+      "page": "i2c-device.html",
+      "anchor": "i2c-boot-flow"
+    },
+    "guide-i2c-device-4": {
+      "page": "i2c-device.html",
+      "anchor": "guide-i2c-device-4"
+    },
+    "i2c-protocol": {
+      "page": "i2c-device.html",
+      "anchor": "i2c-protocol"
+    },
+    "guide-i2c-device-5": {
+      "page": "i2c-device.html",
+      "anchor": "guide-i2c-device-5"
+    },
+    "guide-i2c-device-6": {
+      "page": "i2c-device.html",
+      "anchor": "guide-i2c-device-6"
+    },
+    "xmodem-bootloader": {
+      "page": "xmodem-device.html",
+      "anchor": "xmodem-bootloader"
+    },
+    "guide-xmodem-device-1": {
+      "page": "xmodem-device.html",
+      "anchor": "guide-xmodem-device-1"
+    },
+    "guide-xmodem-device-2": {
+      "page": "xmodem-device.html",
+      "anchor": "guide-xmodem-device-2"
+    },
+    "guide-xmodem-device-3": {
+      "page": "xmodem-device.html",
+      "anchor": "guide-xmodem-device-3"
+    },
+    "xmodem-boot-flow": {
+      "page": "xmodem-device.html",
+      "anchor": "xmodem-boot-flow"
+    },
+    "guide-xmodem-device-4": {
+      "page": "xmodem-device.html",
+      "anchor": "guide-xmodem-device-4"
+    },
+    "xmodem-protocol": {
+      "page": "xmodem-device.html",
+      "anchor": "xmodem-protocol"
+    },
+    "guide-xmodem-device-5": {
+      "page": "xmodem-device.html",
+      "anchor": "guide-xmodem-device-5"
+    },
+    "guide-xmodem-device-6": {
+      "page": "xmodem-device.html",
+      "anchor": "guide-xmodem-device-6"
+    },
+    "xmodem-串流完成": {
+      "page": "xmodem-device.html",
+      "anchor": "xmodem-boot-flow"
+    },
+    "工程與接線": {
+      "page": "xmodem-device.html",
+      "anchor": "guide-xmodem-device-1"
+    },
+    "通訊設定": {
+      "page": "xmodem-device.html",
+      "anchor": "guide-xmodem-device-2"
+    },
+    "boot-執行流程": {
+      "page": "xmodem-device.html",
+      "anchor": "guide-xmodem-device-3"
+    },
+    "protocol-format": {
+      "page": "xmodem-device.html",
+      "anchor": "guide-xmodem-device-4"
+    },
+    "異常與完成條件": {
+      "page": "xmodem-device.html",
+      "anchor": "guide-xmodem-device-5"
+    },
+    "程式對照與診斷": {
+      "page": "xmodem-device.html",
+      "anchor": "guide-xmodem-device-6"
+    },
+    "共用-tool-操作": {
+      "page": "tool-guides.html",
+      "anchor": "共用-tool-操作"
     }
   }
 }

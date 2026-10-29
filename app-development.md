@@ -115,30 +115,17 @@ App producer 將該 Boot 版本寫成 metadata 的 minimum Boot；板上 Boot �
 
 #### B1. F13：編輯 app_image_config.h
 
-修改前：
+以下為 App 發行設定範例；六個 define 的用途與可接受值見上表。
+例如將版本改為 1.5.1、build 改為 20261016：
 
 ```c
 #ifndef APP_IMAGE_CONFIG_H
 #define APP_IMAGE_CONFIG_H
 
-#define APP_IMAGE_VERSION           (0x00010500UL)
-#define APP_IMAGE_BUILD             (20261015UL)
-#define APP_IMAGE_TARGET_ID         (0xF13BU)
-#define APP_IMAGE_ROLE              (1U)    /* DEVICE_APP */
-#define APP_IMAGE_UPDATE_TRANSPORTS (0x01U) /* CAN */
-#define APP_IMAGE_VERSION_CONTROL   (0U)    /* 0=any; 1=same/newer */
-
-#endif
-```
-
-修改後（僅示範 App 資訊變更）：
-
-```c
-#ifndef APP_IMAGE_CONFIG_H
-#define APP_IMAGE_CONFIG_H
-
+/* App release: packed major/minor/patch, independent of Boot version. */
 #define APP_IMAGE_VERSION           (0x00010501UL)
 #define APP_IMAGE_BUILD             (20261016UL)
+/* Contract checks: these values must match this project's Boot profile. */
 #define APP_IMAGE_TARGET_ID         (0xF13BU)
 #define APP_IMAGE_ROLE              (1U)    /* DEVICE_APP */
 #define APP_IMAGE_UPDATE_TRANSPORTS (0x01U) /* CAN */
@@ -147,58 +134,30 @@ App producer 將該 Boot 版本寫成 metadata 的 minimum Boot；板上 Boot �
 #endif
 ```
 
-App pre-build 讀 App C header、各工程的 `image_metadata_config.h` 及 CAN 設定，產生 `ftable.inc`／`app_identity.h`；
-`ftable_RL78_F13.asm` 依生成常數排列 App metadata，讓 App INFO 與 BIN 使用同一版本／build。
-`IMAGE_SIZE_POST_BUILD = 0xFFFFFFFF` 是封裝前的長度預留值，post-build 會填入實際大小。
+App pre-build 讀取本工程的 C header，產生 `ftable.inc`／`app_identity.h`。
+`ftable_RL78_F13.asm` 排列 metadata；封裝時填入實際長度與 CRC。
+`IMAGE_SIZE_POST_BUILD = 0xFFFFFFFF` 是封裝前的長度預留值。
 
 #### B2. F24 device：編輯 app_image_config.h
 
-修改前：
+使用相同的六個 define；發行時修改 version／build，工程身分依下表保留。
 
-```c
-#ifndef APP_IMAGE_CONFIG_H
-#define APP_IMAGE_CONFIG_H
+| 欄位 | F13 範例 | F24 範例 |
+| --- | --- | --- |
+| `APP_IMAGE_VERSION` | `0x00010501UL`，1.5.1 | `0x00010001UL`，1.0.1 |
+| `APP_IMAGE_BUILD` | `20261016UL` | `20261016UL` |
+| `APP_IMAGE_TARGET_ID` | `0xF13BU` | `0xF24BU` |
+| Role／transport／version control | `1U`／`0x01U`／`0U` | `1U`／`0x01U`／`0U` |
 
-#define APP_IMAGE_VERSION           (0x00010000UL)
-#define APP_IMAGE_BUILD             (20261015UL)
-#define APP_IMAGE_TARGET_ID         (0xF24BU)
-#define APP_IMAGE_ROLE              (1U)    /* DEVICE_APP */
-#define APP_IMAGE_UPDATE_TRANSPORTS (0x01U) /* CAN */
-#define APP_IMAGE_VERSION_CONTROL   (0U)    /* 0=any; 1=same/newer */
-
-#endif
-```
-
-修改後（保留契約欄位）：
-
-```c
-#ifndef APP_IMAGE_CONFIG_H
-#define APP_IMAGE_CONFIG_H
-
-#define APP_IMAGE_VERSION           (0x00010001UL)
-#define APP_IMAGE_BUILD             (20261016UL)
-#define APP_IMAGE_TARGET_ID         (0xF24BU)
-#define APP_IMAGE_ROLE              (1U)    /* DEVICE_APP */
-#define APP_IMAGE_UPDATE_TRANSPORTS (0x01U) /* CAN */
-#define APP_IMAGE_VERSION_CONTROL   (0U)    /* 0=any; 1=same/newer */
-
-#endif
-```
-
-`prepare_projects.ps1` 核對 C header，產生 `app_identity.h`、`ftable.inc`
-與其組語 wrapper；linker 將該 256-byte metadata 放到 `0x2100`。
-`package_images.ps1` 比對已編譯 metadata 與同一 C header／Boot contract，再填實際長度與尾端 CRC。
-geometry、IRQ ABI、CAN routing 等欄位由 Boot 契約提供。
-更新目的地與介面的核對規則見 [更新政策](https://released.github.io/slide_simple_renesas_isp_tool/#image-update-policy)。
+`tools/prepare_projects.ps1` 讀取本工程 header，產生 identity、metadata 與 IRQ table。
+`tools/package_images.ps1` 核對已編譯內容及工程契約，再填入實際長度與尾端 CRC。
+兩者都使用 App 本地設定與工具；App-only 建置不讀取或修改另一份 Boot 專案。
+安裝到板上的 Boot 仍須符合 [更新政策](https://released.github.io/slide_simple_renesas_isp_tool/#image-update-policy)。
 
 `app_image_config.h` 使用上述六個 `APP_IMAGE_*` define 與固定 include guard。
 數值採 C 的十六進位或十進位整數，可加 `U`／`UL` 及一層括號；version 為 `0x00000000..0x00FFFFFF`，build 為 `0..4294967294`。
 設定以 literal 表示，不使用條件編譯、其他 include 或運算式；C90 `/* ... */` 註解可保留。
 產生器會拒絕缺少／重複／未知 define、契約不符或非整數設定。
-
-工程內的 header 在每個欄位旁標示用途、編碼與修改條件。
-version／build 是 App 身分設定；target／role／transport 是與 Boot 核對的契約值。
-完整 Flash／CAN／IRQ ABI 資料由 Boot 契約產生，不需要在 App header 重複填寫。
 
 #### B3. 用 address 與 byte 核對結果
 
@@ -297,7 +256,7 @@ Vector 位址是**實體 vector byte address**，不是 IRQ 序號、App slot �
 
 <a id="device-irq-ownership"></a>
 
-#### C0. Boot／App 中斷所有權與向量轉送
+#### C0. Boot／App 中斷入口與交接
 
 本節的 RL78 工程由固定 Boot 持有實體 vector，再由軟體 dispatcher 轉送到 App。
 App 不寫入實體 vector，而是在固定位置提供跳轉表；表內的 `BR` 指向該 App 的實際 ISR。
@@ -611,71 +570,62 @@ flowchart TD
 
 ### D. 產生與建置
 
-下列是相鄰工程的相對路徑；在自己的 App 根目錄執行。先備份／記錄 matching Boot image 雜湊。
-範例只變動 App 資訊及一般 IRQ，**不應呼叫 Boot 產表或 Boot rebuild**。
-兩個 device 都使用 Windows PowerShell 與工程對應的 CS+／CC-RL。
-CS+ 開啟自己的 App `.mtpj`，建置組態為 `DefaultBuild`。
-下方 PowerShell 腳本以單次 `-ExecutionPolicy Bypass` 執行，不需永久更改系統執行原則。
+在選定的 App 根目錄執行下列命令，或以 CS+ 開啟此 App 的 `.mtpj`，使用 `DefaultBuild` Rebuild。
+兩個工程都自備產表、封裝與驗證工具；不需要相鄰 Boot checkout。
+一般 App 功能或 IRQ 變更只建置 App；改分區、通訊或映像契約時，另依 [移植核對](https://released.github.io/slide_boot_loader_for_RL78/porting.html) 更新搭配安裝的 Boot。
+PowerShell 使用單次 `-ExecutionPolicy Bypass`，不需永久更改系統執行原則。
 
 #### D0. 第一次操作：逐步完成一次 App 變更
 
-1. 選定 F13 或 F24 **device** 的 matching Boot/App，按原名稱放在同一父目錄；確認工程可建置。
-2. 保存 Boot HEX、App 更新 BIN 與兩份 C header，記錄 Boot image 雜湊。
-3. 開啟 App 的 `app_image_config.h`，修改 `APP_IMAGE_VERSION`／`APP_IMAGE_BUILD`；對照 B1 或 B2，保留 target／role／transport。使用 UTF-8，程式註解採英文 C90 寫法。
-4. 若只升版本，跳到第6步。若新增 IRQ，依 C1 新增正常 ISR C 檔，並在 CS+ **此 App** 的 MTPJ 加入來源；還不要啟用硬體 IRQ。
-5. 編輯這個 App 的 `app_irq_handlers.h`，保留既有清單，再加入 `0x0A` 範例或已核對的合法 vector／handler。
-6. 從 App 根目錄執行 D1 或 D2 的產生命令，再執行 CheckOnly。錯誤先修正 C header／MTPJ／ISR，不手改 `.inc`、identity 或 table。
-7. Clean Rebuild **App**，確認 pre-build 與 post-build 都成功。對照下方產物表，確認新 table、version／build、實際 BIN 長度與 CRC；使用此次成功建置的產物。
-8. 在 Tool CAN TAB 載入該 App 的 `*_update.bin`，依 E 節核對映像版本、Metadata VALID 與 CRC MATCH；這一步不寫 MCU。
-9. Open + Probe host、Discover **device**，核對 live target／layout／CAN／IRQ ABI／minimum Boot；相容才 Enter Boot 並開始更新，不以離線 BIN 取代 live 身分。
-10. END／reset 後另外確認 App 版本 INFO／UART、既有 IRQ 與新 IRQ；最後比較 Boot 區／映像未變。硬體 IRQ 啟用前的初始化與故障測試仍需另作。
+1. 下載所選 App 工程，確認 `app_image_config.h`、`app_irq_handlers.h` 與本地建置工具齊全。
+2. 修改 App version／build；各欄位的意義見 [Metadata 設定](#device-app-config)。
+3. 若新增 IRQ，依 [IRQ 範例](#guide-app-development-3) 完成 ISR、MTPJ source registration、mapping 及周邊初始化；只改版本可略過此步。
+4. 在 App 根目錄執行 `powershell -NoProfile -ExecutionPolicy Bypass -File .\build.ps1`，或 CS+ Rebuild。
+5. 確認 pre-build、linker 及 post-build 全部成功；在 `DefaultBuild/app_build_report.html` 核對實際 BIN、metadata、CRC 與 IRQ table。
+6. 使用此次的 `*_update.bin`，依 [Tool CAN 更新操作](https://released.github.io/slide_simple_renesas_isp_tool/can-update.html) 更新並確認 App；驗證新增 IRQ 的實際動作。
 
-只升 App 版本時不必新增 ISR；只新增 IRQ 時也不必更改 target 或 Boot 版本。
+產生器負責輸出 `.inc`、identity 與 table；這些檔案不作為手動編輯入口。
+只增加一般 App IRQ 時，固定表大小與 Boot 映像不需變動；ISR、周邊初始化與中斷旗標處理仍由 App 完成。
 
 #### D1. F13 device
 
-```powershell
-# Generate this App's metadata INC, IRQ table and identity; never Boot.
-powershell.exe -NoProfile -ExecutionPolicy Bypass `
-  -File "..\RL78_F13_Boot_loader_CAN\generate_irq_contract.ps1" `
-  -Mode App -AppProject "."
+正常建置會依 App `.mtpj` 自動執行產表與封裝。需要單獨查看產生結果時，可在此 App 根目錄執行：
 
-# Read-only freshness check; run after generating, not instead of generating.
+```powershell
+# Generate this App's metadata, identity and IRQ table.
 powershell.exe -NoProfile -ExecutionPolicy Bypass `
-  -File "..\RL78_F13_Boot_loader_CAN\generate_irq_contract.ps1" `
-  -Mode App -AppProject "." -CheckOnly
+  -File .\generate_irq_contract.ps1 -Mode App -AppProject .
+
+# Read-only freshness check; does not repair generated files.
+powershell.exe -NoProfile -ExecutionPolicy Bypass `
+  -File .\generate_irq_contract.ps1 -Mode App -AppProject . -CheckOnly
+
+# Rebuild this App and run its pre/post-build guards.
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\build.ps1
 ```
 
-然後在 CS+ **Clean Rebuild 此 App**。原有 pre-build 保留上述 App-mode 命令，
-post-build 保留 `generate_update_image.ps1`；該腳本依 map／App HEX 封裝，並非只產表就有新 BIN。
-Tool 的 `scripts/verify_f13_artifacts.ps1` 可作後續檢查，需指定正確 Boot／App project。
-修改專案名稱時，核對 MTPJ／map／輸出檔名；工程本身可移至其他目錄。
-必須另外對齊 source／include／hook、`-MapFile`、輸出命名、checker 及 Boot HEX 來源。
+Pre-build 使用本地 `generate_irq_contract.ps1 -Mode App -AppProject .`；post-build 使用本地 `generate_update_image.ps1`。
+產表成功不等於已完成新 BIN；封裝還會核對 map、已連結向量與實際程式。
 
 #### D2. F24 device
 
 ```powershell
-# Update this App's projections / registered project settings, never Boot.
+# Generate this App's compiler artifacts without changing project registration.
 powershell.exe -NoProfile -ExecutionPolicy Bypass `
-  -File "..\RL78_F24_Boot_loader_CAN\tools\prepare_projects.ps1" `
-  -Kind app -Project "."
+  -File .\tools\prepare_projects.ps1 -Kind app -Project . -ArtifactsOnly
 
-# Read-only freshness / registration check.
+# Check this App's generated artifacts and registered project settings.
 powershell.exe -NoProfile -ExecutionPolicy Bypass `
-  -File "..\RL78_F24_Boot_loader_CAN\tools\prepare_projects.ps1" `
-  -Kind app -Project "." -CheckOnly
+  -File .\tools\prepare_projects.ps1 -Kind app -Project . -CheckOnly
 
-# Clean rebuild and mandatory map / image packaging checks.
-powershell.exe -NoProfile -ExecutionPolicy Bypass `
-  -File "..\RL78_F24_Boot_loader_CAN\build.ps1" `
-  -Kind app -AppProject "."
+# Rebuild this App and run its pre/post-build guards.
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\build.ps1
 ```
 
-CS+ pre-build 使用 `prepare_projects.ps1 -Kind app -Project . -ArtifactsOnly`；
-post-build 使用 `package_images.ps1 -Kind app -Project .`。`-ArtifactsOnly` 僅產生編譯所需檔案。
-只改一般 App 功能，不用省略 kind 的 all-mode prepare／build；SC 重產後先重新 prepare **app**。
-若改名或搬移，仍須修正相對 source／include／hook 路徑；不是任意 standalone App 加 C header 即可。
-F24 device prepare 使用同一磁碟內的相對路徑。
+Pre-build 使用本地 `tools/prepare_projects.ps1 -Kind app -Project . -ArtifactsOnly`；
+post-build 使用本地 `tools/package_images.ps1 -Kind app -Project .`。
+SC 重新產生後若需恢復 project registration，可先執行本地 `tools/prepare_projects.ps1 -Kind app -Project .`，再 Rebuild。
+搬移或改名工程時，核對本地 source／include、MTPJ hook、map 與產物命名；App 的來源不指向另一份 Boot 工程。
 
 | 產物 | F13 device | F24 device |
 | --- | --- | --- |
@@ -1057,4 +1007,4 @@ Tool 0.1.0.0099，Host firmware 1.7.0／build 20261019，Device Boot 1.2.1／App
 
 ---
 
-[上一主題：Classical CAN／CAN FD device 工程](can-device.html) · [指南入口](index.html) · [下一主題：UART／Xmodem／I2C device 工程](serial-device.html)
+[上一主題：Classical CAN／CAN FD device 工程](can-device.html) · [指南入口](index.html) · [下一主題：串列 ISP 共用工程與協定契約](serial-device.html)

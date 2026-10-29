@@ -21,6 +21,6 @@ Keep its neutral sharing tone, current-state wording and source/evidence rules.
   during editorial changes. Do not rebuild firmware or bump the Tool version.
 - Never infer Git publication or hardware acceptance from local synchronization.
 - Run the ISP scripts/verify_local.ps1 with -ToolRoot for cross-page checks.
-- Keep six chapter titles/order and60 topic counterparts aligned with RH850
+- Keep chapter titles/order and topic counterparts aligned with RH850
   through Tool scripts/bootloader_guide_contract.json. Platform values remain
   source-specific;both homepages link directly to their existing timing table.

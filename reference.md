@@ -41,6 +41,22 @@ CAN channel 與 pin 由各 MCU 工程設定，bridge port 由 Tool 選擇。
 
 <a id="guide-reference-2"></a>
 
+#### 欄位查閱索引
+
+| 想核對的內容 | Metadata offset | 修改或產生來源 |
+| --- | --- | --- |
+| App 版本／build | `0x10..0x17` | `app_image_config.h` |
+| 實際大小／Flash配置 | `0x18..0x2F`、`0x5C..0x5F` | `image_metadata_config.h`、linker及post-build；實際大小由封裝產生 |
+| 通訊模式、速度與路由 | `0x0E..0x0F`、`0x30..0x3F`、`0x70..0x73` | 通訊header、driver及metadata profile；串列解讀見各介面章節 |
+| 角色、介面、IRQ ABI及最低Boot | `0x60..0x6F` | 映像契約及profile；與live Boot核對 |
+| 版本政策 | `0x74..0x77` | `APP_IMAGE_VERSION_CONTROL`；依目前有效App決定一般更新政策 |
+
+**Metadata offset** 從metadata第一個byte起算；**BIN offset** 從整份App映像起算；**Flash address** 是MCU絕對位址。
+
+App映像起點包含向量／entry與metadata，與C程式碼起點不同；image size是本份BIN長度，capacity是允許上限。
+
+下方保留完整256-byte對照與來源表，可依上述offset定位欄位。
+
 ### Flash絕對位址、BIN offset與metadata offset
 
 ```text
@@ -493,7 +509,7 @@ F24 device 範例BIN SHA-256：`CD2B4A51038888FF7E35C0C70A250C598BFCBE1A57605306
 | F13實際size／CRC封裝 | [generate_update_image.ps1](https://github.com/released/RL78_F13_Boot_loader_CAN_app/blob/main/generate_update_image.ps1) | 依map決定結尾、patch image_size、計算尾CRC；ExpectedTargetId等驗證亦須與新專案一致 |
 | Device metadata 解碼／驗證 | [Boot 原始碼](https://github.com/released/RL78_F13_Boot_loader_CAN)內的 `image_metadata.c/.h`、`image_metadata_config.h`、`image_metadata_profile.c` | ImageMetadataRead32 解碼 LE32；ImageMetadataValidate 對照 g_image_metadata_contract；完整 API 見 [C 模組移植](https://released.github.io/slide_boot_loader_for_RL78/#device-metadata-parser) |
 | CAN metadata 暫存／SEAL | [can_boot_metadata.inc](https://github.com/released/RL78_F13_Boot_loader_CAN/blob/main/can_boot_metadata.inc) | MetadataStage 核對順序／重送；MetadataSeal 呼叫共用驗證並核對 staging CRC，不在 parser 內擦寫 Flash |
-| F13 CAN解碼與回覆 | [can_boot_transport.c](https://github.com/released/RL78_F13_Boot_loader_CAN/blob/main/can_boot_transport.c)／[can_boot_block.inc](https://github.com/released/RL78_F13_Boot_loader_CAN/blob/main/can_boot_block.inc) | CAN_BootReceive、CAN_BootSend、BlockBegin／Segment／Check |
+| F13 CAN解碼與回覆 | [can_boot_transport.c](https://github.com/released/RL78_F13_Boot_loader_CAN/blob/main/hal/isp/can_boot_transport.c)／[can_boot_block.inc](https://github.com/released/RL78_F13_Boot_loader_CAN/blob/main/hal/isp/can_boot_block.inc) | CAN_BootReceive、CAN_BootSend、BlockBegin／Segment／Check |
 | F24 device 契約與封裝 | `image_metadata_config.h`、`can_boot_config.h`、`tools/device_common.ps1`、`tools/package_images.ps1`；[工程入口](https://released.github.io/slide_boot_loader_for_RL78/#f24-can-device) | Get-DeviceMetadata 結合映像／CAN 設定產生欄位，Get-PackagedDeviceApp 核對連結內容與 CRC |
 | 共用政策常數 | [image_policy.h](https://github.com/released/simple_renesas_isp_tool/blob/main/firmware/common/image_policy.h) | ROLE／CAN／I2C／UART bits、IRQ ABI、core／policy長度 |
 | Tool image解析 | [firmware_update_profile.cpp](https://github.com/released/simple_renesas_isp_tool/blob/main/src/core/firmware_update_profile.cpp) | 檢查BIN、metadata、CRC及目的地 |

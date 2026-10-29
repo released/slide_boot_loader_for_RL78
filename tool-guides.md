@@ -25,7 +25,16 @@
 
 ## Tool 與其他操作入口
 
-[Tool 操作](https://released.github.io/slide_simple_renesas_isp_tool/#tool-operation) · [Custom Transfer](https://released.github.io/slide_simple_renesas_isp_tool/#custom-transfer) · [CAN 更新逐層導讀](https://released.github.io/slide_simple_renesas_isp_tool/#can-update-walkthrough)
+<a id="共用-tool-操作"></a>
+
+| 操作目的 | 直接入口 |
+| --- | --- |
+| 連接Host與核對BIN | [COM／Host](../slide_simple_renesas_isp_tool/operation.html#tool-operation)／[BIN欄位](../slide_simple_renesas_isp_tool/status-and-reports.html#tool-ui-fields) |
+| 更新Device App | [CAN／CAN FD](../slide_simple_renesas_isp_tool/can-update.html)／[UART／Xmodem／I2C](../slide_simple_renesas_isp_tool/serial-isp.html#serial-device-operation) |
+| 查看更新結果 | [完成提示](../slide_simple_renesas_isp_tool/status-and-reports.html#update-completion)／[HTML報告](../slide_simple_renesas_isp_tool/status-and-reports.html#update-html-report) |
+| 驗證通訊 | [Custom Transfer](../slide_simple_renesas_isp_tool/custom-transfer.html#custom-transfer) |
+| 對照資料流與Flash寫入 | [CAN更新逐層導讀](../slide_simple_renesas_isp_tool/can-protocol.html#can-update-walkthrough) |
+| 更新Host App | [Misc操作](../slide_simple_renesas_isp_tool/host-firmware.html#host-bridge-firmware) |
 
 <!-- PUBLIC_RESOURCES_BEGIN -->
 <a id="downloads"></a>
@@ -33,7 +42,7 @@
 ## 下載與操作入口
 
 Tool、host／device firmware 的來源與下載檔案集中於 ISP Tool 頁。F13、F24 CAN device 的工程配置則由各自的章節說明。
-[閱讀完整章節](https://released.github.io/slide_simple_renesas_isp_tool/#downloads)
+[下載與操作入口](https://released.github.io/slide_simple_renesas_isp_tool/downloads.html#downloads)
 <!-- PUBLIC_RESOURCES_END -->
 
 <!-- F24_APP_IRQ_BEGIN -->
@@ -42,7 +51,7 @@ Tool、host／device firmware 的來源與下載檔案集中於 ISP Tool 頁。F
 ## F24 (MCU CAN host)：App 工程與向量設定
 
 Host App 的工程來源、獨立產表、建置方式與 Misc 操作集中於 ISP Tool 頁。
-[閱讀完整章節](https://released.github.io/slide_simple_renesas_isp_tool/#host-app-engineering)
+[F24 (MCU CAN host)：App 工程與向量設定](https://released.github.io/slide_simple_renesas_isp_tool/host-firmware.html#host-app-engineering)
 <!-- F24_APP_IRQ_END -->
 
 <!-- COMMON_IMAGE_POLICY_BEGIN -->
@@ -51,7 +60,7 @@ Host App 的工程來源、獨立產表、建置方式與 Misc 操作集中於 I
 ## 更新政策與通訊速度
 
 BIN 的更新目的地、允許介面、Boot／IRQ ABI 與 Host Link 速度，集中於 ISP Tool 的更新政策章節。
-[閱讀完整章節](https://released.github.io/slide_simple_renesas_isp_tool/#image-update-policy)
+[更新政策與通訊速度](https://released.github.io/slide_simple_renesas_isp_tool/operation.html#image-update-policy)
 <!-- COMMON_IMAGE_POLICY_END -->
 
 <!-- UPDATE_EVIDENCE_BEGIN -->
@@ -60,7 +69,7 @@ BIN 的更新目的地、允許介面、Boot／IRQ ABI 與 Host Link 速度，�
 ## 更新確認與驗證紀錄
 
 App 確認、metadata 差異表、階段進度、取消、報告與實板測試表集中於 ISP Tool。
-[閱讀完整章節](https://released.github.io/slide_simple_renesas_isp_tool/#update-confirmation)
+[更新確認與驗證紀錄](https://released.github.io/slide_simple_renesas_isp_tool/status-and-reports.html#update-confirmation)
 <!-- UPDATE_EVIDENCE_END -->
 
 <!-- FD_UPDATE_BEGIN -->
@@ -69,7 +78,7 @@ App 確認、metadata 差異表、階段進度、取消、報告與實板測試�
 ## CAN FD App 更新操作
 
 500K／2M、BRS、64-byte FD資料幀的Tool與Host操作集中於ISP Tool。
-[閱讀完整章節](https://released.github.io/slide_simple_renesas_isp_tool/#can-fd-update)
+[CAN FD App 更新操作](https://released.github.io/slide_simple_renesas_isp_tool/can-update.html#can-fd-update)
 <!-- FD_UPDATE_END -->
 
 <!-- FD_TRANSFER_BEGIN -->
@@ -78,7 +87,7 @@ App 確認、metadata 差異表、階段進度、取消、報告與實板測試�
 ## CAN FD Custom Transfer 通訊測試
 
 CAN FD Discover、8-byte命令、64-byte ECHO、能力與操作核對集中於ISP Tool。
-[閱讀完整章節](https://released.github.io/slide_simple_renesas_isp_tool/#can-fd-custom-transfer)
+[CAN FD Custom Transfer 通訊測試](https://released.github.io/slide_simple_renesas_isp_tool/custom-transfer.html#can-fd-custom-transfer)
 <!-- FD_TRANSFER_END -->
 
 <!-- UART_TOOL_GUIDE_BEGIN -->
@@ -86,8 +95,8 @@ CAN FD Discover、8-byte命令、64-byte ECHO、能力與操作核對集中於IS
 
 ## UART／Xmodem／I2C device 操作
 
-四系列串列 ISP、獨立診斷 UART、接線、更新與 Custom Transfer 集中於 ISP Tool 頁。
-[閱讀完整章節](https://released.github.io/slide_simple_renesas_isp_tool/#uart-device-operation)
+RL78與RH850串列ISP的接線、可調通訊設定、App更新及Custom Transfer集中於ISP Tool頁。
+[UART／Xmodem／I2C device 操作](https://released.github.io/slide_simple_renesas_isp_tool/serial-isp.html#uart-device-operation)
 <!-- UART_TOOL_GUIDE_END -->
 
 ---

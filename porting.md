@@ -100,6 +100,15 @@ git clone https://github.com/released/RL78_F13_Boot_loader_CAN.git
 git clone https://github.com/released/RL78_F13_Boot_loader_CAN_app.git
 ```
 
+#### 依修改目的選擇設定入口
+
+| 修改目的 | 主要編輯位置 | Boot 是否需要配套修改 |
+| --- | --- | --- |
+| App 功能、版本或一般 IRQ | App `custom_func.c`、ISR、`app_image_config.h`、`app_irq_handlers.h` | 契約及既有轉送範圍內不需重建 Boot；App Rebuild 後核對報告 |
+| 更新介面、速率、ID／address | Boot／App 通訊 header、SC／driver、metadata profile及Tool選項 | 需要；單一介面的工程分別設定，另保留診斷UART |
+| Flash 分區或容量 | `image_metadata_config.h`、linker、startup、封裝與Flash backend | 需要；核對 erase／write 單位、保護範圍及安裝方式 |
+| 新 MCU／板子 | MCU header、clock／pin、IRQ配置、RAM、Flash library及上述契約 | 需要；先完成獨立Boot／App／Transfer建置及板端驗證 |
+
 <a id="guide-porting-3"></a>
 
 ### 2. Flash 與映像配置
@@ -118,7 +127,7 @@ git clone https://github.com/released/RL78_F13_Boot_loader_CAN_app.git
 App 前512 bytes 由256-byte向量表與256-byte metadata 組成。
 BIN 的實際長度由 linker map 決定，尾端四位元組對齊並加上 CRC32。
 
-各 各工程的 `image_metadata_config.h` 定義映像契約；`can_boot_config.h` 定義 CAN，`boot_app_handoff.h` 定義 RAM 交接。
+各工程的 `image_metadata_config.h` 定義映像契約；`can_boot_config.h` 定義 CAN，`boot_app_handoff.h` 定義 RAM 交接。
 完整編輯分工見 [設定檔與產物](https://released.github.io/slide_boot_loader_for_RL78/#device-metadata-vector-workshop)。
 獨立 `hal/image/image_metadata.c/.h` 搭配工程專用 `image_metadata_profile.c`；API 與移植方式見 [Metadata C 模組](https://released.github.io/slide_boot_loader_for_RL78/#device-metadata-parser)。
 逐 byte 位址見 [Flash／metadata 參考](https://released.github.io/slide_boot_loader_for_RL78/#flash-metadata-can-reference)。
@@ -410,4 +419,4 @@ App 更新時可保存 Boot 映像雜湊，確認 App-only 作業的範圍。
 
 ---
 
-[上一主題：UART／Xmodem／I2C device 工程](serial-device.html) · [指南入口](index.html) · [下一主題：Flash、Metadata 與 CAN 封包參考](reference.html)
+[上一主題：Xmodem Bootloader 與協定格式](xmodem-device.html) · [指南入口](index.html) · [下一主題：Flash、Metadata 與 CAN 封包參考](reference.html)
