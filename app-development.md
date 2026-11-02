@@ -914,13 +914,13 @@ CAN FD 欄位使用 **nominal 500 kbit/s／data 2 Mbit/s／BRS 開啟**，不是
 
 | App BIN | F13 device：Classical CAN 500K | F24 device：Classical CAN 500K | F24 device：CAN FD 500K／2M、BRS |
 | --- | --- | --- | --- |
-| 原始 App（未填充） | 20,308 bytes／約 14.0 秒 | 4,224 bytes／約 5.2 秒 | 4,756 bytes／約 5.5 秒 |
-| 8 KiB（8,192 bytes） | 不適用 | 約 7.3 秒 | 約 7.2 秒 |
-| 24 KiB（24,576 bytes） | 約 15.8 秒 | 約 15.6 秒 | 約 15.6 秒 |
+| 原始 App（未填充） | 20,320 bytes／約 13.5 秒 | 4,252 bytes／約 5.3 秒 | 4,780 bytes／約 5.5 秒 |
+| 8 KiB（8,192 bytes） | 不適用 | 約 7.2 秒 | 約 7.3 秒 |
+| 24 KiB（24,576 bytes） | 約 15.6 秒 | 約 15.6 秒 | 約 15.6 秒 |
 | 56 KiB（57,344 bytes） | 約 32.3 秒 | 約 32.2 秒 | 約 32.2 秒 |
 | 119 KiB（121,856 bytes） | 約 65.8 秒 | — | — |
-| 120 KiB（122,880 bytes） | 不適用 | 約 65.5 秒 | 約 65.5 秒 |
-| 247 KiB（252,928 bytes） | 不適用 | 約 136.2 秒 | 約 134.2 秒 |
+| 120 KiB（122,880 bytes） | 不適用 | 約 65.9 秒 | 約 65.9 秒 |
+| 247 KiB（252,928 bytes） | 不適用 | 約 133.0 秒 | 約 133.1 秒 |
 
 「—」表示沒有該欄對應的量測資料，不代表更新失敗；原始 App 列分別列出 BIN 大小與已有的量測時間。
 「不適用」表示測試映像小於來源 App，或超過目前預設 App 容量。
@@ -930,71 +930,75 @@ CAN FD 欄位使用 **nominal 500 kbit/s／data 2 Mbit/s／BRS 開啟**，不是
 
 | 項目 | 本表使用的實測條件 |
 | --- | --- |
-| 日期／MCU | 原始 App：2026-10-27；填充 BIN：2026-10-22／RL78/F13 R5F10BMG |
+| 日期／MCU | 2026-11-02／RL78/F13 R5F10BMG |
 | Host Link UART／CAN | 115200 baud／Classical CAN 500 kbit/s |
-| Detailed trace | 填充 BIN：關閉；原始 App 的對應 Log 無 `TRACE UART`／`TRACE CAN` 逐幀記錄 |
-| Tool／Host firmware | 原始 App：0.1.0.0109；填充 BIN：0.1.0.0097／Host 1.7.0、build 20261019 |
+| Detailed trace | 四次更新的對應 Log 均無 `TRACE UART`／`TRACE CAN` 逐幀記錄 |
+| Tool／Host firmware | 0.1.0.0114／Host 1.8.1、build 20261023 |
 | Device Boot／App | Boot 1.7.2、build 20261022／App 1.6.1、build 20261017 |
 | 測試映像內容 | 原始 App，以及由其延伸、以 `0xFF` 填充並更新長度與 CRC32 的測試 BIN |
-| 更新完成條件 | 四次均 PASS，END CRC、APP_READY／live image 比對及 CAN_STOP 確認通過 |
+| 更新完成條件 | 四次均 PASS，END CRC、APP_READY／live image 比對及 CAN_STOP 確認通過；Device UART 均有 App 啟動與持續遞增的 timer 記錄 |
 | 重試／已記錄的 Host 錯誤 | 四份 `link_retries=0`；UART overflow、CAN lost／warning／passive／bus-off／recovery／TX failure 差值均為 0 |
 
 來源為 Tool 的 JSON／HTML 更新報告，副檔名為 `.json`／`.html`。
-下表原始 App 識別碼前加 `update_20261027_`，填充 BIN 識別碼前加 `update_20261022_`，即可對應報告檔名。
-原始 App 對應 Log 為 `firmware_upgrade_tool_20261027_093357.log`；填充 BIN 對應 `firmware_upgrade_tool_20261022_172301.log`。
+下表識別碼前加 `update_20261102_`，即可對應報告檔名。
+Tool Log 為 `firmware_upgrade_tool_20261102_165702_065_63508_2.log`；Device UART 為 `20261102_165055_1.log`。
 
 | 報告識別 | App BIN | elapsed_ms | Image CRC32 |
 | --- | --- | --- | --- |
-| `013422_855_47096_164948546_1` | 原始 App，20,308 bytes | 13960 | `0x0C297B5E` |
-| `092335_621_54044_695182765_1` | 24 KiB | 15845 | `0xCA0DE29D` |
-| `092427_590_54044_695234734_2` | 56 KiB | 32281 | `0x8BF223B3` |
-| `092553_622_54044_695320765_3` | 119 KiB | 65793 | `0x7A2A9624` |
+| `085806_769_63508_425770703_1` | 原始 App，20,320 bytes | 13458 | `0xCD08B2B9` |
+| `085928_650_63508_425852578_2` | 24 KiB | 15586 | `0x51F4F5C7` |
+| `090021_234_63508_425905156_3` | 56 KiB | 32332 | `0xED614B1F` |
+| `090148_942_63508_425992843_4` | 119 KiB | 65778 | `0xAC872843` |
 
 ##### F24 Classical CAN 量測條件與來源
 
 | 項目 | 本表使用的實測條件 |
 | --- | --- |
-| 日期／MCU | 2026-10-22／RL78/F24 R7F124FPJ5xFB |
+| 日期／MCU | 2026-11-02／RL78/F24 R7F124FPJ5xFB |
 | Host Link UART／CAN | 115200 baud／Classical CAN 500 kbit/s |
 | 逐幀記錄 | 對應 Log 未包含 `TRACE UART`／`TRACE CAN` 記錄 |
-| Tool／Host firmware | 0.1.0.0098／1.7.0，Host build 20261019 |
+| Tool／Host firmware | 0.1.0.0114／Host 1.8.1、build 20261023 |
 | Device Boot／App | Boot 1.1.1、build 20261022／App 1.0.3、build 20261019 |
 | 測試映像內容 | 原始 App，以及由其延伸、以 `0xFF` 填充並更新長度與 CRC32 的測試 BIN |
-| 更新完成條件 | 六次均完成 END CRC、APP_READY／live image 比對及 CAN_STOP 確認 |
+| 更新完成條件 | 六次均 PASS，END CRC、APP_READY／live image 比對及 CAN_STOP 確認通過；Device UART 均有 App 啟動與持續遞增的 timer 記錄 |
+| 重試／已記錄的 Host 錯誤 | 六份 `link_retries=0`；UART overflow、CAN lost／warning／passive／bus-off／recovery／TX failure 差值均為 0 |
 
-來源為 Tool 的 JSON／HTML 更新報告；下表報告識別前加 `update_20261022_`，副檔名為 `.json`／`.html`。
-對應 Log 為 `firmware_upgrade_tool_20261022_180801.log`；表格列出整次操作的實際耗時，診斷細節保留於原始報告。
+來源為 Tool 的 JSON／HTML 更新報告；下表報告識別前加 `update_20261102_`，副檔名為 `.json`／`.html`。
+Tool Log 為 `firmware_upgrade_tool_20261102_175402_275_63508_5.log`；Device UART 為 `20261102_175038_1.log`。
+表格列出整次操作的實際耗時，診斷細節保留於原始報告。
 
 | 報告識別 | App BIN | elapsed_ms | Image CRC32 |
 | --- | --- | --- | --- |
-| `100929_089_55528_697936171_1` | 原始 App，4,224 bytes | 5222 | `0x4837111E` |
-| `101010_155_55528_697977234_2` | 8 KiB | 7272 | `0x04D5ED74` |
-| `101047_098_55528_698014187_3` | 24 KiB | 15556 | `0xBF72D477` |
-| `101148_050_55528_698075140_4` | 56 KiB | 32198 | `0x9A0D4CAA` |
-| `101320_919_55528_698168000_5` | 120 KiB | 65453 | `0x1F248CFA` |
-| `101601_871_55528_698328953_6` | 247 KiB | 136242 | `0x3274CC2A` |
+| `095507_201_63508_429191234_5` | 原始 App，4,252 bytes | 5253 | `0xCB558EB5` |
+| `095544_285_63508_429228312_6` | 8 KiB | 7240 | `0x1C3D3D65` |
+| `095612_784_63508_429256812_7` | 24 KiB | 15551 | `0x53023D7D` |
+| `095658_334_63508_429302359_8` | 56 KiB | 32211 | `0xAC393491` |
+| `095820_776_63508_429384781_9` | 120 KiB | 65912 | `0xBD9980C1` |
+| `100051_164_63508_429535156_10` | 247 KiB | 132962 | `0x2E5DCE5B` |
 
 ##### F24 CAN FD 量測條件與來源
 
-2026-10-22，RL78/F24 R7F124FPJ5xFB；Host Link UART 115200 baud，CAN FD nominal 500 kbit/s、data 2 Mbit/s、BRS 開啟。
-Tool 0.1.0.0099，Host firmware 1.7.0／build 20261019，Device Boot 1.2.1／App 1.0.4。
+2026-11-02，RL78/F24 R7F124FPJ5xFB；Host Link UART 115200 baud，CAN FD nominal 500 kbit/s、data 2 Mbit/s、BRS 開啟。
+Tool 0.1.0.0114，Host firmware 1.8.1／build 20261023，Device Boot 1.2.1／build 20261022、App 1.0.4／build 20261020。
 
 測試映像為原始 App，以及由其延伸、以 `0xFF` 填充並更新長度與 CRC32 的 BIN。
-六次均完成 END CRC、APP_READY／live image 比對及 CAN_STOP 確認；對應 Log 未包含 `TRACE UART`／`TRACE CAN` 逐幀記錄。
+六次均 PASS，END CRC、APP_READY／live image 比對及 CAN_STOP 確認通過；Device UART 均有 App 啟動與持續遞增的 timer 記錄。
+六份 `link_retries=0`；UART overflow、CAN lost／warning／passive／bus-off／recovery／TX failure 差值均為 0。
+對應 Tool Log 未包含 `TRACE UART`／`TRACE CAN` 逐幀記錄。
 
-來源為 Tool 的 JSON／HTML 更新報告；下表報告識別前加 `update_20261022_`，副檔名為 `.json`／`.html`。
-對應 Log 為 `firmware_upgrade_tool_20261022_182748.log`。
-表格保留各次操作的實際總時間，包含重試與收尾；結果分類與 counter 細節保留於原始報告。
+來源為 Tool 的 JSON／HTML 更新報告；下表報告識別前加 `update_20261102_`，副檔名為 `.json`／`.html`。
+Tool Log 為 `firmware_upgrade_tool_20261102_180627_598_63508_7.log`；Device UART 為 `20261102_180636_1.log`。
+表格列出整次操作的實際耗時，診斷細節保留於原始報告。
 量測條件以上述 Tool 與 firmware 為準；不同設定需各自量測。
 
 | 報告識別 | App BIN | elapsed_ms | Image CRC32 |
 | --- | --- | --- | --- |
-| `102840_499_88416_699087546_1` | 原始 App，4,756 bytes | 5516 | `0x2244D36A` |
-| `102911_331_88416_699118375_2` | 8 KiB | 7240 | `0x3FCC99E2` |
-| `102956_261_88416_699163312_3` | 24 KiB | 15559 | `0x688C8587` |
-| `103045_317_88416_699212359_4` | 56 KiB | 32188 | `0x5ED8A374` |
-| `103238_863_88416_699325906_5` | 120 KiB | 65515 | `0x2B5ADB06` |
-| `103540_647_88416_699507687_6` | 247 KiB | 134185 | `0x325DBF76` |
+| `100733_867_63508_429937812_11` | 原始 App，4,780 bytes | 5527 | `0x2089154D` |
+| `100757_675_63508_429961609_12` | 8 KiB | 7266 | `0xD9EE0401` |
+| `100837_509_63508_430001437_13` | 24 KiB | 15590 | `0x5DF8A8EB` |
+| `100926_042_63508_430049968_14` | 56 KiB | 32232 | `0xB96554B0` |
+| `101057_657_63508_430141562_15` | 120 KiB | 65894 | `0x8E554348` |
+| `101328_375_63508_430292265_16` | 247 KiB | 133070 | `0x8AAD47CE` |
 
 ##### 相關說明
 
