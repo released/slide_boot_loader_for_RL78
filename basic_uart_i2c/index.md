@@ -1159,7 +1159,7 @@ copy /y/v .\DefaultBuild\RL78_F24_Basic_Boot_loader_UART.fsy ..\RL78_F24_Basic_B
 
 ---
 
-* how do we know section address meaning
+* 區段位址與配置說明（Section addresses and layout）
 
 ![](../img/boot_debug_monitor.jpg)
 
