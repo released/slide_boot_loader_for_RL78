@@ -165,7 +165,7 @@ App pre-build 讀取本工程的 C header，產生 `ftable.inc`／`app_identity.
 完整欄位見 [Flash／Metadata byte 對照](https://released.github.io/slide_boot_loader_for_RL78/#flash-metadata-can-reference)；
 兩個工程的欄位值由各自的 App 設定及 Boot 契約產生。
 
-| 欄位 | Metadata offset | BIN offset | 絕對 Flash address | 本例預期 |
+| 欄位 | Metadata offset | BIN offset | 絕對 Flash address | INTP1 範例值 |
 | --- | --- | --- | --- | --- |
 | App version | `0x10..0x13` | `0x110..0x113` | `0x2110..0x2113` | F13：`01 05 01 00`；F24：`01 00 01 00` |
 | App build | `0x14..0x17` | `0x114..0x117` | `0x2114..0x2117` | 20261016，LE32 |
@@ -249,10 +249,10 @@ flowchart TD
 
 ### C. App Vector Table：新增 IRQ 範例
 
-本例使用兩個 device header 都定義的 `INTP1 = 0x0A`。
+INTP1 範例使用兩個 device header 都定義的 `INTP1 = 0x0A`。
 其他 IRQ 的 vector 位址依各 MCU 的 device header 決定。
 Vector 位址是**實體 vector byte address**，不是 IRQ 序號、App slot 或周邊 pin。
-本例對應 App slot `0x2014`，即 BIN offset `0x14`；換算方式見 [槽位位址](#device-irq-slot)。
+INTP1 對應 App slot `0x2014`，即 BIN offset `0x14`；換算方式見 [槽位位址](#device-irq-slot)。
 
 <a id="device-irq-ownership"></a>
 
@@ -802,7 +802,7 @@ CRC 用於完整性檢查。
 | --- | --- |
 | 只改 App version／build 或相容的一般 IRQ | 產表、重建與封裝 App；不因 ISR 名稱改動重燒 Boot |
 | 改 MCU／App start／geometry／IRQ ABI／更新協定 | 屬於共同契約變更；同步 Boot、App、producer、Tool／validator 並重新驗證 |
-| Vector 位址填入 `0x2014`、IRQ index 或保留／奇數 vector | 填寫合法實體 byte address，本例為 `0x0A`；以本工程 header 核對 |
+| Vector 位址填入 `0x2014`、IRQ index 或保留／奇數 vector | 填寫合法實體 byte address；INTP1 範例為 `0x0A`，並以工程 header 核對 |
 | C 檔只複製進資料夾，沒有加入 MTPJ | generator 或 linker 應拒絕；先修正專案登錄 |
 | ISR 帶 `vect=`／static／普通函式，或 symbol 拼錯 | 改成正常 global interrupt ISR，再核對 C header 與 generated table |
 | 覆蓋原有 UART／timer mappings | 先恢復仍在用的清單；新增不是替換整份 C header |
@@ -829,11 +829,13 @@ PC 與 host 之間的 Host Baud 仍是獨立的 UART 設定。
 | F13 | **Boot 與 App 各自**的 `hal/can/RSCANlite.h`：`CAN_CFG_C0_BAUDRATE_L` | 分別修改兩份 driver 設定，並核對各工程的 `can_boot_config.h` metadata 契約 | fCAN 16 MHz；SS／TSEG1／TSEG2＝1／11／4 TQ；sample point 75% |
 | F24 | Boot `hal/device/f24_device_config.h`：`CAN_CFG_NBRP` | Boot／App 的 CS+ preinclude 各自引用本工程 header；保留此設定，不直接修改生成的 `smc_gen` | fCAN 40 MHz；SS／TSEG1／TSEG2＝1／15／4 TQ；sample point 80% |
 
-兩者的計算式皆為 `bitrate = fCAN / ((BRP register + 1) × (1 + TSEG1 + TSEG2))`。
-F13 寫入位置是 `r_rl78_can_drv.c` 的 `C0CFGL/C0CFGH`；
-F24 是生成 driver `r_rscanfd_rl78.c` 的 `C0NCFGL/C0NCFGH`，
-其 `CAN_CFG_NMNL_TSEG1/2` 由設定 header 轉成 register encoding。
-可由各工程上述原始碼及 MCU 硬體手冊的 CAN bit timing／configuration register 核對。
+兩者使用相同計算式：
+
+`bitrate = fCAN / ((BRP register + 1) × (1 + TSEG1 + TSEG2))`
+
+- F13：寫入 `r_rl78_can_drv.c` 的 `C0CFGL/C0CFGH`。
+- F24：寫入生成 driver `r_rscanfd_rl78.c` 的 `C0NCFGL/C0NCFGH`；`CAN_CFG_NMNL_TSEG1/2` 由設定 header 轉成 register encoding。
+- 核對依據：各工程原始碼與 MCU 硬體手冊的 CAN bit timing／configuration register。
 F13 原始設定可直接開啟 [Boot RSCANlite.h](https://github.com/released/RL78_F13_Boot_loader_CAN/blob/main/hal/can/RSCANlite.h)
 及 [App RSCANlite.h](https://github.com/released/RL78_F13_Boot_loader_CAN_app/blob/main/hal/can/RSCANlite.h)。
 

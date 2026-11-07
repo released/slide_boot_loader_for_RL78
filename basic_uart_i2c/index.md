@@ -52,11 +52,11 @@ Boot 的 `user_def.h` 選擇 UART／IICA0 與 IRQ 開關；`ftable.inc` 定義 A
     * RL78 x1x : Flash Self Programming Library Type01
   <br/>
 
-![](../img/flash_library_01.jpg)
-![](../img/flash_library_02.jpg)
-![](../img/flash_library_03.jpg)
-![](../img/flash_library_04.jpg)
-![](../img/flash_library_05.jpg)
+![Basic 工程索引 — flash library 01](../img/flash_library_01.jpg)
+![Basic 工程索引 — flash library 02](../img/flash_library_02.jpg)
+![Basic 工程索引 — flash library 03](../img/flash_library_03.jpg)
+![Basic 工程索引 — flash library 04](../img/flash_library_04.jpg)
+![Basic 工程索引 — flash library 05](../img/flash_library_05.jpg)
 
 __code base : polling__
 * reference code base : boot code (RL78 F24)
@@ -145,7 +145,7 @@ download sample code :
 
 MCU flash will split to Boot area (boot code) and Flash area (app code)
 
-![](../img/flash_arch.jpg)
+![Flash architecture — flash arch](../img/flash_arch.jpg)
 
 
 <u>How to Divide Boot and Flash Areas</u>
@@ -161,9 +161,9 @@ MCU flash will split to Boot area (boot code) and Flash area (app code)
   * detect ==flag== store in ram specific area (ex : 0xFF700) , to determine if re-boot from Flash area (app code) 
   * if no app code in app section
 
-![](../img/boot_check_app_empty.jpg)
+![Scenario : Boot area (boot code) — boot check app empty](../img/boot_check_app_empty.jpg)
 
-![](../img/boot_flag_check.jpg)
+![Scenario : Boot area (boot code) — boot flag check](../img/boot_flag_check.jpg)
 
 
   * base on the ==flag== or ==BUTTON presssed (active LOW)== , to determine 
@@ -177,7 +177,7 @@ MCU flash will split to Boot area (boot code) and Flash area (app code)
   * calculate the Flash area (app code) CRC byte (==caculate_crc32_checksum==) and compare to the CRC data store in last 4 bytes of Flash area (app code)
   * if comapare error , stay in Boot area (boot code) 
 
-![](../img/boot_compare_check_err.jpg)
+![Scenario : Boot area (boot code) — boot compare check err](../img/boot_compare_check_err.jpg)
 
 * any other custom user defined condition
 
@@ -191,19 +191,19 @@ MCU flash will split to Boot area (boot code) and Flash area (app code)
     * I2C (IICA0 , P62/SCL , P63/SDA): reboot MCU
 
 xmodem
-![](../img/boot_update_finish.jpg)
+![Scenario : Boot area (boot code) — boot update finish](../img/boot_update_finish.jpg)
 
 I2C
-![](../img/i2c_transfer_s_program_finish.jpg)
+![Scenario : Boot area (boot code) — i2c transfer s program finish](../img/i2c_transfer_s_program_finish.jpg)
 
   * if CRC compare OK and no detect update inquiry , jump to Flash area (app code)
 
-![](../img/boot_comapre_ok_jump_to_app.jpg)
+![Scenario : Boot area (boot code) — boot comapre ok jump to app](../img/boot_comapre_ok_jump_to_app.jpg)
 
 * at project:RL78_F24_Basic_Boot_loader_UART_CRC , add timer to control reset flow
   * when entry boot code in upgrade process , count down to 30 sec and execute reboot MCU if no receive data from interface (XMODEM , IICA0)
 
-![](../img/boot_timer_irq_couting.jpg)
+![Scenario : Boot area (boot code) — boot timer irq couting](../img/boot_timer_irq_couting.jpg)
 
 ---
 
@@ -217,22 +217,22 @@ I2C
   * change flag data and execute reset , when
     * receive interface boot command (ex : I2C , UART , ...) 
 
-![](../img/app_flag_set.jpg)
-![](../img/app_flag_set_2.jpg)
+![Scenario : Flash area (app code) — app flag set](../img/app_flag_set.jpg)
+![Scenario : Flash area (app code) — app flag set 2](../img/app_flag_set_2.jpg)
 
   * any other custom user defined condition (ex : ADC , GPIO etc)
   * use terminal (UART0 : P15/TX , P16/RX) , by press ==digit 3== ,to set ram flag and reset
 
-![](../img/app_digit_3.jpg)
+![Scenario : Flash area (app code) — app digit 3](../img/app_digit_3.jpg)
 
 * by press ==digit 1== to write data flash 
 * by press ==digit 2== to read data flash
 
-![](../img/app_data_flash_wr.jpg)
+![Scenario : Flash area (app code) — app data flash wr](../img/app_data_flash_wr.jpg)
 
 * at Flash area (app code) last 4 bytes , will add ==CRC data== after ==project compile finish==
 
-![](../img/app_code_crc_address.jpg)
+![Scenario : Flash area (app code) — app code crc address](../img/app_code_crc_address.jpg)
 
 ---
 
@@ -270,15 +270,15 @@ Mirror 與近位址常數配置可對照各工程 map 及 CC-RL《How to Divide 
 * below is default project map file after compile
 
 **RL78 F24**
-![](../img/map_const_F24.jpg)
+![Project : boot code/app code modifictaion - ftable.inc — map const F24](../img/map_const_F24.jpg)
 **RL78 F23**
-![](../img/map_const_F23.jpg)
+![Project : boot code/app code modifictaion - ftable.inc — map const F23](../img/map_const_F23.jpg)
 **RL78 F13**
-![](../img/map_const_F13.jpg)
+![Project : boot code/app code modifictaion - ftable.inc — map const F13](../img/map_const_F13.jpg)
 **RL78 G15**
-![](../img/map_const_G15.jpg)
+![Project : boot code/app code modifictaion - ftable.inc — map const G15](../img/map_const_G15.jpg)
 **RL78 G16**
-![](../img/map_const_G16.jpg)
+![Project : boot code/app code modifictaion - ftable.inc — map const G16](../img/map_const_G16.jpg)
 
 <u>How to Divide Boot and Flash Areas</u>
 
@@ -298,49 +298,49 @@ __3.1.1  Modifying the startup routine (cstart.asm)__
 (1) 
 include [ftable.inc](#ftable_inc)
 
-![](../img/cstart_01.jpg)
+![Project : boot code modifictaion - cstart.asm — cstart 01](../img/cstart_01.jpg)
 
 (2)
 comment out conditional check
 
-![](../img/cstart_02.jpg)
+![Project : boot code modifictaion - cstart.asm — cstart 02](../img/cstart_02.jpg)
 
 (3)
 modify the section name
 
-![](../img/cstart_03.jpg)
+![Project : boot code modifictaion - cstart.asm — cstart 03](../img/cstart_03.jpg)
 
 (4)
 comment out conditional check and assembly instructions
 
-![](../img/cstart_04.jpg)
+![Project : boot code modifictaion - cstart.asm — cstart 04](../img/cstart_04.jpg)
 
 (5)
 modify main function name (__boot_main__) <a id="boot_main"></a>
 add branch instructions : [FALSH_TABLE](#FALSH_TABLE)
 
-![](../img/cstart_05.jpg)
+![Project : boot code modifictaion - cstart.asm — cstart 05](../img/cstart_05.jpg)
 
 (6)
 comment out .const section
 
-![](../img/cstart_06.jpg)
+![Project : boot code modifictaion - cstart.asm — cstart 06](../img/cstart_06.jpg)
 
 (7)
 modify bsp_init_system function name
 
-![](../img/cstart_07.jpg)
+![Project : boot code modifictaion - cstart.asm — cstart 07](../img/cstart_07.jpg)
 
 (8)
 modify hardware init function name (__boot_hdwinit__) <a id="boot_hdwinit"></a>
 
-![](../img/cstart_08.jpg)
+![Project : boot code modifictaion - cstart.asm — cstart 08](../img/cstart_08.jpg)
 
 (9)
 increase bss size to 0x500
 
-![](../img/cstart_09.jpg)
-![](../img/cstart_10.jpg)
+![Project : boot code modifictaion - cstart.asm — cstart 09](../img/cstart_09.jpg)
+![Project : boot code modifictaion - cstart.asm — cstart 10](../img/cstart_10.jpg)
 
 (10)
 add ram flag section
@@ -350,12 +350,12 @@ add ram flag section
   .L_section_boot_info:
 ```
 
-![](../img/cstart_11_3.jpg)
+![Project : boot code modifictaion - cstart.asm — cstart 11 3](../img/cstart_11_3.jpg)
 
 (11)
 add ==code flash library section==
 
-![](../img/cstart_11.jpg)
+![Project : boot code modifictaion - cstart.asm — cstart 11](../img/cstart_11.jpg)
 
 ```c
   .SECTION RFD_DATA_nR, DATA
@@ -365,7 +365,7 @@ add ==code flash library section==
   .SECTION SMP_CF_fR, TEXTF
 ```
 
-![](../img/cstart_11_1.jpg)
+![Project : boot code modifictaion - cstart.asm — cstart 11 1](../img/cstart_11_1.jpg)
 
 ```c
 
@@ -468,7 +468,7 @@ add ==code flash library section==
 	BNZ	$.L41_TEXT
 ```
 
-![](../img/cstart_11_2.jpg)
+![Project : boot code modifictaion - cstart.asm — cstart 11 2](../img/cstart_11_2.jpg)
 
 
 ---
@@ -502,7 +502,7 @@ __3.1.2  Modifying hdwinit.asm and stkinit.asm__
 
 - modify the section name
 
-![](../img/stkinit_01.jpg)
+![Project : boot code modifictaion - stkinit.asm — stkinit 01](../img/stkinit_01.jpg)
 
 
 <u>How to Divide Boot and Flash Areas</u>
@@ -515,11 +515,11 @@ __3.1.2  Modifying hdwinit.asm and stkinit.asm__
 
 * after modification , ==Boot area (boot code) project== will increse 3 files as below 
 
-![](../img/boot_project_tree_01.jpg)
+![Project : boot code modifictaion - project tree — boot project tree 01](../img/boot_project_tree_01.jpg)
 
 * make sure manual register ==cstart.asm , stkinit.asm== if file ==missing== after ==generate code==
 
-![](../img/boot_project_tree_02.jpg)
+![Project : boot code modifictaion - project tree — boot project tree 02](../img/boot_project_tree_02.jpg)
 
 
 <u>How to Divide Boot and Flash Areas</u>
@@ -532,7 +532,7 @@ __3.1.2  Modifying hdwinit.asm and stkinit.asm__
 
 * base on [RL78 MCU](#target_MCU_flash_type)  , register correspond ==CODE FLASH library== into Boot area (boot code) project and exclude uncessary file (data flash , extra area)
 
-![](../img/RFD_tree_file.jpg)
+![Project : boot code modifictaion - add CODE FLASH library — RFD tree file](../img/RFD_tree_file.jpg)
 
 
 ---
@@ -735,9 +735,9 @@ R_RFD_FAR_FUNC e_sample_ret_t Sample_CodeFlashControl_SingleWrite(uint32_t i_u32
 * purpose: 
   * condition check (check and compare app code CRC , prevent jump into corrupted app code)
 
-![](../img/crc_01.jpg)
-![](../img/crc_01_2.jpg)
-![](../img/crc_01_3.jpg)
+![Project : boot code modifictaion - add CRC compare (1) — crc 01](../img/crc_01.jpg)
+![Project : boot code modifictaion - add CRC compare (1) — crc 01 2](../img/crc_01_2.jpg)
+![Project : boot code modifictaion - add CRC compare (1) — crc 01 3](../img/crc_01_3.jpg)
 
 ---
 
@@ -751,7 +751,7 @@ CRC in app code last 4 bytes will be added after compile at <b><u>app code proje
 </span>
 
 
-![](../img/app_hex_output_CRC.jpg)
+![Project : boot code modifictaion - add CRC compare (2) — app hex output CRC](../img/app_hex_output_CRC.jpg)
 
 ---
 
@@ -762,23 +762,23 @@ CRC in app code last 4 bytes will be added after compile at <b><u>app code proje
 * use smart config to generate target interface drvier , to use in boot code project
   * make sure manual register ==cstart.asm , stkinit.asm== if file ==missing== after ==generate code==
 
-![](../img/boot_project_tree_02.jpg)
+![Project : boot code modifictaion - use smart config tool to generate driver — boot project tree 02](../img/boot_project_tree_02.jpg)
 
 * move those driver function into boot_main.c (to reduce boot code size and prevent duplicate function call in app code)
 * exclude the driver code (c code , asm code)
 
-![](../img/boot_smc_01.jpg)
-![](../img/boot_smc_02.jpg)
-![](../img/boot_smc_03.jpg)
-![](../img/boot_smc_04.jpg)
-![](../img/boot_smc_05.jpg)
+![Project : boot code modifictaion - use smart config tool to generate driver — boot smc 01](../img/boot_smc_01.jpg)
+![Project : boot code modifictaion - use smart config tool to generate driver — boot smc 02](../img/boot_smc_02.jpg)
+![Project : boot code modifictaion - use smart config tool to generate driver — boot smc 03](../img/boot_smc_03.jpg)
+![Project : boot code modifictaion - use smart config tool to generate driver — boot smc 04](../img/boot_smc_04.jpg)
+![Project : boot code modifictaion - use smart config tool to generate driver — boot smc 05](../img/boot_smc_05.jpg)
 
 
 ---
 
 * smart configurator system setting as below
 
-![](../img/smc_system.jpg)
+![Project : boot code modifictaion - use smart config tool to generate driver — smc system](../img/smc_system.jpg)
 
 ---
 
@@ -809,12 +809,12 @@ CRC in app code last 4 bytes will be added after compile at <b><u>app code proje
 * No READ operation
 * No Authentication operation
 
-![](../img/boot_i2c_command_packet.jpg)
-![](../img/boot_i2c_data_packet.jpg)
+![Project : boot code modifictaion - I2C command flow — boot i2c command packet](../img/boot_i2c_command_packet.jpg)
+![Project : boot code modifictaion - I2C command flow — boot i2c data packet](../img/boot_i2c_data_packet.jpg)
 
-![](../img/boot_i2c_01.jpg)
-![](../img/boot_i2c_02.jpg)
-![](../img/boot_i2c_03.jpg)
+![Project : boot code modifictaion - I2C command flow — boot i2c 01](../img/boot_i2c_01.jpg)
+![Project : boot code modifictaion - I2C command flow — boot i2c 02](../img/boot_i2c_02.jpg)
+![Project : boot code modifictaion - I2C command flow — boot i2c 03](../img/boot_i2c_03.jpg)
 
 
 ---
@@ -824,24 +824,24 @@ CRC in app code last 4 bytes will be added after compile at <b><u>app code proje
 ## Project : boot code modifictaion - I2C command flow (check_generic_boot_standard_interface)
 
 (0) send initial byte (master)
-![](../img/LA_m_0_init.jpg)
+![Project : boot code modifictaion - I2C command flow (check generic boot standard interface) — LA m 0 init](../img/LA_m_0_init.jpg)
 
 
 (1) boot mode check command byte (master)
-![](../img/LA_m_1_init_1.jpg)
+![Project : boot code modifictaion - I2C command flow (check generic boot standard interface) — LA m 1 init 1](../img/LA_m_1_init_1.jpg)
 
 
 (1-1) check read status (master)
-![](../img/LA_m_1_init_2.jpg)
-![](../img/LA_m_1_init_3.jpg)
+![Project : boot code modifictaion - I2C command flow (check generic boot standard interface) — LA m 1 init 2](../img/LA_m_1_init_2.jpg)
+![Project : boot code modifictaion - I2C command flow (check generic boot standard interface) — LA m 1 init 3](../img/LA_m_1_init_3.jpg)
 
 
 (2) device inquiry command packet (master)
-![](../img/LA_m_2_device_inquiry_cmd_packet.jpg)
+![Project : boot code modifictaion - I2C command flow (check generic boot standard interface) — LA m 2 device inquiry cmd](../img/LA_m_2_device_inquiry_cmd_packet.jpg)
 
 (2-1) report status about device inquiry command packet (slave)
-![](../img/LA_s_2_device_inquiry_data_status_ok_0.jpg)
-![](../img/LA_s_2_device_inquiry_data_status_ok_1.jpg)
+![Project : boot code modifictaion - I2C command flow (check generic boot standard interface) — LA s 2 device inquiry data](../img/LA_s_2_device_inquiry_data_status_ok_0.jpg)
+![Project : boot code modifictaion - I2C command flow (check generic boot standard interface) — LA s 2 device inquiry data](../img/LA_s_2_device_inquiry_data_status_ok_1.jpg)
 
 
 ---
@@ -851,14 +851,14 @@ CRC in app code last 4 bytes will be added after compile at <b><u>app code proje
 ## Project : boot code modifictaion - I2C command flow (read_device_signature)
 
 (3) obtain target device signature (master)
-![](../img/LA_m_3_signature_request_cmd_packet_0.jpg)
-![](../img/LA_m_3_signature_request_cmd_packet_1.jpg)
-![](../img/LA_m_3_signature_request_cmd_packet_2.jpg)
+![Project : boot code modifictaion - I2C command flow (read device signature) — LA m 3 signature request cmd packet 0](../img/LA_m_3_signature_request_cmd_packet_0.jpg)
+![Project : boot code modifictaion - I2C command flow (read device signature) — LA m 3 signature request cmd packet 1](../img/LA_m_3_signature_request_cmd_packet_1.jpg)
+![Project : boot code modifictaion - I2C command flow (read device signature) — LA m 3 signature request cmd packet 2](../img/LA_m_3_signature_request_cmd_packet_2.jpg)
 
 (3-1) report status about obtain target device signature (slave)
-![](../img/LA_s_3_SIGNATURE_RESPOND_0.jpg)
-![](../img/LA_s_3_SIGNATURE_RESPOND_1.jpg)
-![](../img/LA_s_3_SIGNATURE_RESPOND_2.jpg)
+![Project : boot code modifictaion - I2C command flow (read device signature) — LA s 3 SIGNATURE RESPOND 0](../img/LA_s_3_SIGNATURE_RESPOND_0.jpg)
+![Project : boot code modifictaion - I2C command flow (read device signature) — LA s 3 SIGNATURE RESPOND 1](../img/LA_s_3_SIGNATURE_RESPOND_1.jpg)
+![Project : boot code modifictaion - I2C command flow (read device signature) — LA s 3 SIGNATURE RESPOND 2](../img/LA_s_3_SIGNATURE_RESPOND_2.jpg)
 
 ---
 
@@ -867,14 +867,14 @@ CRC in app code last 4 bytes will be added after compile at <b><u>app code proje
 ## Project : boot code modifictaion - I2C command flow (read_area_information)
 
 (4) obtain target device signature  (master)
-![](../img/LA_m_4_memory_area_info_request_cmd_packet_0.jpg)
-![](../img/LA_m_4_memory_area_info_request_cmd_packet_1.jpg)
-![](../img/LA_m_4_memory_area_info_request_cmd_packet_2.jpg)
+![Project : boot code modifictaion - I2C command flow (read area information) — LA m 4 memory area info request cmd packet](../img/LA_m_4_memory_area_info_request_cmd_packet_0.jpg)
+![Project : boot code modifictaion - I2C command flow (read area information) — LA m 4 memory area info request cmd packet](../img/LA_m_4_memory_area_info_request_cmd_packet_1.jpg)
+![Project : boot code modifictaion - I2C command flow (read area information) — LA m 4 memory area info request cmd packet](../img/LA_m_4_memory_area_info_request_cmd_packet_2.jpg)
 
 (4-1) report status about obtain target device signature  (slave)
-![](../img/LA_s_4_AREA_INFO_RESPOND_0.jpg)
-![](../img/LA_s_4_AREA_INFO_RESPOND_1.jpg)
-![](../img/LA_s_4_AREA_INFO_RESPOND_2.jpg)
+![Project : boot code modifictaion - I2C command flow (read area information) — LA s 4 AREA INFO RESPOND 0](../img/LA_s_4_AREA_INFO_RESPOND_0.jpg)
+![Project : boot code modifictaion - I2C command flow (read area information) — LA s 4 AREA INFO RESPOND 1](../img/LA_s_4_AREA_INFO_RESPOND_1.jpg)
+![Project : boot code modifictaion - I2C command flow (read area information) — LA s 4 AREA INFO RESPOND 2](../img/LA_s_4_AREA_INFO_RESPOND_2.jpg)
 
 ---
 
@@ -883,21 +883,21 @@ CRC in app code last 4 bytes will be added after compile at <b><u>app code proje
 ## Project : boot code modifictaion - I2C command flow (start_device_image_transfer)
 
 (5) erase user code flash area (master)
-![](../img/LA_m_5_erase_cmd_packet_header_0.jpg)
-![](../img/LA_m_5_erase_cmd_packet_header_1.jpg)
+![Project : boot code modifictaion - I2C command flow (start device image transfer) — LA m 5 erase cmd packet header 0](../img/LA_m_5_erase_cmd_packet_header_0.jpg)
+![Project : boot code modifictaion - I2C command flow (start device image transfer) — LA m 5 erase cmd packet header 1](../img/LA_m_5_erase_cmd_packet_header_1.jpg)
 
 (5-1) report status about erase user code flash area (slave)
-![](../img/LA_s_5_ERASE_MEMORY_0.jpg)
-![](../img/LA_s_5_ERASE_MEMORY_1.jpg)
+![Project : boot code modifictaion - I2C command flow (start device image transfer) — LA s 5 ERASE MEMORY 0](../img/LA_s_5_ERASE_MEMORY_0.jpg)
+![Project : boot code modifictaion - I2C command flow (start device image transfer) — LA s 5 ERASE MEMORY 1](../img/LA_s_5_ERASE_MEMORY_1.jpg)
 
 
 (6) initiate write user code flash area (master)
-![](../img/LA_m_6_write_cmd_packet_header_0.jpg)
-![](../img/LA_m_6_write_cmd_packet_header_1.jpg)
+![Project : boot code modifictaion - I2C command flow (start device image transfer) — LA m 6 write cmd packet header 0](../img/LA_m_6_write_cmd_packet_header_0.jpg)
+![Project : boot code modifictaion - I2C command flow (start device image transfer) — LA m 6 write cmd packet header 1](../img/LA_m_6_write_cmd_packet_header_1.jpg)
 
 (6-1) report status about initiate write user code flash area (master)
-![](../img/LA_s_6_WRITE_MEMORY_START_0.jpg)
-![](../img/LA_s_6_WRITE_MEMORY_START_1.jpg)
+![Project : boot code modifictaion - I2C command flow (start device image transfer) — LA s 6 WRITE MEMORY START 0](../img/LA_s_6_WRITE_MEMORY_START_0.jpg)
+![Project : boot code modifictaion - I2C command flow (start device image transfer) — LA s 6 WRITE MEMORY START 1](../img/LA_s_6_WRITE_MEMORY_START_1.jpg)
 
 ---
 
@@ -906,25 +906,25 @@ CRC in app code last 4 bytes will be added after compile at <b><u>app code proje
 ## Project : boot code modifictaion - I2C command flow terminal operation (master & slave)
 
 (1) log message at master : set target image 
-![](../img/i2c_transfer_m_1_ConfigProgramInfo.jpg)
+![Project : boot code modifictaion - I2C command flow terminal operation (master & slave) — i2c transfer m 1 ConfigProgram](../img/i2c_transfer_m_1_ConfigProgramInfo.jpg)
 
 (2) log message at master : check slave status
-![](../img/i2c_transfer_m_2_Obtain_target_device_info.jpg)
+![Project : boot code modifictaion - I2C command flow terminal operation (master & slave) — i2c transfer m 2 Obtain target](../img/i2c_transfer_m_2_Obtain_target_device_info.jpg)
 
 (3) log message at master : program binary to slave code flash
-![](../img/i2c_transfer_m_3_StartImageTransfer.jpg)
+![Project : boot code modifictaion - I2C command flow terminal operation (master & slave) — i2c transfer m 3 StartImageTra](../img/i2c_transfer_m_3_StartImageTransfer.jpg)
 
 (4) log message at slave : erase (RL78 F24)
-![](../img/i2c_transfer_s_erase.jpg)
+![Project : boot code modifictaion - I2C command flow terminal operation (master & slave) — i2c transfer s erase](../img/i2c_transfer_s_erase.jpg)
 
 (5) log message at slave : programming finish (RL78 F24)
-![](../img/i2c_transfer_s_program_finish.jpg)
+![Project : boot code modifictaion - I2C command flow terminal operation (master & slave) — i2c transfer s program finish](../img/i2c_transfer_s_program_finish.jpg)
 
 (6) code flow at slave : WriteCodeFlash (RL78 F24)
-![](../img/i2c_transfer_s_code_1.jpg)
+![Project : boot code modifictaion - I2C command flow terminal operation (master & slave) — i2c transfer s code 1](../img/i2c_transfer_s_code_1.jpg)
 
 erase per page (1K bytes) , program per 4 bytes
-![](../img/i2c_transfer_s_code_2.jpg)
+![Project : boot code modifictaion - I2C command flow terminal operation (master & slave) — i2c transfer s code 2](../img/i2c_transfer_s_code_2.jpg)
 
 ---
 
@@ -933,25 +933,25 @@ erase per page (1K bytes) , program per 4 bytes
 ## Project : boot code modifictaion - xmodem update flow
 
 below is at xmodem update when g_app_required_update == 1
-![](../img/xmodem_code_01.jpg)
+![Project : boot code modifictaion - xmodem update flow — xmodem code 01](../img/xmodem_code_01.jpg)
 
 when trig update flow , will wait for xmodem from PC host
-![](../img/xmodem_erase.jpg)
+![Project : boot code modifictaion - xmodem update flow — xmodem erase](../img/xmodem_erase.jpg)
 
 use teraterm , to send file under xmodem
-![](../img/xmodem_send.jpg)
+![Project : boot code modifictaion - xmodem update flow — xmodem send](../img/xmodem_send.jpg)
 
 when under transmit binary file
-![](../img/xmodem_under_xfer.jpg)
+![Project : boot code modifictaion - xmodem update flow — xmodem under xfer](../img/xmodem_under_xfer.jpg)
 
 trasmit time , update RL78 F24 app code : 236K
 * with boot code enable log message (xmodem.c , check debug3) , spent 41 sec
-![](../img/xmodem_under_xfer2.jpg)
+![Project : boot code modifictaion - xmodem update flow — xmodem under xfer2](../img/xmodem_under_xfer2.jpg)
 * without boot code enable log message (xmodem.c , check debug3) , spent 40 sec
-![](../img/xmodem_under_xfer3.jpg)
+![Project : boot code modifictaion - xmodem update flow — xmodem under xfer3](../img/xmodem_under_xfer3.jpg)
 
 when update app code finish
-![](../img/xmodem_program_finish.jpg)
+![Project : boot code modifictaion - xmodem update flow — xmodem program finish](../img/xmodem_program_finish.jpg)
 
 ---
 
@@ -959,7 +959,7 @@ when update app code finish
 
 ## Project : boot code property modifictaion - E2 lite setting
 
-![](../img/boot_e2_lite_property_flash.jpg)
+![Project : boot code property modifictaion - E2 lite setting — boot e2 lite property flash](../img/boot_e2_lite_property_flash.jpg)
 
 
 <u>CC-RL Compiler User's Manual</u>
@@ -978,7 +978,7 @@ refer to How to Divide Boot and Flash Areas :
 __3.2.5  Specifying hex file output only to the boot area address range__
 
 
-![](../img/boot_property_common_01.jpg)
+![Project : boot code property modifictaion - CC-RL Build Tool setting — boot property common 01](../img/boot_property_common_01.jpg)
 
 
 * __[Frequently Used Options (for Hex Output)] > [Division output file]__
@@ -993,7 +993,7 @@ __3.2.5  Specifying hex file output only to the boot area address range__
 配置數值集中於 [App 起點與 map 對照](#map_const)。
 ---
 
-![](../img/boot_property_common_02.jpg)
+![Project : boot code property modifictaion - CC-RL Build Tool setting — boot property common 02](../img/boot_property_common_02.jpg)
 
 <a id="fsy_file"></a>
 * __[Other] > [Commands executed after build processing]__
@@ -1005,7 +1005,7 @@ copy /y/v .\DefaultBuild\RL78_F24_Basic_Boot_loader_UART.fsy ..\RL78_F24_Basic_B
 ```
 
 
-![](../img/boot_foloder_DefaultBuild.jpg)
+![Project : boot code property modifictaion - CC-RL Build Tool setting — boot foloder DefaultBuild](../img/boot_foloder_DefaultBuild.jpg)
 
 
 <u>How to Divide Boot and Flash Areas</u>
@@ -1020,9 +1020,9 @@ copy /y/v .\DefaultBuild\RL78_F24_Basic_Boot_loader_UART.fsy ..\RL78_F24_Basic_B
 
 **Compile Options**
 
-![](../img/boot_property_compile_01.jpg)
+![Project : boot code property modifictaion - CC-RL Build Tool setting — boot property compile 01](../img/boot_property_compile_01.jpg)
 
-![](../img/boot_property_compile_02.jpg)
+![Project : boot code property modifictaion - CC-RL Build Tool setting — boot property compile 02](../img/boot_property_compile_02.jpg)
 
 
 <u>How to Divide Boot and Flash Areas</u>
@@ -1037,19 +1037,19 @@ copy /y/v .\DefaultBuild\RL78_F24_Basic_Boot_loader_UART.fsy ..\RL78_F24_Basic_B
 
 **Link Options**
 
-![](../img/boot_property_link_01.jpg)
+![Project : boot code property modifictaion - CC-RL Build Tool setting — boot property link 01](../img/boot_property_link_01.jpg)
 * __[Device] > [Option byte values for OCD]__
   * set to ```A5```
   * default will be 0xFF
-![](../img/boot_property_link_02.jpg)
+![Project : boot code property modifictaion - CC-RL Build Tool setting — boot property link 02](../img/boot_property_link_02.jpg)
 <br>
-![](../img/boot_property_link_02_1.jpg)
+![Project : boot code property modifictaion - CC-RL Build Tool setting — boot property link 02 1](../img/boot_property_link_02_1.jpg)
 <br>
 
 * __==important notice==__
   * [RL78/F24 Locked](https://en.na4.teamsupport.com/knowledgeBase/21225578)
 
-![](../img/boot_property_link_03.jpg)
+![Project : boot code property modifictaion - CC-RL Build Tool setting — boot property link 03](../img/boot_property_link_03.jpg)
 * __[Output Code] > [Execute start address]__
   * will be called by cstart.asm
 <br>
@@ -1058,23 +1058,23 @@ copy /y/v .\DefaultBuild\RL78_F24_Basic_Boot_loader_UART.fsy ..\RL78_F24_Basic_B
 <a id="vect_address"></a>
 * __[Output Code] > [Address setting for specified area for vector table]__
   * use vect_address.xlsx under boot code project , to copy shift address
-![](../img/boot_property_link_03_1.jpg)
+![Project : boot code property modifictaion - CC-RL Build Tool setting — boot property link 03 1](../img/boot_property_link_03_1.jpg)
 
   * entry editor and paste the shift address
-![](../img/boot_property_link_03_2.jpg)  
+![Project : boot code property modifictaion - CC-RL Build Tool setting — boot property link 03 2](../img/boot_property_link_03_2.jpg)
 
   * the final result : 
-![](../img/boot_property_link_04.jpg)
+![Project : boot code property modifictaion - CC-RL Build Tool setting — boot property link 04](../img/boot_property_link_04.jpg)
 <br>
 
 
 ---
 
-![](../img/boot_property_link_05.jpg)
+![Project : boot code property modifictaion - CC-RL Build Tool setting — boot property link 05](../img/boot_property_link_05.jpg)
 * __[List] > [Ooutput link map file]__
   * select -SHow=ALL , will display the compile result (function , address) in map file for debug
   * map file under /DefaultBuild
-![](../img/boot_property_link_05_1.jpg)  
+![Project : boot code property modifictaion - CC-RL Build Tool setting — boot property link 05 1](../img/boot_property_link_05_1.jpg)
 
 * refer to document : 
   * How to Divide Boot and Flash Areas (R20UT3475EJ0300) 
@@ -1085,7 +1085,7 @@ copy /y/v .\DefaultBuild\RL78_F24_Basic_Boot_loader_UART.fsy ..\RL78_F24_Basic_B
 
 ---
 
-![](../img/boot_property_link_06.jpg)
+![Project : boot code property modifictaion - CC-RL Build Tool setting — boot property link 06](../img/boot_property_link_06.jpg)
 * __[Section] > [Section start address]__
 
   * set __Layout sections automatically__ to ==NO== 
@@ -1110,7 +1110,7 @@ copy /y/v .\DefaultBuild\RL78_F24_Basic_Boot_loader_UART.fsy ..\RL78_F24_Basic_B
 
   ```
 
-  ![](../img/boot_property_link_06_1.jpg)
+  ![Project : boot code property modifictaion - CC-RL Build Tool setting — boot property link 06 1](../img/boot_property_link_06_1.jpg)
 <br>
 
 * __[Section] > [Section that outputs external symbols to the file]__
@@ -1128,7 +1128,7 @@ copy /y/v .\DefaultBuild\RL78_F24_Basic_Boot_loader_UART.fsy ..\RL78_F24_Basic_B
   .SLIB  
   ```
 
-![](../img/boot_property_link_08.jpg)
+![Project : boot code property modifictaion - CC-RL Build Tool setting — boot property link 08](../img/boot_property_link_08.jpg)
 <br>
 
 * reserve SRAM flag 0xFF700 area [(ram flag)](#ram_flag) , to prevent initial when power on
@@ -1147,65 +1147,65 @@ copy /y/v .\DefaultBuild\RL78_F24_Basic_Boot_loader_UART.fsy ..\RL78_F24_Basic_B
 
   ``` 
 
-![](../img/boot_property_link_09.jpg)
-![](../img/boot_property_link_09_1.jpg)
+![Project : boot code property modifictaion - CC-RL Build Tool setting — boot property link 09](../img/boot_property_link_09.jpg)
+![Project : boot code property modifictaion - CC-RL Build Tool setting — boot property link 09 1](../img/boot_property_link_09_1.jpg)
 
 
   * set __Layout sections automatically__ to ==YES== 
   * the final result : 
-![](../img/boot_property_link_07.jpg)
-![](../img/boot_property_link_09_2.jpg)
+![Project : boot code property modifictaion - CC-RL Build Tool setting — boot property link 07](../img/boot_property_link_07.jpg)
+![Project : boot code property modifictaion - CC-RL Build Tool setting — boot property link 09 2](../img/boot_property_link_09_2.jpg)
 <br>
 
 ---
 
 * 區段位址與配置說明（Section addresses and layout）
 
-![](../img/boot_debug_monitor.jpg)
+![Project : boot code property modifictaion - CC-RL Build Tool setting — boot debug monitor](../img/boot_debug_monitor.jpg)
 
   * ==flash assignment after debug area==
     * 0x000F0 (RL78 F24 , F23)
 
 ---
 
-![](../img/boot_map_SRAM_address_1.jpg)
+![Project : boot code property modifictaion - CC-RL Build Tool setting — boot map SRAM address 1](../img/boot_map_SRAM_address_1.jpg)
   * ==ram assignment==
     * 0xF9F00 (RL78 F24)
     * 0xFCF00 (RL78 F23)
 
-![](../img/boot_map_SRAM_address_2.jpg)
-![](../img/boot_map_SRAM_address_3.jpg)
+![Project : boot code property modifictaion - CC-RL Build Tool setting — boot map SRAM address 2](../img/boot_map_SRAM_address_2.jpg)
+![Project : boot code property modifictaion - CC-RL Build Tool setting — boot map SRAM address 3](../img/boot_map_SRAM_address_3.jpg)
 
 
 ---
 
-![](../img/CCRL_Section_allocation.jpg)
+![Project : boot code property modifictaion - CC-RL Build Tool setting — CCRL Section allocation](../img/CCRL_Section_allocation.jpg)
   * ==short direction address (.saddr) assignment==
     * 0xFFE20 (RL78 F24 , F23)
 
-![](../img/boot_map_saddr_address_1.jpg)
+![Project : boot code property modifictaion - CC-RL Build Tool setting — boot map saddr address 1](../img/boot_map_saddr_address_1.jpg)
 
 
 ---
 
 * in case of need to modify from RL78 F24 to RL78 F23 (code flash , data flash , extra area)
   * code flash
-  ![](../img/boot_property_link_06_2.jpg)
+  ![Project : boot code property modifictaion - CC-RL Build Tool setting — boot property link 06 2](../img/boot_property_link_06_2.jpg)
   * data flash
-  ![](../img/boot_property_link_06_3.jpg)
+  ![Project : boot code property modifictaion - CC-RL Build Tool setting — boot property link 06 3](../img/boot_property_link_06_3.jpg)
   * extra area
-  ![](../img/boot_property_link_06_4.jpg)
+  ![Project : boot code property modifictaion - CC-RL Build Tool setting — boot property link 06 4](../img/boot_property_link_06_4.jpg)
   * RAM
-  ![](../img/boot_property_link_06_5.jpg)
+  ![Project : boot code property modifictaion - CC-RL Build Tool setting — boot property link 06 5](../img/boot_property_link_06_5.jpg)
 <br>
 
 ---
 
-![](../img/boot_property_link_10.jpg)
+![Project : boot code property modifictaion - CC-RL Build Tool setting — boot property link 10](../img/boot_property_link_10.jpg)
 * __[Others] > [Display total size sections]__
   * select -Total_size , will display the section size in output window
   * display build code size in Output window
-![](../img/boot_property_link_10_1.jpg)
+![Project : boot code property modifictaion - CC-RL Build Tool setting — boot property link 10 1](../img/boot_property_link_10_1.jpg)
 
 
 <u>How to Divide Boot and Flash Areas</u>
@@ -1225,7 +1225,7 @@ refer to How to Divide Boot and Flash Areas :
 __3.2.5  Specifying hex file output only to the boot area address range__
 
 
-![](../img/boot_hex_output_01.jpg)
+![Project : boot code property modifictaion - CC-RL Build Tool setting — boot hex output 01](../img/boot_hex_output_01.jpg)
 
 * __[Output File] > [Division output file]__  
   * base on MCU (ex : RL78F24) , to set boot code ==start address and end address== as file name
@@ -1241,7 +1241,7 @@ __3.2.5  Specifying hex file output only to the boot area address range__
 
 ---
 
-![](../img/boot_hex_output_02.jpg)
+![Project : boot code property modifictaion - CC-RL Build Tool setting — boot hex output 02](../img/boot_hex_output_02.jpg)
 * __[Hex Format]__  
   * follow the setting of the picture 
 
@@ -1257,10 +1257,10 @@ __3.2.5  Specifying hex file output only to the boot area address range__
 
 ## Reference - RL78/F23, F24 User’s Manual: Hardware - Input Source List
 
-![](../img/interrupt_source_list_01.jpg)
-![](../img/interrupt_source_list_02.jpg)
-![](../img/interrupt_source_list_03.jpg)
-![](../img/interrupt_source_list_04.jpg)
+![Reference - RL78/F23, F24 User’s Manual: Hardware - Input Source List — interrupt source list 01](../img/interrupt_source_list_01.jpg)
+![Reference - RL78/F23, F24 User’s Manual: Hardware - Input Source List — interrupt source list 02](../img/interrupt_source_list_02.jpg)
+![Reference - RL78/F23, F24 User’s Manual: Hardware - Input Source List — interrupt source list 03](../img/interrupt_source_list_03.jpg)
+![Reference - RL78/F23, F24 User’s Manual: Hardware - Input Source List — interrupt source list 04](../img/interrupt_source_list_04.jpg)
 
 ---
 <a id="vector_table"></a>
@@ -1268,8 +1268,8 @@ __3.2.5  Specifying hex file output only to the boot area address range__
 
 ## Project : RL78/F23, F24 User’s Manual: Hardware - Vector Table
 
-![](../img/vector_table_01.jpg)
-![](../img/vector_table_02.jpg)
+![Project : RL78/F23, F24 User’s Manual: Hardware - Vector Table — vector table 01](../img/vector_table_01.jpg)
+![Project : RL78/F23, F24 User’s Manual: Hardware - Vector Table — vector table 02](../img/vector_table_02.jpg)
 
 
 ---
@@ -1296,7 +1296,7 @@ __4.1.1  Modifying the startup routine (cstart.asm)__
 (1)
 comment out conditional check
 
-![](../img/app_cstart_01.jpg)
+![Project : app code modifictaion - cstart.asm — app cstart 01](../img/app_cstart_01.jpg)
 
 (2)
 add ram flag section
@@ -1306,7 +1306,7 @@ add ram flag section
   .L_section_boot_info:
 ```
 
-![](../img/app_cstart_02.jpg)
+![Project : app code modifictaion - cstart.asm — app cstart 02](../img/app_cstart_02.jpg)
 
 (3)
 add ==data flash library section==
@@ -1315,7 +1315,7 @@ add ==data flash library section==
   .SECTION RFD_DATA_nR, DATA
 ```
 
-![](../img/app_cstart_03.jpg)
+![Project : app code modifictaion - cstart.asm — app cstart 03](../img/app_cstart_03.jpg)
 
 
 ```c
@@ -1334,7 +1334,7 @@ add ==data flash library section==
 
 ```
 
-![](../img/app_cstart_04.jpg)
+![Project : app code modifictaion - cstart.asm — app cstart 04](../img/app_cstart_04.jpg)
 
 
 ---
@@ -1365,11 +1365,11 @@ __4.1.2  Creating a branch table program (ftable.asm)__
 * create ftable and register interrupt (used in app code) in proper sequence
   * [vector table ?](#vector_table)
 
-![](../img/app_ftable_01.jpg)
+![Project : app code modifictaion - ftable.asm — app ftable 01](../img/app_ftable_01.jpg)
 
 * ==register== ftable to Flash area (app code) project
 
-![](../img/app_ftable_02.jpg)
+![Project : app code modifictaion - ftable.asm — app ftable 02](../img/app_ftable_02.jpg)
 
 * example 
   * in app code , use UART0 TX/RX , UART1 TX/RX , TAU0_1 , IICA0 interrupt
@@ -1410,7 +1410,7 @@ __4.2.1  Registering the externally defined symbol file with the project__
   * [fsy file ?](#fsy_file)
 * ==register== fsy file to Flash area (app code) project
 
-![](../img/app_fsy_file_01.jpg)
+![Project : app code modifictaion - fsy file — app fsy file 01](../img/app_fsy_file_01.jpg)
 
 <u>How to Divide Boot and Flash Areas</u>
 
@@ -1422,7 +1422,7 @@ __4.2.1  Registering the externally defined symbol file with the project__
 
 * after modification , ==Flash area (app code) project== will increse 4 files as below 
 
-![](../img/app_project_tree_01.jpg)
+![Project : app code modifictaion - project tree — app project tree 01](../img/app_project_tree_01.jpg)
 
 ---
 
@@ -1432,7 +1432,7 @@ __4.2.1  Registering the externally defined symbol file with the project__
 
 * base on [RL78 MCU](#target_MCU_flash_type)  , register correspond ==DATA FLASH library== into Flash area (app code) project and exclude uncessary file (code flash , extra area)
 
-![](../img/RFD_tree_file2.jpg)
+![Project : app code modifictaion - add DATA FLASH library — RFD tree file2](../img/RFD_tree_file2.jpg)
 
 
 ---
@@ -1443,14 +1443,14 @@ __4.2.1  Registering the externally defined symbol file with the project__
 
 * exclude the driver code (c code , asm code)
 
-![](../img/app_smc_01.jpg)
+![Project : app code modifictaion - use smart config tool to generate driver — app smc 01](../img/app_smc_01.jpg)
 
 
 ---
 
 * smart configurator system setting as below
 
-![](../img/smc_system.jpg)
+![Project : app code modifictaion - use smart config tool to generate driver — smc system](../img/smc_system.jpg)
 
 ---
 
@@ -1465,10 +1465,10 @@ __Do not specify the vector address (vect) with the #pragma interrupt directive 
 * ==EVERY TIME== when use smart config tool to ==re-generate driver==
 * need to ==remove static declaration== and ==comment on vect definition== in earch drvier ==Config_xxx_user.c==
 
-![](../img/app_user_interrupt_01.jpg)
-![](../img/app_user_interrupt_02.jpg)
-![](../img/app_user_interrupt_03.jpg)
-![](../img/app_user_interrupt_04.jpg)
+![Project : app code modifictaion -  remove static and vect define — app user interrupt 01](../img/app_user_interrupt_01.jpg)
+![Project : app code modifictaion -  remove static and vect define — app user interrupt 02](../img/app_user_interrupt_02.jpg)
+![Project : app code modifictaion -  remove static and vect define — app user interrupt 03](../img/app_user_interrupt_03.jpg)
+![Project : app code modifictaion -  remove static and vect define — app user interrupt 04](../img/app_user_interrupt_04.jpg)
 
 <u>How to Divide Boot and Flash Areas</u>
 
@@ -1490,7 +1490,7 @@ unsigned char _no_init_global[RAM_FLAG_MAX];
 
 ```
 below is map file result 
-![](../img/app_map_file.jpg)
+![Project : app code modifictaion - main.c — app map file](../img/app_map_file.jpg)
 
 * add change flag data ==condition check== and execute reset
 
@@ -1534,7 +1534,7 @@ void uart_rcv_process(void)
 
 ## Project : app code property modifictaion - E2 lite setting
 
-![](../img/app_e2_lite_property_flash.jpg)
+![Project : app code property modifictaion - E2 lite setting — app e2 lite property flash](../img/app_e2_lite_property_flash.jpg)
 
 
 <u>CC-RL Compiler User's Manual</u>
@@ -1552,7 +1552,7 @@ refer to How to Divide Boot and Flash Areas :
 __4.2.3  Specifying hex file output only to the flash area address range__
 
 
-![](../img/app_property_common_01.jpg)
+![Project : app code property modifictaion - CC-RL Build Tool setting — app property common 01](../img/app_property_common_01.jpg)
 
 
 * __[Frequently Used Options (for Hex Output)] > [Division output file]__
@@ -1567,7 +1567,7 @@ __4.2.3  Specifying hex file output only to the flash area address range__
 
 ---
 
-![](../img/app_property_common_02.jpg)
+![Project : app code property modifictaion - CC-RL Build Tool setting — app property common 02](../img/app_property_common_02.jpg)
 
 * __[Other] > [Commands executed after build processing]__
   * add : boot_flash.bat , for RL78 F24 (256K)
@@ -1698,7 +1698,7 @@ __7generateBootAppBin.cmd__
 
 use RFP to download whole program : boot_app.bin(boot code + app code)
 
-![](../img/app_RFP_01.jpg)
+![Project : app code property modifictaion - CC-RL Build Tool setting — app RFP 01](../img/app_RFP_01.jpg)
 
 
 __boot+app binary folder__ : 
@@ -1719,7 +1719,7 @@ RL78_F24_Basic_Boot_loader_app\DefaultBuild\flash5000_3FFFF.hex
 
 **Compile Options**
 
-![](../img/app_property_compile_01.jpg)
+![Project : app code property modifictaion - CC-RL Build Tool setting — app property compile 01](../img/app_property_compile_01.jpg)
 
 
 <u>How to Divide Boot and Flash Areas</u>
@@ -1735,14 +1735,14 @@ RL78_F24_Basic_Boot_loader_app\DefaultBuild\flash5000_3FFFF.hex
 
 **Link Options**
 
-![](../img/app_property_link_01.jpg)
+![Project : app code property modifictaion - CC-RL Build Tool setting — app property link 01](../img/app_property_link_01.jpg)
 * __[Device] > [Option byte values for OCD]__
   * set to ```A5```
   * default will be 0xFF
 
 <br>
 
-![](../img/app_property_link_02.jpg)
+![Project : app code property modifictaion - CC-RL Build Tool setting — app property link 02](../img/app_property_link_02.jpg)
 * __[Output Code] > [Execute start address]__
   * will be called by cstart.asm
 <br>
@@ -1750,7 +1750,7 @@ RL78_F24_Basic_Boot_loader_app\DefaultBuild\flash5000_3FFFF.hex
 
 ---
 
-![](../img/app_property_link_03.jpg)
+![Project : app code property modifictaion - CC-RL Build Tool setting — app property link 03](../img/app_property_link_03.jpg)
 * __[List] > [Ooutput link map file]__
   * select -SHow=ALL , will display the compile result (function , address) in map file for debug
   * map file under /DefaultBuild
@@ -1764,7 +1764,7 @@ RL78_F24_Basic_Boot_loader_app\DefaultBuild\flash5000_3FFFF.hex
 
 ---
 
-![](../img/app_property_link_04.jpg)
+![Project : app code property modifictaion - CC-RL Build Tool setting — app property link 04](../img/app_property_link_04.jpg)
 * __[Section] > [Section start address]__
 
 refer to How to Divide Boot and Flash Areas :
@@ -1800,18 +1800,18 @@ __4.2.2  Specifying the section allocation__
   RFD_DATA_n=RFD_DATA_nR
   ``` 
 
-![](../img/app_property_link_04_3.jpg)
+![Project : app code property modifictaion - CC-RL Build Tool setting — app property link 04 3](../img/app_property_link_04_3.jpg)
 
   * set __Layout sections automatically__ to ==YES==
   * the final result : 
 
-![](../img/app_property_link_04_2.jpg)
+![Project : app code property modifictaion - CC-RL Build Tool setting — app property link 04 2](../img/app_property_link_04_2.jpg)
 
 <br>
 
 ---
 
-![](../img/app_property_link_05.jpg)
+![Project : app code property modifictaion - CC-RL Build Tool setting — app property link 05](../img/app_property_link_05.jpg)
 * __[Others] > [Display total size sections]__
   * select -Total_size , will display the section size in output window
   * display build code size in Output window
@@ -1835,7 +1835,7 @@ refer to How to Divide Boot and Flash Areas :
 __4.2.3  Specifying hex file output only to the flash area address range__
 
 
-![](../img/app_hex_output_01.jpg)
+![Project : app code property modifictaion - CC-RL Build Tool setting — app hex output 01](../img/app_hex_output_01.jpg)
 
 * __[Output File] > [Division output file]__  
   * base on MCU (ex : RL78F24) , to set ==app code start address and end address== as file name
@@ -1848,7 +1848,7 @@ __4.2.3  Specifying hex file output only to the flash area address range__
 
 ---
 
-![](../img/app_hex_output_02.jpg)
+![Project : app code property modifictaion - CC-RL Build Tool setting — app hex output 02](../img/app_hex_output_02.jpg)
 * __[Hex Format]__  
   * follow the setting of the picture 
 
@@ -1877,7 +1877,7 @@ add interrupt vect declare in boot code
   * add boot code interrupt process (ex:I2C_Downloader_routine_IRQ)
   * interrupt process in app code wll be defined as [vector number](#vect_address)
 
-![](../img/boot_vect_number.jpg)
+![How to add interrupt at boot code — boot vect number](../img/boot_vect_number.jpg)
 
 ```C
 #pragma interrupt boot_r_Config_IICA0_interrupt(vect=INTIICA0)
@@ -1914,7 +1914,7 @@ add interrupt vect declare in boot code
   * add boot code interrupt process (ex:boot_Timer_1ms_IRQ)
   * interrupt process in app code wll be defined as [vector number](#vect_address)
 
-![](../img/boot_vect_number2.jpg)
+![How to add interrupt at boot code — boot vect number2](../img/boot_vect_number2.jpg)
 
 ```C
 #pragma interrupt boot_r_Config_TAU0_1_interrupt(vect=INTTM01)
@@ -1931,7 +1931,7 @@ void __near boot_r_Config_TAU0_1_interrupt(void)
 }
 ```
 
-![](../img/boot_timer_irq_couting2.jpg)
+![How to add interrupt at boot code — boot timer irq couting2](../img/boot_timer_irq_couting2.jpg)
 
 
 
@@ -1952,11 +1952,11 @@ CRC store address : 0x4FFE
 
 ```
 
-![](../img/hw_crc_boot_01.jpg)
+![How to use hardware CRC at boot code and app code project — hw crc boot 01](../img/hw_crc_boot_01.jpg)
 
-![](../img/hw_crc_boot_02.jpg)
+![How to use hardware CRC at boot code and app code project — hw crc boot 02](../img/hw_crc_boot_02.jpg)
 
-![](../img/hw_crc_boot_03.jpg)
+![How to use hardware CRC at boot code and app code project — hw crc boot 03](../img/hw_crc_boot_03.jpg)
 
 
 __setting in CS+ (app code)__
@@ -1971,11 +1971,11 @@ CRC store address : 0x3FBFE
 
 ```
 
-![](../img/hw_crc_app_01.jpg)
+![How to use hardware CRC at boot code and app code project — hw crc app 01](../img/hw_crc_app_01.jpg)
 
-![](../img/hw_crc_app_02.jpg)
+![How to use hardware CRC at boot code and app code project — hw crc app 02](../img/hw_crc_app_02.jpg)
 
-![](../img/hw_crc_app_03.jpg)
+![How to use hardware CRC at boot code and app code project — hw crc app 03](../img/hw_crc_app_03.jpg)
 
 
 for CRC compare , refer to function : ==verify_application_chksum==
@@ -1983,12 +1983,12 @@ and ==verify_bootcode_chksum==
 
 below is boot code , verify result 
 
-![](../img/hw_crc_app_04.jpg)
+![How to use hardware CRC at boot code and app code project — hw crc app 04](../img/hw_crc_app_04.jpg)
 
 
 below is boot code , log message 
 
-![](../img/hw_crc_app_05.jpg)
+![How to use hardware CRC at boot code and app code project — hw crc app 05](../img/hw_crc_app_05.jpg)
 
 
 __Need to modify driver , due to far pointers 16bit addressing issue__
